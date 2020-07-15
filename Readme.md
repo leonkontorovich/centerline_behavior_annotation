@@ -1,5 +1,6 @@
 # Quick Skeleton Notebooks
-### Please use one (or more) of the supplied Anaconda environments for a fast and easy installation process.
+### Please use the openCV Anaconda environment provided.
+
 
 Skeleton.ipynb is the local version, with a lot of 'experiments' I did before finding the optimal solution.
 
