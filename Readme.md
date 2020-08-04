@@ -26,7 +26,7 @@ I wrote a little macro to do it: "save_bigtiff2avi.ijm"
 Run it in the cluster, ideally create one session (<80GB) per bigtiff file because it is a slow process.
 
 
-'''''
+```
 source_dir = getDirectory("Source Directory");
  
 list=getFileList(source_dir);
@@ -34,6 +34,7 @@ list=getFileList(source_dir);
 setBatchMode(true);
 
 for (i=0; i<list.length; i++) {
+	
 	run("Bio-Formats", "color_mode=Default rois_import=[ROI manager] view=Hyperstack stack_order=XYCZT use_virtual_stack open="+source_dir+list[i]);
 
 	print(source_dir+list[i]);
@@ -42,6 +43,5 @@ for (i=0; i<list.length; i++) {
 	
 	run("Close All");
 }
-'''''
-
+```
 
