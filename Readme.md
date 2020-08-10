@@ -28,9 +28,9 @@ I wrote a little macro to do it: "bigtiff2avi.ijm"
 
 Run it in the cluster, ideally create multiple sessions (~20GB) so they can run in parallel.
 
-
 ```
 source_dir = getDirectory("Source Directory");
+ 
 list=getFileList(source_dir);
 setBatchMode(true);
 
