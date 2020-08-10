@@ -15,22 +15,22 @@ Skeleton_cluster_GPU.ipynb is a working version that runs on cluster, thought to
 At the moment the code is set up to work with datasets that are multiple ome.tiff files per recording.
 In one 20min recording there can be 20 ome tiff files.
 
-###1. Convert ome.tiff files to single bif tiff file.
+1. Convert ome.tiff files to single bif tiff file.
 ```
 conda activate openCV
 python ometiff2bigtiff.py -i /groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/datasets/dataset_20200701/
 ```
 Or you can open the Utils.ipynb notebook and run the ometiff2bigtiff function on the dataset directory.
 
-###2. Run Fiji macro to generate .avi files from bigtiff files.
+2. Run Fiji macro to generate .avi files from bigtiff files.
 Since we didnt manage to generate .avi files in python because of codecs and what not, I decided to use Fiji.
-I wrote a little macro to do it: "bigtiff2avi.ijm" (Find it in the Fiji_Macros repository)
+I wrote a little macro to do it: "bigtiff2avi.ijm"
 
 Run it in the cluster, ideally create multiple sessions (~20GB) so they can run in parallel.
 
+
 ```
 source_dir = getDirectory("Source Directory");
- 
 list=getFileList(source_dir);
 setBatchMode(true);
 
