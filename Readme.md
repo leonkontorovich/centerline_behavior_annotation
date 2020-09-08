@@ -42,3 +42,8 @@ for (i=0; i<list.length; i++) {
 }
 ```
 
+###3. Generate binary images from the recordings
+Use the python script. At the moment all recordings are substracted the same background. Code needs to be improved to allow for specific background image.
+
+###4. Run skeletonization code on the binary images
+
