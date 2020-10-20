@@ -1,4 +1,4 @@
-#read and write tiff video for binary
+"""read and write tiff video for binary"""
 
 #import pckgs
 import cv2
