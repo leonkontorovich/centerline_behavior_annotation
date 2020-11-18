@@ -10,12 +10,15 @@ import argparse
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input_filename", required=True, help="path to input file")
 ap.add_argument("-bg", "--background_filename", required=True, help="path to the background")
+ap.add_argument("-o", "--output_filename", required=True, help="path to output file")
+
+
 
 args = vars(ap.parse_args())
 
 input_filename=args['input_filename']
 bg_img_filename= args['background_filename']
-output_filename='/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/all_good_binary/'+args['input_filename'][:-11]+'binary.tiff'
+output_filename=args['input_filename']+args['input_filename'][:-11]+'binary.tiff'
 
 print('\n')
 print('input:')
