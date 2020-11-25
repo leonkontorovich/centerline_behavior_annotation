@@ -25,7 +25,6 @@ args = vars(ap.parse_args())
 tiff_path=args["tiff_path"]
 avi_path=args["avi_path"]
 fourcc=args["fourcc"]
-multi=args["multi"]
 
 if fourcc == '0':
     fourcc=0
@@ -36,7 +35,7 @@ fps=int(args["fps"])
 #multi=args["multi"]
 
 #define function
-def tiff2avi(tiff_path, avi_path, fourcc, fps, multi):
+def tiff2avi(tiff_path, avi_path, fourcc, fps):
     with tiff.TiffFile(tiff_path, multifile=False) as tif:
         #print(tif)
         frameSize=tif.pages[0].shape
@@ -52,4 +51,4 @@ def tiff2avi(tiff_path, avi_path, fourcc, fps, multi):
     video_out.release()
 
 #run function
-tiff2avi(tiff_path, avi_path, fourcc, fps, multi)
+tiff2avi(tiff_path, avi_path, fourcc, fps)
