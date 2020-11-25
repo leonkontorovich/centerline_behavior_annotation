@@ -14,10 +14,21 @@ from natsort import natsorted
 import re
 import argparse
 
-##define functions##
-#function to list all ome.tiff in a directory and make them one bigtiff
-#somehow it gives an error for the last ome tiff, but the movie is fine.
+
 def ometiff2bigtiff(path):
+    """
+    List all ome.tiff in a directory and make them one bigtiff
+    Somehow it gives an error for the last ome tiff, but resulting .btf is fine.
+
+    IMPORTANT: This ometiff2big tiff removes the Z-Stack information in a recording with Z stacks! At least if the number of Z Stacks is inconsistent, which is the case for the current writer in ome.tiff. While recording the microscope saves the ome.tiff file, even if the z-stack is not finished.
+    
+    Parameters:
+    -----------
+    path: str,
+        Path to the directory containing the several ome tiff files.
+
+    """
+
     if path.endswith('/'):
         output_filename=path+re.split('/',path)[-2]+'bigtiff.btf'
     else:
@@ -42,14 +53,14 @@ args = vars(ap.parse_args())
 
 main_path=(args["i_path"])
 
+ometiff2bigtiff(main_path)
+
 
 #for loop (it applies the ometiff2bigtiff function to all subdirectories in the main_path)
-for roots, dirs, files in natsorted(os.walk(main_path)):
-    print(dirs)
-    for single_dir in natsorted(dirs):
-        if 'worm' in single_dir and 'bg' not in single_dir:
-            print('the directory is:')
-            print(os.path.join(roots,single_dir)+'\n')
-            ometiff2bigtiff(os.path.join(roots,single_dir))
-
-
+# for roots, dirs, files in natsorted(os.walk(main_path)):
+#     print(dirs)
+#     for single_dir in natsorted(dirs):
+#         if 'worm' in single_dir and 'bg' not in single_dir:
+#             print('the directory is:')
+#             print(os.path.join(roots,single_dir)+'\n')
+#             ometiff2bigtiff(os.path.join(roots,single_dir))
