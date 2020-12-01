@@ -1,5 +1,3 @@
-"""read and write tiff video for binary"""
-
 #import pckgs
 import cv2
 import tifffile as tiff
@@ -10,7 +8,7 @@ import argparse
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input_filename", required=True, help="path to input file")
 ap.add_argument("-bg", "--background_filename", required=True, help="path to the background")
-ap.add_argument("-o", "--output_filename", required=True, help="path to output file")
+#ap.add_argument("-o", "--output_filename", required=True, help="path to output file")
 
 
 
@@ -18,7 +16,8 @@ args = vars(ap.parse_args())
 
 input_filename=args['input_filename']
 bg_img_filename= args['background_filename']
-output_filename=args['input_filename']+args['input_filename'][:-11]+'binary.tiff'
+output_filename=args['input_filename']+args['input_filename'][:-11]+'TH20_binary.tiff'
+#args['output_filename']
 
 print('\n')
 print('input:')
@@ -49,11 +48,11 @@ with tiff.TiffWriter(output_filename, bigtiff=True) as tif_writer:
             img[:] = cv2.medianBlur(img,5)
             
             #apply threshold
-            ret, new_img = cv2.threshold(img,11,255,cv2.THRESH_BINARY)
+            ret, new_img = cv2.threshold(img,20,255,cv2.THRESH_BINARY)
             
             #find contours
-            contours = cv2.findContours(new_img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contours = contours[0] if len(contours) == 2 else contours[1]
+            img,contours, hierarchy = cv2.findContours(new_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+            #not in use anymore contours = contours[0] if len(contours) == 2 else contours[1]
             
             #list areas of contours, find MAX, draw contours from MAX area
             areas=[]
@@ -61,8 +60,25 @@ with tiff.TiffWriter(output_filename, bigtiff=True) as tif_writer:
                 areas.append(cv2.contourArea(contours[j]))
             worm_contour=np.where(areas==np.asarray(areas).max())
             worm_contour=np.asarray(worm_contour)
+            
             img_contours = np.zeros(img.shape)
-            img[:]=cv2.drawContours(img_contours,contours, worm_contour, 255, -1)
+            #draws the worm contour, taking into account hierarchy (one level)
+            img[:]=cv2.drawContours(img_contours,contours, worm_contour, color=255, thickness=-1, hierarchy=hierarchy, maxLevel=1)
+            
+            #draw inner part empty
+            #for every contour (Again)
+            for j in range(0, len(contours)):
+                #if the contours have as a parent worm_contour
+                if hierarchy[0][j][3]==worm_contour:
+                    #if the conntours is smaller than 300 sq px, fill it with color 255 (See #18 Labmeeting)
+                    inside_areas.append(cv2.contourArea(contours[j]))
+                    
+                    #plot a histogram of the inside areas to find the areas you want to discard (this is a function of chosen parameters like threshold)
+                    if cv2.contourArea(contours[j])<300:
+                        #print(cv2.contourArea(contours[j]))
+                        #print('entered')
+                        img[:]=cv2.drawContours(img,contours, j, color=255, thickness=-1)
+            
 
             tif_writer.save(img)
 #             if i ==600: break
