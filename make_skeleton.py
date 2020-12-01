@@ -23,7 +23,7 @@ import skimage.graph
 
 #import functions
 def shortest_path2(start,end,binary,costs):
-    path, cost = skimage.graph.route_through_array(costs, start=start, end=end, fully_connected=True)
+    path, cost = skimage.graph.route_through_array(costs, start=start, end=end, fully_connected=False)
     return path,cost
 
 
@@ -94,7 +94,8 @@ with tiff.TiffFile(input_filename, multifile=False) as tif:
         costs=cv2.distanceTransform(img, cv2.DIST_L2,3)
         cv2.normalize(costs, costs, 0, 255, cv2.NORM_MINMAX)
         costs=costs.max()-costs  
-        costs=costs**2
+        #where costs are 255, replace by np.inf, otherwise remain same
+        costs=np.where(costs==255, np.inf, costs)
 
         path, cost=shortest_path2(start_point, end_point, img, costs)
 
