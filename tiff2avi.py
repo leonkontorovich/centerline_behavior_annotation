@@ -36,6 +36,24 @@ fps=int(args["fps"])
 
 #define function
 def tiff2avi(tiff_path, avi_path, fourcc, fps):
+    """
+    Convert tiff file into avi file with the specified fourcc codec and fps
+    The isColor parameter of the writer is by default set to False.
+
+    Parameters:
+    -----------
+    tiff_path: str,
+        Path to the tiff file
+    avi_path: str
+    	Path to the output file
+	fourcc: fourcc code
+		0 means no conversion, other codecs will have some compression
+		To learn more: https://www.fourcc.org/
+	fps: num
+		Number of frames per second at which the recording was acquired
+
+    """
+
     with tiff.TiffFile(tiff_path, multifile=False) as tif:
         #print(tif)
         frameSize=tif.pages[0].shape
