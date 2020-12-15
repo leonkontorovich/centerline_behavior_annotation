@@ -21,10 +21,7 @@ from skimage import data
 from skimage.util import invert
 import skimage.graph
 
-#import functions
-def shortest_path2(start,end,binary,costs):
-    path, cost = skimage.graph.route_through_array(costs, start=start, end=end, fully_connected=False)
-    return path,cost
+
 
 
 ap = argparse.ArgumentParser()
@@ -110,7 +107,8 @@ def make_skeleton(input_filename, h5_path):
             #to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
             costs=np.where(costs>254.9, 255**4, costs)
             #actual skeleton based on shortest_path of skimage
-            path, cost=shortest_path2(start_point, end_point, img, costs)
+            path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
+
 
             x,y=np.asarray(list(zip(*path)), dtype=int)
 
