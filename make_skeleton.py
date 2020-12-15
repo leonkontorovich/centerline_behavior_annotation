@@ -50,7 +50,7 @@ def make_skeleton(start_point, end_point, num_splines, img):
 
 
 	#to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
-	costs=np.where(costs>254.9, 255*4, costs)
+	costs=np.where(costs>254.9, 255*100, costs)
 	#actual skeleton based on shortest_path of skimage
 	#actual skeleton based on route through array from skimage
 	path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
@@ -106,7 +106,8 @@ tail_x=df[scorer]['Tail']['x'].values
 tail_y=df[scorer]['Tail']['y'].values
 
 # #create csv objects
-output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/new_skeleton_v2/',re.split('-channel',re.split('/',input_filename)[-1])[0])
+output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_new/',re.split('-channel',re.split('/',input_filename)[-1])[0])
+
 print('\noutput:')
 print(output_path)
 
@@ -136,7 +137,7 @@ with tiff.TiffFile(input_filename, multifile=False) as tif:
         end_point = (int(tail_y[i]), int(tail_x[i]))
 
         #make_skeleton_v2 function
-        u, skel_coord, spline_coord, K=make_skeleton_v2(start_point, end_point, num_splines, img)
+        u, skel_coord, spline_coord, K=make_skeleton(start_point, end_point, num_splines, img)
 
         
         #csv writer
