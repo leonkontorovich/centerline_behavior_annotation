@@ -51,6 +51,7 @@ def make_binary(input_filename, bg_img_filename, output_filename):
             for i, page in enumerate(tif.pages):
                 #loads the first frame and inverts it
                 img=page.asarray()
+                #inverts it to have the worm as signakl, bg has low pixel value after this
                 img=cv2.bitwise_not(img)
                 
                 #substrack background
