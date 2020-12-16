@@ -28,14 +28,15 @@ def ometiff2bigtiff(path):
         Path to the directory containing the several ome tiff files.
 
     """
-
+    print(path)
     if path.endswith('/'):
         output_filename=path+re.split('/',path)[-2]+'bigtiff.btf'
     else:
         output_filename=path+'/'+re.split('/',path)[-1]+'bigtiff.btf'
     with tiff.TiffWriter(output_filename, bigtiff=True) as output_tif:
         for file in natsorted(os.listdir(path)):
-            #print(os.path.join(path,file))
+            print(f'list is {os.listdir(path)}')
+            print(os.path.join(path,file))
             if file.endswith('ome.tif') and 'bg' not in file:
                 print(os.path.join(path,file))
                 with tiff.TiffFile(os.path.join(path,file), multifile=False) as tif:

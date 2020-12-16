@@ -6,7 +6,6 @@ import argparse
 #it uses a cv2 WRITER and a tiff Reader
 #based on a jupyternotebook on skeleton_utils.ipynb
 
-#To improve: Write Multifile as option, so it can be set to True
 
 #example:
 #python /groups/zimmer/Ulises/code/skeleton/tiff2avi.py -i /groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/all_btf/2020-07-01_14-41-11_chemotaxisl_worm2-channel-0-bigtiff.btf -o /groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/all_good_avis/test.avi -fps 167 -fourcc MJPG
@@ -34,7 +33,7 @@ else:
 fps=int(args["fps"])
 #multi=args["multi"]
 
-#define function
+#To improve: Write Multifile as option, so it can be set to True
 def tiff2avi(tiff_path, avi_path, fourcc, fps):
     """
     Convert tiff file into avi file with the specified fourcc codec and fps
@@ -47,7 +46,7 @@ def tiff2avi(tiff_path, avi_path, fourcc, fps):
     avi_path: str
     	Path to the output file
 	fourcc: fourcc code
-		0 means no conversion, other codecs will have some compression
+		0 means no coompression, other codecs will have some compression
 		To learn more: https://www.fourcc.org/
 	fps: num
 		Number of frames per second at which the recording was acquired
