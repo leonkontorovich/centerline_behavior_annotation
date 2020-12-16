@@ -1,4 +1,4 @@
-# Quick Skeleton Notebooks - TEST
+# Quick Skeleton Notebooks
 ### Please use the openCV Anaconda environment provided.
 
 Install conda environment
