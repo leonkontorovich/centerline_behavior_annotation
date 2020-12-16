@@ -11,7 +11,7 @@ setuptools.setup(
     description="A small package to extract centerlines from worms",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://bitbucket.vbc.ac.at/users/ulises.rey/repos/skeleton/browse",
+    url="https://bitbucket.vbc.ac.at/users/ulises.rey/repos/centerline/browse",
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
