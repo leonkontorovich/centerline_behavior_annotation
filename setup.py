@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="Centerline",
+    name="centerline",
     version="0.0.1",
     author="Ulises Rey",
     author_email="ulises.rey@imp.ac.at",

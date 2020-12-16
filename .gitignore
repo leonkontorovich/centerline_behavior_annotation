@@ -2,3 +2,4 @@ core.4069
 .ipynb_checkpoints/*
 .idea/*
 __pycache__/*
+*/__pycache
