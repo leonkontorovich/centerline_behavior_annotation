@@ -1,18 +1,60 @@
-#!/usr/bin/env python
-
-
-## example
-#1. Be on the right environment
-#2. Run ometiff2bigtiff.py on the folder containing the subdirectories with all the ome.tiff files:
-# python ometiff2bigtiff.py -i /groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/datasets/dataset_20200701/
+import cv2
+import tifffile as tiff
 
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import tifffile as tiff
 from natsort import natsorted
 import re
-import argparse
+
+
+
+def tiff2avi(tiff_path, avi_path, fourcc, fps):
+    """
+    Convert tiff file into avi file with the specified fourcc codec and fps
+    The isColor parameter of the writer is harcoded set to False.
+
+    Parameters:
+    -----------
+    tiff_path: str,
+        Path to the tiff file
+    avi_path: str
+        Path to the output file
+    fourcc: fourcc code
+        0 means no coompression, other codecs will have some compression
+        To learn more visit: https://www.fourcc.org/
+    fps: float (should it be int?)
+        Number of frames per second at which the recording was acquired
+
+    To improve:
+    ----------
+    Write Multifile as option, so it can be set to True
+
+    """
+
+    #corrects fourcc nomenclature
+    if fourcc == '0':
+        fourcc=0
+    else:
+        fourcc=cv2.VideoWriter_fourcc(fourcc)
+    
+    #make fps a float
+    fps=float(fps)
+    
+    #tiff read object
+    with tiff.TiffFile(tiff_path, multifile=False) as tif:
+        #print(tif)
+        frameSize=tif.pages[0].shape
+        frame_height, frame_width=tif.pages[0].shape
+        video_out = cv2.VideoWriter(avi_path, apiPreference=0, fourcc=fourcc, fps=fps, frameSize=(frame_width,frame_height), isColor=False)
+
+        for i, page in enumerate(tif.pages):
+            #print(i)
+            img=page.asarray()
+            #img=cv2.cvtColor(img,cv2.COLOR_GRAY2BGR)
+            video_out.write(img)
+            #if i>20: break
+    video_out.release()
 
 
 def ometiff2bigtiff(path):
@@ -47,21 +89,4 @@ def ometiff2bigtiff(path):
                     output_tif.save(hyperstack, photometric='minisblack')#, description=omexmlMetadataString)
 
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-i", "--i_path", required=True, help="path to input images")
-args = vars(ap.parse_args())
 
-main_path=(args["i_path"])
-
-ometiff2bigtiff(main_path)
-
-
-#for loop (it applies the ometiff2bigtiff function to all subdirectories in the main_path)
-# for roots, dirs, files in natsorted(os.walk(main_path)):
-#     print(dirs)
-#     for single_dir in natsorted(dirs):
-#         if 'worm' in single_dir and 'bg' not in single_dir:
-#             print('the directory is:')
-#             print(os.path.join(roots,single_dir)+'\n')
-#             ometiff2bigtiff(os.path.join(roots,single_dir))
