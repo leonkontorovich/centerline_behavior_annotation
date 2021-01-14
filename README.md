@@ -1,5 +1,8 @@
 # Quick Skeleton Notebooks
+
+(This readme is from before it was a package and needs to be updated)
 ### Please use the openCV Anaconda environment provided.
+
 
 Install conda environment
 conda env create -f openCV.yml
