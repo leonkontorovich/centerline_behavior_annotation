@@ -62,7 +62,8 @@ def ometiff2bigtiff(path):
     List all ome.tiff in a directory and make them one bigtiff
     Somehow it gives an error for the last ome tiff, but resulting .btf is fine.
 
-    IMPORTANT: This ometiff2big tiff removes the Z-Stack information in a recording with Z stacks! At least if the number of Z Stacks is inconsistent, which is the case for the current writer in ome.tiff. While recording the microscope saves the ome.tiff file, even if the z-stack is not finished.
+    IMPORTANT: This ometiff2big tiff removes the Z-Stack information in a recording with Z stacks!
+    At least if the number of Z Stacks is inconsistent, which is the case for the current writer in ome.tiff. While recording, the microscope saves the ome.tiff file even before the z-stack is finished.
     
     Parameters:
     -----------
