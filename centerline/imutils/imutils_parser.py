@@ -21,19 +21,3 @@ args = ap.parse_args()
 
 func = FUNCTION_MAP[args.command]
 func()
-
-
-# # construct the argument parser and parse the arguments
-# ap = argparse.ArgumentParser()
-# ap.add_argument("-i", "--tiff_path", required=True, help="path to input tiff file")
-# ap.add_argument("-o", "--avi_path", required=True, help="path to output avi file")
-# ap.add_argument("-fourcc", "--fourcc", required=True, help="fourcc compression mode, 0 means no compression")
-# ap.add_argument("-fps", "--fps", required=True, help="Frames per second")
-# #ap.add_argument("-multi", "--multi", required=False, help="Multi ometiff")
-
-
-# args = vars(ap.parse_args())
-
-# tiff_path=args["tiff_path"]
-# avi_path=args["avi_path"]
-# fourcc=args["fourcc"]
