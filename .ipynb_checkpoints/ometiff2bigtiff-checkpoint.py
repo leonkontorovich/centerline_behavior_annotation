@@ -42,14 +42,14 @@ args = vars(ap.parse_args())
 
 main_path=(args["i_path"])
 
+ometiff2bigtiff(main_path)
+
 
 #for loop (it applies the ometiff2bigtiff function to all subdirectories in the main_path)
-for roots, dirs, files in natsorted(os.walk(main_path)):
-    print(dirs)
-    for single_dir in natsorted(dirs):
-        if 'worm' in single_dir and 'bg' not in single_dir:
-            print('the directory is:')
-            print(os.path.join(roots,single_dir)+'\n')
-            ometiff2bigtiff(os.path.join(roots,single_dir))
-
-
+# for roots, dirs, files in natsorted(os.walk(main_path)):
+#     print(dirs)
+#     for single_dir in natsorted(dirs):
+#         if 'worm' in single_dir and 'bg' not in single_dir:
+#             print('the directory is:')
+#             print(os.path.join(roots,single_dir)+'\n')
+#             ometiff2bigtiff(os.path.join(roots,single_dir))
