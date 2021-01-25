@@ -1,3 +1,34 @@
+# Installation
+To install this as package you should check
+https://bitbucket.vbc.ac.at/projects/ZL/repos/protocols/browse/Installing_personal_Python_packages.md
+
+Shortly:
+1. Open Terminal and activate your environment (example your_env)
+	```
+	conda activate your_env
+	```
+2. Install it with a pip command (pointing to the directory where you cloned it)
+	```
+	pip install /code/centerline/
+	```
+	or better:
+	cd to the directory where you cloned the directory
+	```
+	cd ../code/centerline/
+	```
+	And then pip install the local directory
+	```
+	pip install .
+	```
+	
+	This would be wrong:
+	```
+	pip install centerline
+	```
+	Because it will install another centerline package that someone has uploaded to pip.
+
+
+
 # Quick Skeleton Notebooks
 
 (This readme is from before it was a package and needs to be updated)
