@@ -29,45 +29,56 @@ Shortly:
 
 
 
-# Quick Skeleton Notebooks
-
-(This readme is from before it was a package and needs to be updated)
-### Please use the openCV Anaconda environment provided.
 
 
-Install conda environment
-conda env create -f openCV.yml
+
+
+# Pipeline
+1. Process the data to have only one file (.btf and .avi), and also binary images.
+2. Run the recordings on the DLC network to detect Head and Tail
+3. Obtain Centerlines
+4. Analyze data (Fourier Transform, PCA, etc.)
+5. Annotate behaviour based on PCA analysis
+
+## Preparing the Data
+
+At the moment the code is set up to work with behavioural datasets that are multiple ome.tiff files per recording.
+In one 20min recording there can be 20 ome tiff files.
+
+###1.1. Convert ome.tiff files to single bif tiff file.
+
+Run ometiff2bigtiff function as an array of jobs for every behavioural recording (See Cluster jobs repository). This will make one big tiff file for each folder.
+
+####1.1.2 Copy all the .btf files in a separate directory, like 'btf'
+
+###1.2. Run tiff2avi
+
+Run tiff2avi function as an array of jobs for every behavioural recording
+
+###1.3. Generate binary images from the recordings
+Use the python script. At the moment all recordings are substracted the same background. Code needs to be improved to allow for specific background image.
+
+## 2. Run the recordings on the DLC network to detect Head and Tail
+
+### 2.1. Train the network, evaluate it, etc.
+Use the DLC.ipynb notebook for this.
+Consider Filtering.
+
+##3. Obtain Centerlines from the binary images and the hdf5 with Head and Tail position
+
+##4. Analyze data (Fourier Transform, PCA, etc.)
+Use notebooks:
+/code/centerline/centerline/dev/FourierTransform.ipynb
+/code/centerline/centerline/dev/PCA_eigenworm.ipynb
+
+## 5. Annotate behaviour based on PCA analysis
+/code/centerline/centerline/dev/PCA_eigenworm.ipynb
+
+
+
+
+# Miscellaneous
 
 Skeleton.ipynb is the local version, with a lot of 'experiments' I did before finding the optimal solution.
 
 Skeleton_cluster.ipynb is a working version that runs on cluster.
-
-Skeleton_cluster_GPU.ipynb is a working version that runs on cluster, thought to run on GPU.
-
-
-## Pipeline
-At the moment the code is set up to work with datasets that are multiple ome.tiff files per recording.
-In one 20min recording there can be 20 ome tiff files.
-
-###1. Convert ome.tiff files to single bif tiff file.
-
-Run ometiff2bigtiff.py as an array of jobs for every folder (See Cluster jobs repository). This will make one big tiff file for each folder.
-
-Alternatively you can run:
-
-```
-conda activate openCV
-python ometiff2bigtiff.py -i /groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/datasets/dataset_20200701/
-```
-Or you can open the Utils.ipynb notebook and run the ometiff2bigtiff function on the dataset directory (Discouraged).
-
-####1.1 Copy all the .btf files in a separate directory, like 'btf'
-
-###2. Run tiff2avi.py
-
-
-###3. Generate binary images from the recordings
-Use the python script. At the moment all recordings are substracted the same background. Code needs to be improved to allow for specific background image.
-
-###4. Run skeletonization code on the binary images
-
