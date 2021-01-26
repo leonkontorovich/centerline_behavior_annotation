@@ -21,7 +21,7 @@ parser_a.add_argument("-fps", "--fps", required=True, help="Frames per second")
 
 # create the parser for the "b" command
 parser_b = subparsers.add_parser('ometiff2bigtiff', help='ometiff2bigtiff help')
-parser_b.add_argument("-i_path", "--input_path", required=True, help="path to the input folder")
+parser_b.add_argument("-path", "--path", required=True, help="path to the input folder")
 
 #create the parser for another function
 
