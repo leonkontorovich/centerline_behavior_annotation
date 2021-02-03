@@ -90,4 +90,9 @@ def ometiff2bigtiff(path):
                     output_tif.save(hyperstack, photometric='minisblack')#, description=omexmlMetadataString)
 
 
-
+                    #I dont thing there is the need for a function for this. it can be easily done with:
+                    # res = cv2.bitwise_and(img,img,mask = mask)
+# def mask_dir(img_path, mask_path):
+#     """
+#     Mask the images in img_path using a matching file in the mask_path
+#     """
