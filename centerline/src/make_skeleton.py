@@ -44,7 +44,7 @@ def make_skeleton(start_point, end_point, num_splines, img):
 
 
 	x,y=np.asarray(list(zip(*path)), dtype=int)
-	pts=np.asarray(path, dtype=np.int)
+	#pts=np.asarray(path, dtype=np.int)
 
 	if len(pts)<num_splines:
 		#print('Knots are Nans in: '+str(i))
@@ -56,11 +56,12 @@ def make_skeleton(start_point, end_point, num_splines, img):
 		u=np.nan
 	else:
 		####
+        ##SHOULD THIS PART HERE BE CONVERTED TO A FUNCTION?? (or some of it)
 		#s is the smoothing condition should have around the size of points/2 (keep it low)
 		#k is the degree of freedom for the polynom it fits, 5 is good
 		#splprep calculates automatically the number of knots. One can see how many in tck.shape[1].
 		#everytime splprep is run the number may differ
-		tck, u = splprep(pts.T, u=None, s=pts.shape[0]/2, per=0, k=5) 
+		tck, u = splprep([x,y], u=None, s=x.shape[0]/2, per=0, k=5) 
 		u_new = np.linspace(u.min(), u.max(), num_splines)#1000)
 
 		x_new, y_new = splev(u_new, tck, der=0)
