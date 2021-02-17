@@ -36,7 +36,7 @@ def tiff2avi(tiff_path, avi_path, fourcc, fps):
     if fourcc == '0':
         fourcc=0
     else:
-        fourcc=cv2.VideoWriter_fourcc(fourcc)
+        fourcc=cv2.VideoWriter_fourcc(*fourcc)
     
     #make fps a float
     fps=float(fps)
@@ -88,11 +88,6 @@ def ometiff2bigtiff(path):
                     #omexmlMetadataString = tif.ome_metadata IF YOU RUN THIS LINE IT GIVES ERRORS!
                     #print('writing...')
                     output_tif.save(hyperstack, photometric='minisblack')#, description=omexmlMetadataString)
+        
 
-
-                    #I dont thing there is the need for a function for this. it can be easily done with:
-                    # res = cv2.bitwise_and(img,img,mask = mask)
-# def mask_dir(img_path, mask_path):
-#     """
-#     Mask the images in img_path using a matching file in the mask_path
-#     """
+        
