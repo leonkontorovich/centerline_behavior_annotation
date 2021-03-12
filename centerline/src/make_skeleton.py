@@ -18,7 +18,7 @@ from skimage.util import invert
 import skimage.graph
 
 
-def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
+def make_skeleton(start_point, end_point, num_splines, img, min_worm_len):
 	"""
     Make an skeleton from binary image and start and end point
     Parameters:
