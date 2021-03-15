@@ -83,10 +83,10 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len):
 
 	return u, (x,y), (x_new, y_new), K
 
-def make_skeleton_with_DLC_help(start_point, end_point, min_worm_len=0, num_splines, img, network_h5_file):
-	"""
-	will incorporate the hdf5 file form the corresponding network to produce the skeleton when withoutit fails
-	"""
+# def make_skeleton_with_DLC_help(start_point, end_point, min_worm_len=0, num_splines, img, network_h5_file):
+# 	"""
+# 	will incorporate the hdf5 file form the corresponding network to produce the skeleton when withoutit fails
+# 	"""
 
 
 def generate_list_of_wrong_centerlines(centerline_csv):
