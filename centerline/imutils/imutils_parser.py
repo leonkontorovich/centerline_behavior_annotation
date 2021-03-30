@@ -23,6 +23,14 @@ parser_a.add_argument("-fps", "--fps", required=True, help="Frames per second")
 parser_b = subparsers.add_parser('ometiff2bigtiff', help='ometiff2bigtiff help')
 parser_b.add_argument("-path", "--path", required=True, help="path to the input folder")
 
+
+# create the parser for the "c" command
+parser_c = subparsers.add_parser('ometiff2bigtiffZ', help='ometiff2bigtiffZ help')
+parser_c.add_argument("-path", "--path", required=True, help="path to the input folder")
+parser_c.add_argument("-output_dir", "--output_dir", required=False, help="path to the output folder")
+parser_c.add_argument("-actually_write", "--actually_write", required=False, help="True if you actually want to write")
+parser_c.add_argument("-num_slices", "--num_slices", required=False, help="Number of slices your Z-Stack should have")
+
 #create the parser for another function
 
 
