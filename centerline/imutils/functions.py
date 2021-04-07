@@ -80,11 +80,9 @@ def ometiff2bigtiff(path):
             if file.endswith('ome.tif') and 'bg' not in file:
                 print(os.path.join(path,file))
                 with tiff.TiffFile(os.path.join(path,file), multifile=False) as tif:
-                    #print('entered writing')
-                    hyperstack = tif.asarray()
-                    #omexmlMetadataString = tif.ome_metadata IF YOU RUN THIS LINE IT GIVES ERRORS!
-                    #print('writing...')
-                    output_tif.save(hyperstack, photometric='minisblack')#, description=omexmlMetadataString)
+                    for page in tif.pages:
+                        img = page.asarray()
+                        output_tif.save(img, photometric='minisblack')#, description=omexmlMetadataString)
 
 
 def ometiff2bigtiffZ(path, output_dir=None, actually_write=True, num_slices=None):
