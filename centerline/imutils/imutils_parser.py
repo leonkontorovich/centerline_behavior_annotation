@@ -2,7 +2,8 @@ import argparse
 from centerline.imutils import functions as imutils
 
 FUNCTION_MAP = {'tiff2avi' : imutils.tiff2avi,
-                'ometiff2bigtiff' : imutils.ometiff2bigtiff}
+                'ometiff2bigtiff' : imutils.ometiff2bigtiff,
+                'ometiff2bigtiffZ' : imutils.ometiff2bigtiffZ}
 
 
 # create the top-level parser
