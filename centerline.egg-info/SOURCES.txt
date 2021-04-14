@@ -1,7 +1,0 @@
-README.md
-setup.py
-centerline/__init__.py
-centerline.egg-info/PKG-INFO
-centerline.egg-info/SOURCES.txt
-centerline.egg-info/dependency_links.txt
-centerline.egg-info/top_level.txt
