@@ -5,14 +5,14 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="centerline",
-    version="0.0.2",
+    version="0.0.4",
     author="Ulises Rey",
     author_email="ulises.rey@imp.ac.at",
     description="A small package to extract centerlines from celegans worms",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://bitbucket.vbc.ac.at/users/ulises.rey/repos/centerline/browse",
-    packages=setuptools.find_packages(),
+    url="https://bitbucket.vbc.ac.at/users/ulises.rey/repos/centerline/",
+    packages=setuptools.find_namespace_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",

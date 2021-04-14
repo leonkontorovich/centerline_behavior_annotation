@@ -17,30 +17,18 @@ from skimage import data
 from skimage.util import invert
 import skimage.graph
 
-# ap = argparse.ArgumentParser()
-# ap.add_argument("-i", "--input_filename", required=True, help="path to input file")
-# ap.add_argument("-h5", "--h5", required=True, help="path to the DLC hdf5 file")
 
-# args = vars(ap.parse_args())
-
-# input_filename=args['input_filename']
-# print(input_filename)
-# print('\n')
-# h5_path=args['h5']
-# print(h5_path)
-# print('\n')
-
-
-
-def make_skeleton(start_point, end_point, num_splines, img):
+def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
 	"""
     Make an skeleton from binary image and start and end point
     Parameters:
     -----------
 	start_point: tuple with x,y coordinates
 	end_point: tuple with x,y coordinates
+	min_worm_len: minimum worm length in pixels, if the found centerline is below it will be nan (default is 0)
 	num_splines: number of splines you want to fit
 	img: binary img from where the skeleton will be calculated
+	min_worm_len: int, minimun length the worm should have. Default 0.
 	"""
 
 	#this defines the costs for the shortest path
@@ -51,16 +39,16 @@ def make_skeleton(start_point, end_point, num_splines, img):
 
 	#to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
 	costs=np.where(costs>254.9, 255*100, costs)
-	#actual skeleton based on shortest_path of skimage
 	#actual skeleton based on route through array from skimage
 	path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
 
 
 
 	x,y=np.asarray(list(zip(*path)), dtype=int)
-	pts=np.asarray(path, dtype=np.int)
+	#pts=np.asarray(path, dtype=np.int)
 
-	if len(pts)<num_splines:
+	#if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
+	if len(x)<min_worm_len or len(x)<num_splines:
 		#print('Knots are Nans in: '+str(i))
 		K=np.full(num_splines, np.nan)
 		x=np.full(num_splines, np.nan)
@@ -68,13 +56,15 @@ def make_skeleton(start_point, end_point, num_splines, img):
 		x_new=np.full(num_splines, np.nan)
 		y_new=np.full(num_splines, np.nan)
 		u=np.nan
+	#else, the path was good, fit a spline and find curvature
 	else:
 		####
+        ##SHOULD THIS PART HERE BE CONVERTED TO A FUNCTION?? (or some of it)
 		#s is the smoothing condition should have around the size of points/2 (keep it low)
 		#k is the degree of freedom for the polynom it fits, 5 is good
 		#splprep calculates automatically the number of knots. One can see how many in tck.shape[1].
 		#everytime splprep is run the number may differ
-		tck, u = splprep(pts.T, u=None, s=pts.shape[0]/2, per=0, k=5) 
+		tck, u = splprep([x,y], u=None, s=x.shape[0]/2, per=0, k=5) 
 		u_new = np.linspace(u.min(), u.max(), num_splines)#1000)
 
 		x_new, y_new = splev(u_new, tck, der=0)
@@ -94,61 +84,80 @@ def make_skeleton(start_point, end_point, num_splines, img):
 
 	return u, (x,y), (x_new, y_new), K
 
+def make_skeleton_from_DLC(input_stack, h5_filename, num_splines, min_worm_len=0):
+    """
+    will incorporate the hdf5 file form the corresponding network to produce the skeleton when without, it fails
+    Potentially it could use a list as input (wrong_centerlines list for example)
+    """
+    #creates numberic regular expression
+    regex_num=re.compile(r'\d+')
+    #read the hdf5
+    df = pd.read_hdf(h5_filename)#it could be improved to only read the selected rows (as long as hdf5 is in table format): https://stackoverflow.com/questions/33451926/read-hdf5-file-to-pandas-dataframe-with-conditions
+    scorer=df.columns.get_level_values(0)[0]
+
+
+    with tiff.TiffFile(input_stack, multifile=True) as tif:
+        files = tif.imagej_metadata['Info'].split('\n')
+        for idx, page in enumerate(tif.pages):
+            img=page.asarray()
+            file=files[idx]
+            print('This is the description:', file,'\n')
+            #get the number from the description! (It should have!)
+            i=int(regex_num.search(file).group(0))
+            print(i)
+            #load the X,Y coordinates of the hdf5 file for that timepoint (number)
+            #probably x and y need to be swaped
+            head_y = int(df.loc[i][scorer,'Head','x'])
+            head_x = int(df.loc[i][scorer,'Head','y'])
+            start=(head_y, head_x)
+
+            tail_y = int(df.loc[i][scorer,'Tail','x'])
+            tail_x = int(df.loc[i][scorer,'Tail','y'])
+            end=(tail_y, tail_x)
+            
+            annotated_img=img.copy()
+            
+            cv2.circle(annotated_img,(head_y, head_x),10, (150,150,150), 2)
+            cv2.circle(annotated_img,(tail_y, tail_x),10, (150,150,150), 2)
+            plt.imshow(annotated_img)
+            plt.show()
+            
+            print(start, end)
+
+            #make skeleton function itself
+            u, (x,y), (x_new, y_new), K = make_skeleton(start, end, num_splines, img, min_worm_len)
+    return u, (x,y), (x_new, y_new), K
 
 
 
-# df = pd.read_hdf(h5_path)
 
-# scorer=df.columns.get_level_values(0)[0]
-# head_x=df[scorer]['Head']['x'].values
-# head_y=df[scorer]['Head']['y'].values
-# tail_x=df[scorer]['Tail']['x'].values
-# tail_y=df[scorer]['Tail']['y'].values
+def find_nan_centerlines(centerline_csv):
+	"""
+	Should work on the make_skeleton output or on the image (make_skeleton input?)
+	Should use the extract frames function
 
-# # #create csv objects
-# output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_new/',re.split('-channel',re.split('/',input_filename)[-1])[0])
+    -----------
+	centerline: centerline csv file
 
-# print('\noutput:')
-# print(output_path)
+	"""
+	#declare wrong_centerlines empty list
+	wrong_centerlines=[]
+	correct_centerlines=[]
 
-# csvfilePathX=open(output_path+'_skeleton_X_coords.csv','w', newline='')
-# csv_writerPathX=csv.writer(csvfilePathX)
-
-# csvfilePathY=open(output_path+'_skeleton_Y_coords.csv','w', newline='')
-# csv_writerPathY=csv.writer(csvfilePathY)
-
-# csvfileX=open(output_path+'_spline_X_coords.csv','w', newline='')
-# csv_writerX=csv.writer(csvfileX)
-
-# csvfileY=open(output_path+'_spline_Y_coords.csv','w', newline='')
-# csv_writerY=csv.writer(csvfileY)
-
-# csvfileK=open(output_path+'_spline_K.csv','w', newline='')
-# csv_writerK=csv.writer(csvfileK)
+	# open file in read mode
+	with open(centerline_csv, 'r') as read_obj:
+	    # pass the file object to reader() to get the reader object
+	    csv_reader = csv.reader(read_obj)
+	    # Iterate over each row in the csv using reader object
+	    for idx, row in enumerate(csv_reader):
+	        # row variable is a list that represents a row in csv
+	        row_array=np.asarray(row, dtype=np.float64)
+	        if True in np.isnan(row_array):
+                wrong_centerlines.append(idx)
+            else: correct_centerlines.append(idx)
 
 
-# num_splines=100
+	return wrong_centerlines, correct_centerlines
 
-# with tiff.TiffFile(input_filename, multifile=False) as tif:
-#     for i, page in enumerate(tif.pages):
-#         img=page.asarray()
-        
-#         start_point=(int(head_y[i]), int(head_x[i]))
-#         end_point = (int(tail_y[i]), int(tail_x[i]))
-
-#         #make_skeleton_v2 function
-#         u, skel_coord, spline_coord, K=make_skeleton(start_point, end_point, num_splines, img)
-
-        
-#         #csv writer
-#         csv_writerPathX.writerow(skel_coord[0])
-#         csv_writerPathY.writerow(skel_coord[1])
-#         csv_writerX.writerow(spline_coord[0])
-#         csv_writerY.writerow(spline_coord[1])
-#         csv_writerK.writerow(K)
-# csvfilePathX.close()
-# csvfilePathY.close()
-# csvfileX.close()
-# csvfileY.close()
-# csvfileK.close()
-# print('end')
+#def draw_centerline(x_coords_csv, y_coords_csv):
+    

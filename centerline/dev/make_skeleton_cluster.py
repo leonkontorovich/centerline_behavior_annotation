@@ -24,7 +24,7 @@ ap.add_argument("-i", "--input_filename", required=True, help="path to input fil
 ap.add_argument("-h5", "--h5", required=True, help="path to the DLC hdf5 file")
 ap.add_argument("-n_splines", "--n_splines", required=True, help="Number of splines to fiit")
 
-
+#I am writing for the purpose of the course
 
 args = vars(ap.parse_args())
 

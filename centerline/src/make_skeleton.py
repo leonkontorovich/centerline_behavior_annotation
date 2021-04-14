@@ -18,7 +18,7 @@ from skimage.util import invert
 import skimage.graph
 
 
-def make_skeleton(start_point, end_point, num_splines, img, min_worm_len):
+def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
 	"""
     Make an skeleton from binary image and start and end point
     Parameters:
@@ -28,6 +28,7 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len):
 	min_worm_len: minimum worm length in pixels, if the found centerline is below it will be nan (default is 0)
 	num_splines: number of splines you want to fit
 	img: binary img from where the skeleton will be calculated
+	min_worm_len: int, minimun length the worm should have. Default 0.
 	"""
 
 	#this defines the costs for the shortest path
@@ -83,13 +84,54 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len):
 
 	return u, (x,y), (x_new, y_new), K
 
-# def make_skeleton_with_DLC_help(start_point, end_point, min_worm_len=0, num_splines, img, network_h5_file):
-# 	"""
-# 	will incorporate the hdf5 file form the corresponding network to produce the skeleton when withoutit fails
-# 	"""
+def make_skeleton_from_DLC(input_stack, h5_filename, num_splines, min_worm_len=0):
+    """
+    will incorporate the hdf5 file form the corresponding network to produce the skeleton when without, it fails
+    Potentially it could use a list as input (wrong_centerlines list for example)
+    """
+    #creates numberic regular expression
+    regex_num=re.compile(r'\d+')
+    #read the hdf5
+    df = pd.read_hdf(h5_filename)#it could be improved to only read the selected rows (as long as hdf5 is in table format): https://stackoverflow.com/questions/33451926/read-hdf5-file-to-pandas-dataframe-with-conditions
+    scorer=df.columns.get_level_values(0)[0]
 
 
-def generate_list_of_wrong_centerlines(centerline_csv):
+    with tiff.TiffFile(input_stack, multifile=True) as tif:
+        files = tif.imagej_metadata['Info'].split('\n')
+        for idx, page in enumerate(tif.pages):
+            img=page.asarray()
+            file=files[idx]
+            print('This is the description:', file,'\n')
+            #get the number from the description! (It should have!)
+            i=int(regex_num.search(file).group(0))
+            print(i)
+            #load the X,Y coordinates of the hdf5 file for that timepoint (number)
+            #probably x and y need to be swaped
+            head_y = int(df.loc[i][scorer,'Head','x'])
+            head_x = int(df.loc[i][scorer,'Head','y'])
+            start=(head_y, head_x)
+
+            tail_y = int(df.loc[i][scorer,'Tail','x'])
+            tail_x = int(df.loc[i][scorer,'Tail','y'])
+            end=(tail_y, tail_x)
+            
+            annotated_img=img.copy()
+            
+            cv2.circle(annotated_img,(head_y, head_x),10, (150,150,150), 2)
+            cv2.circle(annotated_img,(tail_y, tail_x),10, (150,150,150), 2)
+            plt.imshow(annotated_img)
+            plt.show()
+            
+            print(start, end)
+
+            #make skeleton function itself
+            u, (x,y), (x_new, y_new), K = make_skeleton(start, end, num_splines, img, min_worm_len)
+    return u, (x,y), (x_new, y_new), K
+
+
+
+
+def find_nan_centerlines(centerline_csv):
 	"""
 	Should work on the make_skeleton output or on the image (make_skeleton input?)
 	Should use the extract frames function
@@ -100,6 +142,7 @@ def generate_list_of_wrong_centerlines(centerline_csv):
 	"""
 	#declare wrong_centerlines empty list
 	wrong_centerlines=[]
+	correct_centerlines=[]
 
 	# open file in read mode
 	with open(centerline_csv, 'r') as read_obj:
@@ -109,8 +152,12 @@ def generate_list_of_wrong_centerlines(centerline_csv):
 	    for idx, row in enumerate(csv_reader):
 	        # row variable is a list that represents a row in csv
 	        row_array=np.asarray(row, dtype=np.float64)
-	        if True in np.isnan(row_array): wrong_centerlines.append(idx)
-	        #do this to convert to array:
+	        if True in np.isnan(row_array):
+                wrong_centerlines.append(idx)
+            else: correct_centerlines.append(idx)
 
 
-	return wrong_centerlines
+	return wrong_centerlines, correct_centerlines
+
+#def draw_centerline(x_coords_csv, y_coords_csv):
+    
