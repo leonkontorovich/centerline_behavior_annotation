@@ -20,8 +20,9 @@ def plot_tracks(filename):
     ax=df.plot(x='X', y='Y', linewidth=5, figsize=(20,20))
     ax.plot(df['X'][0],df['Y'][0], 'go', markersize=15)
     ax.plot(df['X'].tail(1),df['Y'].tail(1), 'ro', markersize=15)
-    ax.set_xlim(0, 45)
-    ax.set_ylim(0, 45)
+#     ax.set_xlim(-3,8)#(0, 45)
+#     ax.set_ylim(-3,8)#(0, 45)
+    return ax
 
     #plt.savefig('example_trace.pdf')
 #this works, the problem for this is that I don't know how to zoom in

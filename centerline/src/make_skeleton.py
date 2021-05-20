@@ -136,9 +136,10 @@ def find_nan_centerlines(centerline_csv):
 	Should work on the make_skeleton output or on the image (make_skeleton input?)
 	Should use the extract frames function
 
-    -----------
+	-----------
 	centerline: centerline csv file
-
+	
+	Returns: wrong centerlines, correct_centerlines
 	"""
 	#declare wrong_centerlines empty list
 	wrong_centerlines=[]
@@ -146,15 +147,15 @@ def find_nan_centerlines(centerline_csv):
 
 	# open file in read mode
 	with open(centerline_csv, 'r') as read_obj:
-	    # pass the file object to reader() to get the reader object
-	    csv_reader = csv.reader(read_obj)
-	    # Iterate over each row in the csv using reader object
-	    for idx, row in enumerate(csv_reader):
-	        # row variable is a list that represents a row in csv
-	        row_array=np.asarray(row, dtype=np.float64)
-	        if True in np.isnan(row_array):
-                wrong_centerlines.append(idx)
-            else: correct_centerlines.append(idx)
+	# pass the file object to reader() to get the reader object
+		csv_reader = csv.reader(read_obj)
+		# Iterate over each row in the csv using reader object
+		for idx, row in enumerate(csv_reader):
+			# row variable is a list that represents a row in csv
+			row_array=np.asarray(row, dtype=np.float64)
+			if True in np.isnan(row_array):
+				wrong_centerlines.append(idx)
+			else: correct_centerlines.append(idx)
 
 
 	return wrong_centerlines, correct_centerlines
