@@ -1,27 +1,17 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
-
+import scipy.fftpack
+import scipy.fft
 #modification of ulises fourier function
 ##made it more modular and added option to average over segments
-def fourier_transform(K,win,start_frame,end_frame,fps,frequency_map,start_freq,end_freq):
+def fourier_transform(Kts,fps,frequency_map,start_freq,end_freq):
     plt.rcParams.update({'figure.max_open_warning': 0})
     plt.rcParams.update({'font.size': 16})
-    
-    K_rolling = pd.DataFrame(K) #convert to df to perform the groupy function
-    Kt_rolling=K_rolling.T
-    Kt_rolling=Kt_rolling.groupby(Kt_rolling.index // win).mean() #takes the average of 5 segments resulting in 20 rows
-    Kt_rolling = Kt_rolling.to_numpy() #converting df back to numpy array(otherwise fourier transformation makes problems)
-
-    #number of sample points: Kts= Kt short
-    Kts=Kt_rolling[:,start_frame:end_frame]
-    print(('lenght of recording:'+str((end_frame-start_frame)/fps)+" secs"))
     N=Kts.shape[1]
     #sample spacing
     T=1.0/fps
     #x=np.linspace(0.0, N*T, N)
-
     xf=np.linspace(0.0, 1.0//(2.0*T), N//2)
 
 
@@ -43,6 +33,8 @@ def fourier_transform(K,win,start_frame,end_frame,fps,frequency_map,start_freq,e
         y=y[start_frame:end_frame]
     
         #plotting:
+        plt.rcParams.update({'figure.max_open_warning': 0})
+        plt.rcParams.update({'font.size': 16})
         #oscilations
         plt.figure(figsize=(20,3))
         plt.subplot(1,3,1)
@@ -75,7 +67,7 @@ def fourier_transform(K,win,start_frame,end_frame,fps,frequency_map,start_freq,e
             plt.subplot(1,3,3)
             y_img=np.tile(y_axis, (500, 1))
             plt.imshow(y_img[1:100,0:100], extent=[0.5,xf[300],500,0], vmin=0, vmax=0.025, aspect=0.0015)
-            #plt. yticks(y, " ")
+            #plt. yticks(y," ")
             plt.xlabel('Frequency (Hz)')
             plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
             if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
