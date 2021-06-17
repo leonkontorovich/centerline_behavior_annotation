@@ -52,8 +52,8 @@ def plot_track_section(concentration_change,position):
     
     """
     figsize_x=10
-    figsize_y=5
-    line_width=0.5
+    figsize_y=10
+    line_width=0.2
     fontsize=5
 
     #plot track
@@ -64,31 +64,31 @@ def plot_track_section(concentration_change,position):
     head_pos_y=concentration_change['y_head_corrected']
     tail_pos_y=concentration_change['y_tail_corrected']
     center_pos_y=concentration_change['y_center']
-
-    fig3, ax3 = plt.subplots(1,1, figsize = (figsize_x,figsize_y), dpi=600)
-    ax3.plot(head_pos_x,head_pos_y,linewidth=line_width)
-    ax3.plot(tail_pos_x,tail_pos_y,linewidth=line_width)
-    ax3.plot(center_pos_x,center_pos_y,linewidth=line_width)
-    ax3.axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
+    print('lenght of section: '+str(position['seconds'].max()-position['seconds'].min())+' secs')
+    fig, ax = plt.subplots(figsize = (figsize_x,figsize_y), dpi=600,ncols=1,nrows=2)
+    for axis in ax:
+        axis.set_ylabel('Y (mm)')
+        axis.set_xlabel('X (mm)')
+        axis.set_yticks(np.arange(round(min(head_pos_y)), max(head_pos_y), 0.5))
+        axis.tick_params(axis="y", labelsize=fontsize)
+        axis.set_xticks(np.arange(round(min(tail_pos_x)), max(tail_pos_x), 0.5))
+        axis.tick_params(axis="x", labelsize=fontsize)
+    ax[0].plot(head_pos_x,head_pos_y,linewidth=line_width)
+    ax[0].plot(tail_pos_x,tail_pos_y,linewidth=line_width)
+    ax[0].plot(center_pos_x,center_pos_y,linewidth=line_width)
+    ax[0].axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
     rect = patches.Rectangle((position['x_head_corrected'].min(), position['y_head_corrected'].min()),
     abs(position['x_head_corrected'].min()-position['x_head_corrected'].max()), abs(position['y_head_corrected'].min()-position['y_head_corrected'].max()), linewidth=1, edgecolor='k', facecolor='none')
-    ax3.add_patch(rect)
-    plt.yticks(np.arange(round(min(head_pos_y)), max(head_pos_y)+1, 1.0),fontsize=fontsize)
-    plt.xticks(np.arange(round(min(head_pos_x)), max(head_pos_x)+1, 1.0),fontsize=fontsize)
-    plt.ylabel('Y (mm)')
-    plt.xlabel('X (mm)')
-    plt.show()
+    ax[0].add_patch(rect)
     #determining part for zoom
-    fig2, ax2 = plt.subplots(1,1, figsize = (figsize_x,figsize_y), dpi=600)
-    ax2.plot(head_pos_x,head_pos_y,linewidth=line_width)
-    ax2.plot(tail_pos_x,tail_pos_y,linewidth=line_width)
-    ax2.plot(center_pos_x,center_pos_y,linewidth=line_width)
-    plt.xlim(position['x_head_corrected'].min(),position['x_head_corrected'].max())
-    plt.ylim(position['y_head_corrected'].min(),position['y_head_corrected'].max())
-    plt.ylabel('Y (mm)')
-    plt.xlabel('X (mm)')
-    ax2.axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
-    plt.show()
+    ax[1].plot(head_pos_x,head_pos_y,linewidth=line_width)
+    ax[1].plot(tail_pos_x,tail_pos_y,linewidth=line_width)
+    ax[1].plot(center_pos_x,center_pos_y,linewidth=line_width)
+    ax[1].set_xlim(position['x_head_corrected'].min(),position['x_head_corrected'].max())
+    ax[1].set_ylim(position['y_head_corrected'].min(),position['y_head_corrected'].max())
+    plt.axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.5, hspace=0.3)
+
     
     
     
@@ -105,27 +105,35 @@ def plot_concentration_section(concentration_change,position):
     """
     
     line_width=0.5
-    x=np.arange(len(concentration_change))
+    figsize_x=10
+    figsize_y=10
+    line_width=0.2
+    fontsize=5
+
+    x=concentration_change['seconds']
     head_conc=concentration_change['concentration_head']
     tail_conc=concentration_change['concentration_tail']
     center_conc=concentration_change['concentration_center']
-    xfig3, ax3 = plt.subplots(1,1, figsize = (10,5), dpi=800)
-    ax3.plot(x,head_conc,label="head",linewidth=line_width)
-    ax3.plot(x,tail_conc,label="tail",linewidth=line_width)
-    ax3.plot(x,center_conc,label="center",linewidth=line_width)
-    rect = patches.Rectangle((position.index.min(), position['concentration_head'].iloc[0]),len(position),
+    fig, ax = plt.subplots(figsize = (figsize_x,figsize_y), dpi=600,ncols=1,nrows=2)
+    for axis in ax:
+        axis.set_ylabel('Concentration')
+        axis.set_xlabel('time (seconds)')
+        axis.tick_params(axis="y", labelsize=fontsize)
+        axis.tick_params(axis="x", labelsize=fontsize)
+        
+    ax[0].plot(x,head_conc,label="head",linewidth=line_width)
+    ax[0].plot(x,tail_conc,label="tail",linewidth=line_width)
+    ax[0].plot(x,center_conc,label="center",linewidth=line_width)
+    rect = patches.Rectangle((position['seconds'].min(), position['concentration_head'].iloc[0]),position['seconds'].max()-position['seconds'].min(),
     abs(position['concentration_head'].iloc[0]-position['concentration_head'].iloc[-1]), linewidth=1, edgecolor='k', facecolor='none')
-    ax3.add_patch(rect)
-    plt.yticks(np.arange(0, 1.1, 0.1))
-    plt.show()
-
-    xfig2, ax2 = plt.subplots(1,1, figsize = (10,5), dpi=800)
-    ax2.plot(x,head_conc,label="head",linewidth=line_width)
-    ax2.plot(x,tail_conc,label="tail",linewidth=line_width)
-    ax2.plot(x,center_conc,label="center",linewidth=line_width)
-    plt.ylim(position['concentration_head'].iloc[0],position['concentration_head'].iloc[-1])
-    plt.xlim(position.index.min(),position.index.min()+len(position))
-    plt.show()
+    ax[0].add_patch(rect)
+    ax[0].set_yticks(np.arange(0, 1.1, 0.1))
+    ax[0].set_xticks(np.arange(round(min(x)), max(x), 50))
+    ax[1].plot(x,head_conc,label="head",linewidth=line_width)
+    ax[1].plot(x,tail_conc,label="tail",linewidth=line_width)
+    ax[1].plot(x,center_conc,label="center",linewidth=line_width)
+    ax[1].set_ylim(position['concentration_head'].iloc[0],position['concentration_head'].iloc[-1])
+    ax[1].set_xlim(position['seconds'].min(),position['seconds'].max())
     
     
        
