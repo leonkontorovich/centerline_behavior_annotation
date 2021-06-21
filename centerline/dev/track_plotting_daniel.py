@@ -139,12 +139,12 @@ def plot_concentration_section(concentration_change,position):
        
 def curv_section(K,fps,start_frame,end_frame):
     Ks=K[start_frame:end_frame]
-    print(('lenght of recording:'+str((end_frame-start_frame)/fps)+" secs")) #defines the part of the track i want to fourier transform
+    print(('lenght of recording:'+str((end_frame-start_frame)/fps)+" secs")) 
     print('rows and columns: '+str(Ks.shape))
     return(Ks.copy())
 
 
-def segment_averaging(Ks,win):
+def segment_averaging(K,win):
     """"
     returns the mean curvature over a defined number of segments.
     Parameters:
@@ -152,9 +152,8 @@ def segment_averaging(Ks,win):
     Ks: array of curavture over multiple segments
     win: integer, number of segments to be averaged over
     """
-    K_avg = pd.DataFrame(Ks) #convert to df to perform the groupy function
-    Kt_avg=K_avg.T
-    Kt_avg=Kt_avg.groupby(Kt_avg.index // win).mean() #takes the average of 5 segments resulting in 20 rows
+    K=K.T
+    Kt_avg=K.groupby(np.arange(len(K))//win).mean()
     print('number of rows and columns:'+str(Kt_avg.shape))
-    Kt_avg=Kt_avg.to_numpy()
-    return (Kt_avg)
+    Kt_avg=Kt_avg.T
+    return(Kt_avg)
