@@ -22,7 +22,8 @@ from centerline.src.make_skeleton import make_skeleton
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input_filename", required=True, help="path to input file")
 ap.add_argument("-h5", "--h5", required=True, help="path to the DLC hdf5 file")
-ap.add_argument("-n_splines", "--n_splines", required=True, help="Number of splines to fiit")
+ap.add_argument("-n_splines", "--n_splines", required=True, help="Number of splines to fit")
+ap.add_argument("-len", "--min_worm_length", required=True, help="minimum worm length")
 
 #I am writing for the purpose of the course
 
@@ -37,6 +38,8 @@ print('\n')
 num_splines=int(args['n_splines'])
 print(f'number of splines is {num_splines}')
 
+#
+min_worm_len=int(args['min_worm_length'])
 
 
 df = pd.read_hdf(h5_path)
@@ -48,7 +51,7 @@ tail_x=df[scorer]['Tail']['x'].values
 tail_y=df[scorer]['Tail']['y'].values
 
 # #create csv objects
-output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_test/',re.split('-channel',re.split('/',input_filename)[-1])[0])
+output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_after_new_unet/',re.split('-channel',re.split('/',input_filename)[-1])[0])
 
 print('\noutput:')
 print(output_path)
@@ -79,7 +82,7 @@ with tiff.TiffFile(input_filename, multifile=False) as tif:
         end_point = (int(tail_y[i]), int(tail_x[i]))
 
         #make_skeleton function
-        u, skel_coord, spline_coord, K=make_skeleton(start_point, end_point, num_splines, img)
+        u, skel_coord, spline_coord, K=make_skeleton(start_point, end_point, num_splines, img, min_worm_len)
 
         
         #csv writer
