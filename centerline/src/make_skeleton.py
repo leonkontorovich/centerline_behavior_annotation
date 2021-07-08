@@ -17,6 +17,9 @@ from skimage import data
 from skimage.util import invert
 import skimage.graph
 
+#To correctly import tqdm
+import_correct_tqdm()
+
 
 def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
 	"""
@@ -161,4 +164,242 @@ def find_nan_centerlines(centerline_csv):
 	return wrong_centerlines, correct_centerlines
 
 #def draw_centerline(x_coords_csv, y_coords_csv):
+
+def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_filename,num_splines:int=100,outside_contour_cost_handicap:int = 2, save_skel_image:bool=False,print_log:bool=False):
+    """
+    Make an skeleton from binary image and start and end point
+    The function receives image file, locations of head and tail,
+    and returns a spline fit that include x and y positions and curvature data per spline
+    as csv files
+    
+    Parameters:
+    -----------
+    input_image: str
+        path to input array
+    path_to_h5: pandas dataFrame
+        h5 file with anotation of head and tail
+    anotation_names:list
+        names of anotation of head and then the tail.
+    output_filename:str
+        the full path of the output
+    num_splines:int
+        the number of spline parts for output
+        default is 100. 
+    outside_contour_cost_handicap: int
+        fold multiplication of the highest cost for the spline fit. 
+        This prevents from skelaton doing bad shortcuts not through contour
+        default value is 2
+    save_skel_image:bool
+        should a skelaton image series be produced for quality control
+        default is False
+        
+    """
+    #define the output path
+    recording_name = os.path.splitext(os.path.basename(input_image))[0]
+    folder_path = os.path.dirname(input_image) ## directory of file
+    
+    if output_filename is None:
+        if print_log == True: print("no output path defined, using default")
+        input_folder_path = os.path.dirname(input_filename) ## directory of file
+        output_path = input_folder_path + "/skelaton/"
+        output_filename = output_path + os.path.splitext(os.path.basename(input_filename))[0] +"_skelaton.tiff"
+    else:
+        output_path = os.path.dirname(output_filename)+'/' ## directory of file
+        
+    
+    #make sure the output folder path exists
+    try:
+        os.mkdir(output_path)
+        if print_log == True: print("output  dir created: "+output_folder_path)
+    except:
+        if print_log == True: print('output dir exists')
+
+    #load head and tail tracking data 
+    try: 
+        hd5_df=pd.read_hdf(path_to_h5)     
+    except:            
+        print("could not find h5 file in path: "+path_to_h5)
+        return None
+    
+    DLC_run_name = hd5_df.columns[0][0]
+    
+    #get name of head and tail anotations
+    head_anotation = anotation_names[0]
+    tail_anotation = anotation_names[1]
+    
+    #prepare to save data
+    csvfilePathX=open(output_path+recording_name+'_skeleton_X_coords.csv','w', newline='')
+    csvfilePathY=open(output_path+recording_name+'_skeleton_Y_coords.csv','w', newline='')
+    csvfileX=open(output_path+recording_name+'_spline_X_coords.csv','w', newline='')
+    csvfileY=open(output_path+recording_name+'_spline_Y_coords.csv','w', newline='')
+    csvfileK=open(output_path+recording_name+'_spline_K.csv','w', newline='')
+
+    csv_writerPathX=csv.writer(csvfilePathX)
+    csv_writerPathY=csv.writer(csvfilePathY)
+    csv_writerX=csv.writer(csvfileX)
+    csv_writerY=csv.writer(csvfileY)
+    csv_writerK=csv.writer(csvfileK)
+    
+    #iterate over time and extract skelaton
+    with tiff.TiffWriter(output_path + recording_name +'_skelaton.tif', bigtiff=False) as tif_writer:
+        with tiff.TiffFile(input_image, multifile=True) as tif:
+#             tif = tif.asarray()
+
+            skelaton_result = np.zeros(tif.pages[0].shape)
+#             print("tif shape",tif.shape)
+            for timepoint, page in enumerate(tif.pages):
+                frame=page.asarray()
+#             for timepoint in np.arange(0,tif.shape[0]):
+#                 print("timepoint",timepoint)
+#                 frame=tif[timepoint,:,:]
+                
+                #get locations
+                head_x=hd5_df.loc[timepoint,:][DLC_run_name][head_anotation]['x']
+                head_y=hd5_df.loc[timepoint,:][DLC_run_name][head_anotation]['y']
+                tail_x=hd5_df.loc[timepoint,:][DLC_run_name][tail_anotation]['x']
+                tail_y=hd5_df.loc[timepoint,:][DLC_run_name][tail_anotation]['y']
+                start_point =  (int(head_y), int(head_x))
+                end_point = (int(tail_y), int(tail_x))
+                
+                #this defines the costs for the shortest path
+                costs=cv2.distanceTransform(frame.astype('uint8'), cv2.DIST_L2,3) #important that img type would be uint8 for stability
+
+                #normalize costs
+                norm_costs = np.zeros(frame.shape)
+                norm_costs = cv2.normalize(costs, norm_costs, 0, 255, cv2.NORM_MINMAX)
+
+                #does an inversion, background now is 255, worm is below 255
+                inv_costs=norm_costs.max()-norm_costs
+
+                #to increase the value a lot of the pixels outside the worm contour
+                #(np.inf will not work! sometimes head and tail outside work contour)
+                final_costs=np.where(inv_costs==255, 255**2, inv_costs)
+
+                #get centerline
+                path, cent_cost=shortest_path2(start_point, end_point, frame, final_costs)
+
+                #mark centerline
+                x,y=np.asarray(list(zip(*path)), dtype=int)
+
+                #make skelaton  
+                _, (x,y), (x_new, y_new), K = make_skeleton(start_point, end_point, num_splines, frame.astype('uint8'))
+
+                #save data for this frame
+                csv_writerPathX.writerow([x])
+                csv_writerPathY.writerow([y])
+                csv_writerX.writerow(x_new)
+                csv_writerY.writerow(y_new)
+                csv_writerK.writerow(K)
+
+                #make an output result image
+                if save_skel_image == True:
+                    for x,y in path:
+                        frame[x][y]=20
+                    tif_writer.save(frame)
+            
+         
+    csvfilePathX.close()
+    csvfilePathY.close()
+    csvfileX.close()
+    csvfileY.close()
+    csvfileK.close()
+    
+    if print_log == True: print("finished processing file: "+os.path.basename(input_image))
+    return None
+
+def batch_skeletonize_files(bin_file_list:list,h5_folder_path:str,sufix_len:int,DLC_run_name:str,spline_number:int,head_anotation:str='head',tail_anotation:str='tail',save_skel_image:bool=True,print_log:bool=False):
+	"""
+	This function binarizes a batch of images.
+	The recieves a list of image files to binarize, together with the path to the matching folder that holds the h5 files with the head and tail coordinates.
+	In addition the spline number and names of anotation of head and tail are given.
+
+	Parameters:
+	----------
+	bin_file_list:list
+	A list of paths to all the images to binarize
+	h5_folder_path:str
+	path to h5 folder holding the matching h5 files with head and tail coordinates
+	sufix_len:int
+	the length of suffix of image name used to find the matching h5 file
+	DLC_run_name:str
+	the name of the DLC model used to anotate head and tail
+	spline_number:int
+	number of splines to extract
+	head_anotation:str='head'
+	name of head anotation
+	tail_anotation:str='tail'
+	name of tail anotation
+	save_skel_image:bool=True
+	should a skeleton image be saved for proofing?
+	print_log:bool=False
+	should a log of success/fail be printed for debuging?
+	"""
+
+
+
+    print("Starting to skelatonize binary images...")
+    unsuccesful_files_list = []
+    
+    for i,bin_image in enumerate(tqdm(bin_file_list)):
+        #get recording name
+        recording_name = os.path.splitext(os.path.basename(bin_image))[0]
+        #get h5_path
+        h5_path = h5_folder_path+recording_name[:-sufix_len]+DLC_run_name+'.h5'
+        #get root_folder_path
+        root_folder_path = os.path.dirname(os.path.dirname(bin_image))
+        #define output filename
+        skeleton_file_path = root_folder_path+'/skeleton/'+recording_name+'_skeleton.tiff'
+
+        try:
+            skelatonize_image_series(bin_image,h5_path,[head_anotation,tail_anotation],skeleton_file_path,spline_number,2,save_skel_image,print_log=print_log)
+        except:
+            unsuccesful_files_list.append(bin_image)
+            if print_log:print("faild to bin",bin_image)
+            continue
+    if len(unsuccesful_files_list)>0: print("in total ",len(unsuccesful_files_list),"files failed to be binned.")
+    print("Finished skeletonization!!!")
+    return None
+
+# To import tqdm correctly
+#TODO move to another module
+def isnotebook():
+    # from: https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook
+    try:
+        shell = get_ipython().__class__.__name__
+        if shell == 'ZMQInteractiveShell':
+            return True   # Jupyter notebook or qtconsole
+        elif shell == 'TerminalInteractiveShell':
+            return False  # Terminal running IPython
+        else:
+            return False  # Other type (?)
+    except NameError:
+        return False      # Probably standard python interpreter
+
+
+def import_correct_tqdm():
+    if isnotebook():
+        from tqdm.notebook import tqdm
+    else:
+        from tqdm import tqdm
+    return tqdm
+
+
+#Itamar 0202021 added this function to fix shortest path error of having end/start point on the edge of the image
+#It was called inside the make_skeleton() after calculating the costs.
+#Since It is not known if it is really required it's now left commented.
+
+# def corr_extreme_pos(pos,shape):
+#     """
+#     makes sure the x,y positions are not on the border of the image
+#     parameters:
+#     ----------
+#     pos: tuple
+#     array of y,x positions
+#     shape: nd.array
+#     array of y,x positions    
+#     """
+#     new_pos = list(pos)
+#     if pos[0] >= shape[0]: new_pos[0] = shape[0]-1
+#     if pos[1] >= shape[1]: new_pos[1] = shape[1]-1
+#     return tuple(new_pos)
     
