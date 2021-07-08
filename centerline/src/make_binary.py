@@ -70,6 +70,6 @@ def make_binary(input_filename, bg_img_filename, output_filename):
                             img[:]=cv2.drawContours(img,contours, j, color=255, thickness=-1)
                 
 
-                tif_writer.save(img)
+                tif_writer.write(img, contiguous=True)
     #             if i ==600: break
              
