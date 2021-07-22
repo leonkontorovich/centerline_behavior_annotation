@@ -51,7 +51,7 @@ tail_x=df[scorer]['Tail']['x'].values
 tail_y=df[scorer]['Tail']['y'].values
 
 # #create csv objects
-output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_after_new_unet/',re.split('-channel',re.split('/',input_filename)[-1])[0])
+output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_after_unet/',re.split('-channel',re.split('/',input_filename)[-1])[0])
 
 print('\noutput:')
 print(output_path)
