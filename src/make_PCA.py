@@ -5,7 +5,6 @@ from pickle import dump
 import numpy as np
 import matplotlib.pyplot as plt
 
-#i can do what ever i want since it is my branch
 
 def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments:list=None,output_folder:str=None):
     """
