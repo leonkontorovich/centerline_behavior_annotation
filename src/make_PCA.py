@@ -5,6 +5,7 @@ from pickle import dump
 import numpy as np
 import matplotlib.pyplot as plt
 
+#i can do what ever i want since it is my branch
 
 def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments:list=None,output_folder:str=None):
     """
@@ -440,53 +441,8 @@ def make_reversal_anotated_movie(input_movie_path:str,reversal_df:pd.DataFrame,o
                 
     print("Finished!!!")
 
-
-def heatmap2d(arr: np.ndarray, v_min=-0.6, v_max=0.6):
-    figure = plt.figure(figsize=(10, 5))
-    plt.imshow(arr.T, origin="upper", cmap='seismic', vmin=v_min, vmax=v_max)
+def heatmap2d(arr: np.ndarray,v_min=-0.6,v_max=0.6):
+    figure = plt.figure(figsize=(10,5))
+    plt.imshow(arr.T,origin="lower",cmap='seismic',vmin=v_min,vmax=v_max)
     plt.colorbar()
     return figure
-
-
-def make_kymographs(curvature_files: list, suffix_len, num_segments: int = 100, v_min=-0.6, v_max=0.6,
-                    print_log: bool = False):
-    print("Starting to make kymograph images...")
-
-    segments = np.arange(1, num_segments)
-
-    unsuccessful_kymo_list = []
-
-    for i, K_file in enumerate(tqdm(curvature_files)):
-        # get recording name
-        recording_name = os.path.splitext(os.path.basename(K_file))[0][:-suffix_len]
-        # root_folder_path
-        root_folder_path = os.path.dirname(os.path.dirname(K_file))
-        # kymograph folder
-        kymograph_folder_path = root_folder_path + "/kymographs/"
-
-        # make sure there's a kymograph folder
-        if os.path.isdir(kymograph_folder_path) == False:
-            os.mkdir(kymograph_folder_path)
-            print("created kymograph output folder", kymograph_folder_path)
-
-        # define output filename
-        kymograph_figure_path = kymograph_folder_path + recording_name + '_kymograph.png'
-
-        # load curvature data
-        try:
-            K_df = pd.read_csv(K_file, names=segments, index_col=False)
-        except:
-            unsuccessful_kymo_list.append(K_file)
-            if print_log: print("Could not load/find curvture file: " + K_file)
-            continue
-
-        # make the figure
-        figure = heatmap2d(K_df, v_min, v_max)
-        figure.set_size_inches(40, 8)
-        figure.savefig(kymograph_figure_path, dpi=500)
-        plt.close()
-
-    if len(unsuccessful_kymo_list) > 0: print("could not make kymograph for", len(unsuccessful_kymo_list),
-                                              "curvature files")
-
-    print("Finished saving kymographs!!!")
