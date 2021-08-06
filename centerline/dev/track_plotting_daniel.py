@@ -5,21 +5,32 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 
 #plots all tracks for center head and tail
+#plots all tracks for center head and tail
 def plot_tracks_center_head_tail(filename,figsize_x,figsize_y,line_width):
-    concentration_change=pd.read_csv(filename)
-    x_head_corrected=concentration_change['x_head_corrected']
-    y_head_corrected=concentration_change['y_head_corrected']
-    x_tail_corrected=concentration_change['x_tail_corrected']
-    y_tail_corrected=concentration_change['y_tail_corrected']
-    x_center_pos=concentration_change['x_center']
-    y_center_pos=concentration_change['y_center']
+    """
+    plot tracks of cntroid together with head and tail position
+    Parameters:
+    ---------------------------
+    filename: csv_file with head, tail and center position
+    figsize_x
+    figsize_y
+    line_width
+    """
+    df_head_tail_center_coords=pd.read_csv(filename)
+    x_head_corrected=df_head_tail_center_coords['x_head_corrected']
+    y_head_corrected=df_head_tail_center_coords['y_head_corrected']
+    x_tail_corrected=df_head_tail_center_coords['x_tail_corrected']
+    y_tail_corrected=df_head_tail_center_coords['y_tail_corrected']
+    x_center_pos=df_head_tail_center_coords['x_center']
+    y_center_pos=df_head_tail_center_coords['y_center']
+    print(df_head_tail_center_coords.tail(1))
     fig3, ax3 = plt.subplots(1,1, figsize = (figsize_x,figsize_y), dpi=600)
     ax3.plot(x_head_corrected,y_head_corrected,label="head",linewidth=line_width)
     ax3.plot(x_tail_corrected,y_tail_corrected,label="tail",linewidth=line_width)
     ax3.plot(x_center_pos,y_center_pos,label="center",linewidth=line_width)
     ax3.axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
-    ax3.plot(concentration_change['x_center'][0],concentration_change['y_center'][0], 'go', markersize=5)
-    ax3.plot(concentration_change['x_center'].tail(1),concentration_change['y_center'].tail(1), 'ro', markersize=5)
+    ax3.plot(df_head_tail_center_coords['x_center'][0],df_head_tail_center_coords['y_center'][0], 'go', markersize=5)
+    ax3.plot(df_head_tail_center_coords['x_center'].tail(1),df_head_tail_center_coords['y_center'].tail(1), 'ro', markersize=5)
     ax3.legend()
     return ax3
 
