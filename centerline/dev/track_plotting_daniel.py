@@ -153,18 +153,3 @@ def curv_section(K,fps,start_frame,end_frame):
     print(('lenght of recording:'+str((end_frame-start_frame)/fps)+" secs")) 
     print('rows and columns: '+str(Ks.shape))
     return(Ks.copy())
-
-
-def segment_averaging(K,win):
-    """"
-    returns the mean curvature over a defined number of segments.
-    Parameters:
-    -----------------
-    Ks: array of curavture over multiple segments
-    win: integer, number of segments to be averaged over
-    """
-    K=K.T
-    Kt_avg=K.groupby(np.arange(len(K))//win).mean()
-    print('number of rows and columns:'+str(Kt_avg.shape))
-    Kt_avg=Kt_avg.T
-    return(Kt_avg)
