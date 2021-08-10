@@ -5,70 +5,102 @@ import scipy.fftpack
 import scipy.fft
 #modification of ulises fourier function
 ##made it more modular and added option to average over segments
-def fourier_transform(Kts,fps,frequency_map,start_freq,end_freq):
-    plt.rcParams.update({'figure.max_open_warning': 0})
-    plt.rcParams.update({'font.size': 16})
-    N=Kts.shape[1]
+def fourier_transform(K,fps,segment):
+    """
+    returns a fourier transform of kurvature of different body segments
+    Parameters:
+    -------------------
+    K: numpy array of curvature data
+    segment: body segments to fourier transform
+    fps=frames per second
+    """
+    N=K.shape[1]
     #sample spacing
     T=1.0/fps
     #x=np.linspace(0.0, N*T, N)
     xf=np.linspace(0.0, 1.0//(2.0*T), N//2)
+    y=segment
+    yf=scipy.fftpack.fft(y)
+    #define axes
+    #y_axis (see that it should start at 1 in yf[1:N//2])
+    y_axis=2.0/N * np.abs(yf[1:N//2])
+    #x_axis
+    x_axis=xf[1:N//2]
+    return x_axis, y_axis
+            
+            
+
+def segment_averaging(K,win):
+    """"
+    returns the mean curvature over a defined number of segments.
+    Parameters:
+    -----------------
+    Ks: array of curavture over multiple segments
+    win: integer, number of segments to be averaged over
+    """
+    K = pd.DataFrame(K)
+    K=K.T
+    Kt_avg=K.groupby(np.arange(len(K))//win).mean()
+    print('number of rows and columns:'+str(Kt_avg.shape))
+    Kt_avg=Kt_avg.T
+    Kt_avg=Kt_avg.to_numpy()
+    return Kt_avg
 
 
-    for idx, segment in enumerate(Kts):
-        #skip some segments
-        #if idx%10!=5:continue
-        #if idx >20:continue
-    
-        y=segment
-        yf=scipy.fftpack.fft(y)
-        #define axes
-        #y_axis (see that it should start at 1 in yf[1:N//2])
-        y_axis=2.0/N * np.abs(yf[1:N//2])
-        #x_axis
-        x_axis=xf[1:N//2]
+def section_to_fourier_transform(K,start_frame,end_frame,fps):
+    """
+    defines part of the track to fourier transform
+    Parameters:
+    -----------------
+    K: numpy array of curvature data
+    start and end frame: section to transform
+    fps:frames per second
+    """
+    K=K[start_frame:end_frame]
+    print(('lenght of recording:'+str((end_frame-start_frame)/fps)+" secs"))
+    print('new shape:'+str(K.shape))
+    return K
 
-        #define x and y
-        x=np.arange(0, y[start_frame:end_frame].shape[0]/167,1/167)
-        y=y[start_frame:end_frame]
+
+def fourier_plot(x_axis,y_axis,start_frame,end_frame,start_freq,end_freq,win,fps,segment,idx,save):
+    """
+    plots the output of fourier_transform
+    Parameters:
+    -----------------
+    x_ft: x axis of fourier transform
+    y_ft: y axis of fourier transform
+    start_frame
+    end_frame
+    start_freq, end_freq, frequncy range to be displayed
+    win: window over which the segments where averaged
+    fps:frames per second
+    save: 1 for saving
+    """
+    plt.rcParams.update({'figure.max_open_warning': 0})
+    plt.rcParams.update({'font.size': 16})
+    y=segment
+    x=np.arange(0, y[start_frame:end_frame].shape[0]/fps,1/fps)
+    y=y[start_frame:end_frame]
     
-        #plotting:
-        plt.rcParams.update({'figure.max_open_warning': 0})
-        plt.rcParams.update({'font.size': 16})
-        #oscilations
-        plt.figure(figsize=(20,3))
-        plt.subplot(1,3,1)
-        plt.plot(x,y)
-        plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
-        if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
-        plt.xlabel('Time (s)')
-        plt.ylabel('Signal Amplitude (a.u)')
+    #plotting:
+    #oscilations
+    plt.figure(figsize=(20,3))
+    plt.subplot(1,2,1)
+    plt.plot(x,y)
+    plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
+    if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
+    plt.xlabel('Time (s)')
+    plt.ylabel('Signal Amplitude (a.u)')
     
-        #Frequency
-        plt.subplot(1,3,2)
-        plt.plot(x_axis, y_axis)
-        plt.xticks(np.arange(start_freq, end_freq, step=1))
-        plt.xlim(start_freq,end_freq)
-        plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
-        if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
-        plt.ylabel('Signal Amplitude (a.u)')
-        plt.xlabel('Frequency (Hz)')
-        
-        #period
-        if frequency_map==1:
-            plt.subplot(1,3,3)
-            plt.plot(1/x_axis, y_axis)
-            plt.title('Signal Period at segment '+str((idx*win))+'-'+str(idx*win+win))
-            if idx==0: plt.title('Signal Period at Segment '+str(idx)+'-'+str(win))
-            plt.xlabel('Period (s)')
-            plt.ylabel('Signal Amplitude (a.u)')
-        else:
-            #frequecy map
-            plt.subplot(1,3,3)
-            y_img=np.tile(y_axis, (500, 1))
-            plt.imshow(y_img[1:100,0:100], extent=[0.5,xf[300],500,0], vmin=0, vmax=0.025, aspect=0.0015)
-            #plt. yticks(y," ")
-            plt.xlabel('Frequency (Hz)')
-            plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
-            if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
-            plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.25, hspace=0.25)
+    #Frequency
+    plt.subplot(1,2,2)
+    plt.plot(x_axis,y_axis)
+    plt.xticks(np.arange(start_freq, end_freq, step=1))
+    plt.xlim(start_freq,end_freq)
+    plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
+    if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
+    plt.ylabel('Signal Amplitude (a.u)')
+    plt.xlabel('Frequency (Hz)')
+    if save!=0:    
+        plt.savefig(str(idx)+'.png')
+    plt.subplots_adjust(left=None, bottom=None, right=None, top=None, wspace=0.5, hspace=0.3)
