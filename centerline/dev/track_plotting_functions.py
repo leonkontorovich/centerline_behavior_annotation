@@ -24,7 +24,7 @@ def plot_tracks(df):
     df = df.rename(columns={"y":"Y"})
     print(df.tail(1))
     ax=df.plot(x='X', y='Y', linewidth=2, figsize=(10,10))
-    ax.plot(df['X'][0],df['Y'][0], 'go', markersize=5)
+    ax.plot(df['X'].head(1),df['Y'].head(1), 'go', markersize=5)
     ax.plot(df['X'].tail(1),df['Y'].tail(1), 'ro', markersize=5)
     ax.set_xlabel('mm')
     ax.set_ylabel('mm')
@@ -61,7 +61,7 @@ def plot_tracks_with_ref(df, x_ref):
     plt.rc('font', **font)
     plt.rcParams['axes.linewidth'] = 2
     ax=df.plot(x='X', y='Y', figsize=(10,8))
-    ax.plot(df['X'][0],df['Y'][0], 'go')
+    ax.plot(df['X'].head(1),df['Y'].head(1), 'go', markersize=5)
     ax.plot(df['X'].tail(1),df['Y'].tail(1), 'ro')
     ax.set_xlabel('mm')
     ax.set_ylabel('mm')
