@@ -7,12 +7,18 @@ import tifffile as tiff
 from natsort import natsorted
 
 #plot tracks without reference 
-def plot_tracks(filename):
+def plot_tracks(df):
     """
-    There is a newer version with the ref_tracks, see below
+    Returns the axes of the figure given a dataframe with X and Y coordinates
+    Parameters:
+    --------------
+    dataframe, pandas dataframe
+        dataframe containing at least x and y coordinates
+
+    Check whether dataframe has X Y written in capital in the filename!
     """
     
-    df=pd.read_csv(filename)
+    #df=pd.read_csv(filename)
     # change column name x,y to X, Y (the old version had x and y instead of X and Y)
     df = df.rename(columns={"x":"X"})
     df = df.rename(columns={"y":"Y"})
@@ -32,12 +38,19 @@ def plot_tracks(filename):
 #this works, the problem for this is that I don't know how to zoom in
 
 
-def plot_tracks_with_ref(filename, x_ref):
+def plot_tracks_with_ref(df, x_ref):
     """
-    newest version, with x_ref substraction
-    new version has X Y written in capital in the filename!
+    Returns the axes of the figure given a dataframe with X and Y coordinates, and an X_ref
+    Parameters:
+    --------------
+    dataframe, pandas dataframe
+        dataframe containing at least x and y coordinates
+    x_ref, int or float
+        number on the X coordinate that will be substracted from the coordinates
+    Check whether dataframe has X Y written in capital in the filename!
     """
-    df=pd.read_csv(filename)
+
+    #df=pd.read_csv(filename)
     # change column name x,y to X, Y (the old version had x and y instead of X and Y)
     df = df.rename(columns={"x":"X"})
     df = df.rename(columns={"y":"Y"})
