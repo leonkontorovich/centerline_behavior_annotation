@@ -48,6 +48,9 @@ def plot_tracks_with_ref(df, x_ref):
     x_ref, int or float
         number on the X coordinate that will be substracted from the coordinates
     Check whether dataframe has X Y written in capital in the filename!
+    Returns:
+        -----------
+        ax, axes of the figure
     """
 
     #df=pd.read_csv(filename)
@@ -70,8 +73,8 @@ def plot_tracks_with_ref(df, x_ref):
     ax.set_ylim(0, 40)
     ax.axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
     #plt.savefig('example_trace.pdf')
-#this works, the problem for this is that I don't know how to zoom in
-
+    #this works, the problem for this is that I don't know how to zoom in
+    return ax
 
 def calculate_speeds(positions_over_time):
     """
