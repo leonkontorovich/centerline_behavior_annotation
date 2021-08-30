@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import scipy.fftpack
 import scipy.fft
 #modification of ulises fourier function
-##made it more modular and added option to average over segments
 def fourier_transform(K,fps,segment):
     """
     returns a fourier transform of kurvature of different body segments
@@ -58,7 +57,7 @@ def section_to_fourier_transform(K,start_frame,end_frame,fps):
     """
     K=K[start_frame:end_frame]
     print(('lenght of recording:'+str((end_frame-start_frame)/fps)+" secs"))
-    print('new shape:'+str(K.shape))
+    print('shape:'+str(K.shape))
     return K
 
 
