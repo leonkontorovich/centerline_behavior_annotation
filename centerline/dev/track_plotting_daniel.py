@@ -8,7 +8,7 @@ import matplotlib.patches as patches
 #plots all tracks for center head and tail
 def plot_tracks_center_head_tail(filename,figsize_x,figsize_y,line_width):
     """
-    plot tracks of cntroid together with head and tail position
+    plot tracks of centroid together with head and tail position
     Parameters:
     ---------------------------
     filename: csv_file with head, tail and center position
