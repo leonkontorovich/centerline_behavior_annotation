@@ -23,7 +23,6 @@ def plot_tracks_center_head_tail(filename,figsize_x,figsize_y,line_width):
     y_tail_corrected=df_head_tail_center_coords['y_tail_corrected']
     x_center_pos=df_head_tail_center_coords['x_center']
     y_center_pos=df_head_tail_center_coords['y_center']
-    print(df_head_tail_center_coords.tail(1))
     fig3, ax3 = plt.subplots(1,1, figsize = (figsize_x,figsize_y), dpi=600)
     ax3.plot(x_head_corrected,y_head_corrected,label="head",linewidth=line_width)
     ax3.plot(x_tail_corrected,y_tail_corrected,label="tail",linewidth=line_width)
