@@ -78,3 +78,39 @@ def calculate_speeds(positions_over_time):
         time: positions_over_time[time][:-1],
         'Speed': speeds,
     })
+
+
+def plot_tracks_center_head_tail(tracks,figsize_x,figsize_y,line_width,resolution):
+    """
+    plot tracks of centroid together with head and tail position
+    Parameters:
+    ---------------------------
+    tracks: dataframe with head, tail and center position
+    figsize_x
+    figsize_y
+    line_width
+    resolution of the plot
+    """
+    x_head_corrected=tracks['absolute_x_Head']
+    y_head_corrected=tracks['absolute_y_Head']
+    
+    x_tail_corrected=tracks['absolute_x_Tail']
+    y_tail_corrected=tracks['absolute_y_Tail']
+    
+    x_center_pos=tracks['x_center']
+    y_center_pos=tracks['y_center']
+    
+    fig, ax = plt.subplots(1,1, figsize = (figsize_x,figsize_y), dpi=resolution)
+    ax.plot(x_head_corrected,y_head_corrected,label="head",linewidth=line_width)
+    ax.plot(x_tail_corrected,y_tail_corrected,label="tail",linewidth=line_width)
+    ax.plot(x_center_pos,y_center_pos,label="center",linewidth=line_width)
+    
+    #draws the food lawn
+    ax.axvline(x=0, ymin=0, ymax=1, lw=10, alpha=.5, color='y')
+    
+    #mark beginning and end of the track
+    ax.plot(tracks['x_center'][0],tracks['y_center'][0], 'go', markersize=5)
+    ax.plot(tracks['x_center'].tail(1),tracks['y_center'].tail(1), 'ro', markersize=5)
+    ax.legend()
+    
+    return ax
