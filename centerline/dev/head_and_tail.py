@@ -189,47 +189,47 @@ def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
     tail_coords=load_bodypart_coords_from_DLC(df, 'Tail')
 
     #image
-    tif=tiff.TiffFile(img_path)
-    #csv object
-    csv_writer_path=open(csv_output_filepath,'w', newline='')
+    #tif=tiff.TiffFile(img_path)
+    with tiff.TiffFile(img_path) as tif, open(csv_output_filepath, 'w', newline='') as csvfile:
+    
+        csv_writer_object = csv.writer(csvfile)
+    
+        csv_writer_object.writerow(('head coords x', 'head coords y','tail coords x', 'tail coords y'))
 
-    csv_writer_object=csv.writer(csv_writer_path)
-    csv_writer_object.writerow(('head coords x', 'head coords y','tail coords x', 'tail coords y'))
+        #for loop for each row in the dataframe of DLC coordinates (should be the same as number of frames)
+        for idx, row in df.iterrows():
+            #print(idx)
+    #         if idx%1000==0:
+    #             print(idx)#continue
+    #             elapsed = time.time() - t
+    #             print(elapsed)
+            #prepare image
+            img=tif.pages[idx].asarray()
 
-    #for loop for each row in the dataframe of DLC coordinates (should be the same as number of frames)
-    for idx, row in df.iterrows():
-        #print(idx)
-#         if idx%1000==0:
-#             print(idx)#continue
-#             elapsed = time.time() - t
-#             print(elapsed)
-        #prepare image
-        img=tif.pages[idx].asarray()
+            skel=skeletonize(img/255)
 
-        skel=skeletonize(img/255)
+            pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
+            #my function to get the edge_coords
+            number_of_neighbours=1
+            edge_coords=get_skeleton_points(skel, number_of_neighbours)
 
-        pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
-        #my function to get the edge_coords
-        number_of_neighbours=1
-        edge_coords=get_skeleton_points(skel, number_of_neighbours)
+            if edge_coords: #if edge_coords is not empty
+                #prepare head and tail coords
+                #assign head and tail coordinates to tuples
+                head_coords_i=(int(head_coords[1][idx]),int(head_coords[0][idx]))
+                tail_coords_i=(int(tail_coords[1][idx]),int(tail_coords[0][idx]))
 
-        if edge_coords: #if edge_coords is not empty
-            #prepare head and tail coords
-            #assign head and tail coordinates to tuples
-            head_coords_i=(int(head_coords[1][idx]),int(head_coords[0][idx]))
-            tail_coords_i=(int(tail_coords[1][idx]),int(tail_coords[0][idx]))
+                skel_head,skel_tail=assign_head_and_tail_to_coords(head_coords_i, tail_coords_i, candidate_coords=edge_coords)
 
-            skel_head,skel_tail=assign_head_and_tail_to_coords(head_coords_i, tail_coords_i, candidate_coords=edge_coords)
+                if np.isnan(skel_head[0]):
+                    skel_head,skel_tail=head_coords_i, tail_coords_i
 
-            if np.isnan(skel_head[0]):
+            if not edge_coords:
                 skel_head,skel_tail=head_coords_i, tail_coords_i
 
-        if not edge_coords:
-            skel_head,skel_tail=head_coords_i, tail_coords_i
-            
-        csv_writer_object.writerow(skel_head+skel_tail)
+            csv_writer_object.writerow(skel_head+skel_tail)
 
-    csv_writer_path.close()
+        #csv_writer_path.close()
     
     
 # assembling:
