@@ -17,9 +17,6 @@ from skimage import data
 from skimage.util import invert
 import skimage.graph
 
-#To correctly import tqdm
-import_correct_tqdm()
-
 
 def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
 	"""
@@ -308,34 +305,32 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
     return None
 
 def batch_skeletonize_files(bin_file_list:list,h5_folder_path:str,sufix_len:int,DLC_run_name:str,spline_number:int,head_anotation:str='head',tail_anotation:str='tail',save_skel_image:bool=True,print_log:bool=False):
-	"""
-	This function binarizes a batch of images.
-	The recieves a list of image files to binarize, together with the path to the matching folder that holds the h5 files with the head and tail coordinates.
-	In addition the spline number and names of anotation of head and tail are given.
+    """
+    This function binarizes a batch of images.
+    The recieves a list of image files to binarize, together with the path to the matching folder that holds the h5 files with the head and tail coordinates.
+    In addition the spline number and names of anotation of head and tail are given.
 
-	Parameters:
-	----------
-	bin_file_list:list
-	A list of paths to all the images to binarize
-	h5_folder_path:str
-	path to h5 folder holding the matching h5 files with head and tail coordinates
-	sufix_len:int
-	the length of suffix of image name used to find the matching h5 file
-	DLC_run_name:str
-	the name of the DLC model used to anotate head and tail
-	spline_number:int
-	number of splines to extract
-	head_anotation:str='head'
-	name of head anotation
-	tail_anotation:str='tail'
-	name of tail anotation
-	save_skel_image:bool=True
-	should a skeleton image be saved for proofing?
-	print_log:bool=False
-	should a log of success/fail be printed for debuging?
-	"""
-
-
+    Parameters:
+    ----------
+    bin_file_list:list
+    A list of paths to all the images to binarize
+    h5_folder_path:str
+    path to h5 folder holding the matching h5 files with head and tail coordinates
+    sufix_len:int
+    the length of suffix of image name used to find the matching h5 file
+    DLC_run_name:str
+    the name of the DLC model used to anotate head and tail
+    spline_number:int
+    number of splines to extract
+    head_anotation:str='head'
+    name of head anotation
+    tail_anotation:str='tail'
+    name of tail anotation
+    save_skel_image:bool=True
+    should a skeleton image be saved for proofing?
+    print_log:bool=False
+    should a log of success/fail be printed for debuging?
+    """
 
     print("Starting to skelatonize binary images...")
     unsuccesful_files_list = []
@@ -382,6 +377,9 @@ def import_correct_tqdm():
     else:
         from tqdm import tqdm
     return tqdm
+
+#To correctly import tqdm
+import_correct_tqdm()
 
 
 #Itamar 0202021 added this function to fix shortest path error of having end/start point on the edge of the image
