@@ -114,16 +114,18 @@ def get_skeleton_points(skel, number_of_neighbors):
 
 def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     """
-    Returns the head and tail coordinates from 
+    Returns the head and tail coordinates from a list of candidate coords based on the minimum sum of the cartesian product
+    If no min is found, returns np.nan
     Parameters:
     -----------
-    list of head and tail from DeepLabCut prediction coordinates
-    list of (edge) candidate coordinates
+    head_coords, tuple
+    tail_coords, tuple
+    list of tuples, (edge) candidate coordinates
     
     Returns:
     -----------
-    skel head coordinates,
-    skel tail coordinates
+    skel head coordinates, tuple
+    skel tail coordinates, tuple
     """
     #run calculate_distances function
     df=calculate_distances(head_coords, tail_coords,candidate_coords)
@@ -138,20 +140,28 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     
     #find the row where the distance sum is the minimum
     cp_df[cp_df['value_sum']==cp_df['value_sum'].min()]
+    
+    #print min sum value:
+    #print(cp_df['value_sum'].min())
+    
+    try:
 
-    #Head Part
-    #optimal distance 1
-    optimal_distance_1=cp_df['value1'][cp_df['value_sum']==cp_df['value_sum'].min()]
-   
-    #find the edge coords that have dist_edge_to_head the dist1_good
-    head_row=df[df['dist_edge_to_head']==optimal_distance_1.values[0]]
-    skel_head_coords=(int(head_row['edge_x_coords'].values),int(head_row['edge_y_coords'].values))
+        #Head Part
+        #optimal distance head
+        optimal_distance_head=cp_df['value1'][cp_df['value_sum']==cp_df['value_sum'].min()]
+
+        #find the edge coords that have dist_edge_to_head the dist1_good
+        head_row=df[df['dist_edge_to_head']==optimal_distance_head.values[0]]
+        skel_head_coords=(int(head_row['edge_x_coords'].values),int(head_row['edge_y_coords'].values))
+
+        #optimal distance tail
+        optimal_distance_tail=cp_df['value2'][cp_df['value_sum']==cp_df['value_sum'].min()]
+
+        #find the edge coords that have dist_edge_to_head the dist1_good
+        tail_row=df[df['dist_edge_to_tail']==optimal_distance_tail.values[0]]
+        skel_tail_coords=(int(tail_row['edge_x_coords'].values),int(tail_row['edge_y_coords'].values))
     
-    #optimal distance 2
-    optimal_distance_2=cp_df['value2'][cp_df['value_sum']==cp_df['value_sum'].min()]
-    
-    #find the edge coords that have dist_edge_to_head the dist1_good
-    tail_row=df[df['dist_edge_to_tail']==optimal_distance_2.values[0]]
-    skel_tail_coords=(int(tail_row['edge_x_coords'].values),int(tail_row['edge_y_coords'].values))
-    
+    except:
+        skel_head_coords=(np.nan, np.nan)
+        skel_tail_coords=(np.nan, np.nan)
     return skel_head_coords, skel_tail_coords
