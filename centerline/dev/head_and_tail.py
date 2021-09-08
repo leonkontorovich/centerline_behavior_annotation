@@ -169,7 +169,7 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
 def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
     """
     Wrapper of the head_and_tail functions
-    
+    This function writes the DLC coordinates if it can't find correct edges!
     Parameters:
     -----------
     hdf5_dlc_path, str
