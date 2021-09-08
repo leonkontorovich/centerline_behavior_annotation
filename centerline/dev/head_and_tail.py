@@ -3,6 +3,9 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import tifffile as tiff
+import csv
+
+import argh
 
 from skimage.morphology import skeletonize
 
@@ -196,10 +199,10 @@ def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
     #for loop for each row in the dataframe of DLC coordinates (should be the same as number of frames)
     for idx, row in df.iterrows():
         #print(idx)
-        if idx%1000==0:
-            print(idx)#continue
-            elapsed = time.time() - t
-            print(elapsed)
+#         if idx%1000==0:
+#             print(idx)#continue
+#             elapsed = time.time() - t
+#             print(elapsed)
         #prepare image
         img=tif.pages[idx].asarray()
 
@@ -217,14 +220,24 @@ def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
             tail_coords_i=(int(tail_coords[1][idx]),int(tail_coords[0][idx]))
 
             skel_head,skel_tail=assign_head_and_tail_to_coords(head_coords_i, tail_coords_i, candidate_coords=edge_coords)
-            print(type(skel_head))
 
             if np.isnan(skel_head[0]):
                 skel_head,skel_tail=head_coords_i, tail_coords_i
 
         if not edge_coords:
             skel_head,skel_tail=head_coords_i, tail_coords_i
-        print(type(skel_head))    
+            
         csv_writer_object.writerow(skel_head+skel_tail)
 
     csv_writer_path.close()
+    
+    
+# assembling:
+
+parser = argh.ArghParser()
+parser.add_commands([head_and_tail_wrapper])
+
+# dispatching:
+
+if __name__ == '__main__':
+    parser.dispatch()
