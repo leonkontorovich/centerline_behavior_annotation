@@ -46,7 +46,7 @@ min_worm_len=int(args['min_worm_length'])
 df = pd.read_csv(csv_path)
 
 head_coords_x=df['head coords x'].values
-head_coords_y=df['head coords x'].values
+head_coords_y=df['head coords y'].values
 tail_coords_x=df['tail coords x'].values
 tail_coords_y=df['tail coords y'].values
 
