@@ -45,11 +45,14 @@ min_worm_len=int(args['min_worm_length'])
 
 df = pd.read_csv(csv_path)
 
-head_coords=df['head coords'].values
-tail_coords=df['tail coords'].values
+head_coords_x=df['head coords x'].values
+head_coords_y=df['head coords x'].values
+tail_coords_x=df['tail coords x'].values
+tail_coords_y=df['tail coords y'].values
+
 
 # #create csv objects
-output_path=os.path.join('/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_after_head_and_tail_from_unet_test/',re.split('-channel',re.split('/',input_filename)[-1])[0])
+output_path=os.path.join('/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_after_head_and_tail_from_unet_test/',re.split('-channel',re.split('/',input_filename)[-1])[0])
 
 print('\noutput:')
 print(output_path)
@@ -74,11 +77,10 @@ csv_writerK=csv.writer(csvfileK)
 
 with tiff.TiffFile(input_filename, multifile=False) as tif:
     for i, page in enumerate(tif.pages):
-        if i==0:continue
         img=page.asarray()
         
-        start_point=head_coords[i]
-        end_point=tail_coords[i]
+        start_point=(head_coords_x[i], head_coords_y[i])
+        end_point=(tail_coords_x[i], tail_coords_y[i])
 
         #make_skeleton function
         u, skel_coord, spline_coord, K=make_skeleton(start_point, end_point, num_splines, img, min_worm_len)
