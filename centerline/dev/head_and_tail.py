@@ -216,8 +216,8 @@ def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
             if edge_coords: #if edge_coords is not empty
                 #prepare head and tail coords
                 #assign head and tail coordinates to tuples
-                head_coords_i=(int(head_coords[1][idx]),int(head_coords[0][idx]))
-                tail_coords_i=(int(tail_coords[1][idx]),int(tail_coords[0][idx]))
+                head_coords_i=(int(head_coords[0][idx]),int(head_coords[1][idx]))
+                tail_coords_i=(int(tail_coords[0][idx]),int(tail_coords[1][idx]))
 
                 skel_head,skel_tail=assign_head_and_tail_to_coords(head_coords_i, tail_coords_i, candidate_coords=edge_coords)
 
