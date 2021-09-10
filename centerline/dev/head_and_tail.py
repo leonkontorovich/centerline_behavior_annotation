@@ -127,8 +127,8 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     
     Returns:
     -----------
-    skel head coordinates, tuple
-    skel tail coordinates, tuple
+    skel_head_coordinates, tuple
+    skel_tail_coordinates, tuple
     """
     #run calculate_distances function
     df=calculate_distances(head_coords, tail_coords,candidate_coords)
@@ -168,6 +168,18 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
         skel_head_coords=(np.nan, np.nan)
         skel_tail_coords=(np.nan, np.nan)
     return skel_head_coords, skel_tail_coords
+
+def myfunc():
+    """"
+    Maybe there should be a function in between the assign_head_and_tail_to_coords() an the head_and_tail_wrapper()
+    So that the wrapper is more like this
+    with csv and tiff open:
+        skel_head, skel_tail=myfunc(img, data_from_csv)
+        ??
+        But this is what assign_head_and_tail_to_coords() does...
+
+    """
+
 
 def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
     """
@@ -216,23 +228,55 @@ def head_and_tail_wrapper(hdf5_dlc_path, img_path, csv_output_filepath):
             if edge_coords: #if edge_coords is not empty
                 #prepare head and tail coords
                 #assign head and tail coordinates to tuples
-                head_coords_i=(int(head_coords[0][idx]),int(head_coords[1][idx]))
-                tail_coords_i=(int(tail_coords[0][idx]),int(tail_coords[1][idx]))
+                head_coords_i=(int(head_coords[1][idx]),int(head_coords[0][idx]))
+                tail_coords_i=(int(tail_coords[1][idx]),int(tail_coords[0][idx]))
 
-                skel_head,skel_tail=assign_head_and_tail_to_coords(head_coords_i, tail_coords_i, candidate_coords=edge_coords)
+                skel_head, skel_tail=assign_head_and_tail_to_coords(head_coords_i, tail_coords_i, candidate_coords=edge_coords)
 
                 if np.isnan(skel_head[0]):
-                    skel_head,skel_tail=head_coords_i, tail_coords_i
+                    skel_head, skel_tail=head_coords_i, tail_coords_i
 
             if not edge_coords:
-                skel_head,skel_tail=head_coords_i, tail_coords_i
+                skel_head, skel_tail=head_coords_i, tail_coords_i
 
             csv_writer_object.writerow(skel_head+skel_tail)
 
         #csv_writer_path.close()
+
+
+def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tail_coords, fill_nan=True):
+
+    """
+    return head and tail skeleton coordinates from img, number of neighbors and head and tail coordinates predicted
+
+    Parameters:
+    -----------
+    :param img:
+    :param number_of_neighbors:
+    :param head_coords:
+    :param tail_coords:
+    :param fill_nan:
+    Return:
+    ----------
+    :return:
+
+    """
+    skel = skeletonize(img / 255)
+
+    # my function to get the edge_coords
+    edge_coords = get_skeleton_points(skel, number_of_neighbors)
+
+    if edge_coords:  # if edge_coords is not empty
+        skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords=edge_coords)
+
+        if np.isnan(skel_head[0]):
+            skel_head, skel_tail = head_coords_i, tail_coords_i
+
+    if not edge_coords:
+        skel_head, skel_tail = head_coords_i, tail_coords_i
+    return skel_head, skel_tail
     
-    
-# assembling:
+#assembling:
 
 parser = argh.ArghParser()
 parser.add_commands([head_and_tail_wrapper])
