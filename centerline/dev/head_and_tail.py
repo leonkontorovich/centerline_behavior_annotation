@@ -37,8 +37,15 @@ def load_bodypart_coords_from_DLC(dlc_df, bodypart):
 
 def calculate_distances(head_coords, tail_coords,candidate_coords):
     """
+    Calculate the distances between head and tail coordinates and the candidate coords
     Parameters:
     -----------
+    head_coords, tuple
+    (x,y) coordinates of the head position
+    tail_coords, tuple
+    (x,y) coordinates of the tail position
+    candidate_coords, list
+    candidate coordinates from which the distance to head and tail will be calculated
     Returns:
     -----------
     dataframe with the distances
@@ -48,13 +55,14 @@ def calculate_distances(head_coords, tail_coords,candidate_coords):
     
     #loop through every ending/edge
     for i, (x,y) in enumerate(candidate_coords):
-
+        # store candidate coordinates as edge x and edge y
+        # TODO: Candidate coordinates could not be 'edges' in the future, so change the label name in dataframe.
         df.loc[i, 'edge_x_coords']=x
         df.loc[i, 'edge_y_coords']=y
+
         #store head and tail position
         df.loc[i, 'head_x']=head_coords[0]
         df.loc[i, 'head_y']=head_coords[1]
-
 
         df.loc[i, 'tail_x']=tail_coords[0]
         df.loc[i, 'tail_y']=tail_coords[1]
@@ -66,6 +74,7 @@ def calculate_distances(head_coords, tail_coords,candidate_coords):
 
 def cartesian_product_sum(list1, list2):
     """
+    Calculate the cartesian product of the numbers in the two lists.
     Parameters:
     -----------
     list1, list of values
@@ -81,7 +90,7 @@ def cartesian_product_sum(list1, list2):
 
     #with itertools we calculate the product of all the distance combinations (aka cartesian product)
     #and save them in the dataframe
-    for i, (value1,value2) in enumerate(itertools.product(*somelists)):
+    for i, (value1, value2) in enumerate(itertools.product(*somelists)):
         #print(i,dist1,dist2)
         df.loc[i,'value1']=value1
         df.loc[i,'value2']=value2
@@ -103,7 +112,7 @@ def get_skeleton_points(skel, number_of_neighbors):
     number of neighbors that the points should have
     Returns:
     -----------
-    edge_coordiantes, list
+    skel_points_coords, list
     list of tuples with the coordinates of the edges
     """
 
@@ -133,7 +142,7 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     #run calculate_distances function
     df=calculate_distances(head_coords, tail_coords,candidate_coords)
     
-    #calculate the combinations of distances
+    #calculate the combinations of distances (cartesian product: cp)
     cp_df=cartesian_product_sum(df.loc[:,'dist_edge_to_head'],df.loc[:,'dist_edge_to_tail'])
     
     #exclude overlapping distances by writing nan on the impossible combinations
