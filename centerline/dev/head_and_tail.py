@@ -281,7 +281,8 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
 
 def head_and_tail_wrapper(tiff_path:str, hdf5_dlc_path:str, csv_output_path:str, number_of_neighbors=1, fill_with_DLC=True):
     """
-    wrapper
+    wrapper to create corrected head and tail coordinates AND skeleton.
+    # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
     Parameters:
     ------------
     :param tiff_path:
@@ -326,7 +327,7 @@ def head_and_tail_wrapper(tiff_path:str, hdf5_dlc_path:str, csv_output_path:str,
     csvfileK = open(csv_output_path + '_spline_K.csv', 'w', newline='')
     csv_writerK = csv.writer(csvfileK)
 
-    #iterate over pages of the tiff file
+    # iterate over pages of the tiff file
     with tiff.TiffFile(tiff_path) as tif:
         for idx, page in enumerate(tif.pages):
             img=page.asarray()
@@ -355,8 +356,7 @@ def head_and_tail_wrapper(tiff_path:str, hdf5_dlc_path:str, csv_output_path:str,
     csvfileY.close()
     csvfileK.close()
 
-
-    return None# skel_head, skel_tail, u, (x,y), (x_new, y_new), K
+    return
 
 
 # assembling:
