@@ -259,6 +259,11 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
 
     skel = skeletonize(img / 255)
 
+    # if there is not skeleton return head_coords, tail_coords
+    if not skel.any():
+        skel_head, skel_tail = head_coords, tail_coords
+        if fill_with_DLC == False:
+            skel_head, skel_tail = np.nan, np.nan
     # my function to get the edge_coords
     edge_coords = get_skeleton_points(skel, number_of_neighbors)
 
@@ -269,12 +274,12 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
             skel_head, skel_tail = head_coords, tail_coords
 
             if fill_with_DLC==False:
-                skel_head, skel_tail =np.nan, np.nan
+                skel_head, skel_tail = np.nan, np.nan
     if not edge_coords:
         skel_head, skel_tail = head_coords, tail_coords
 
         if fill_with_DLC==False:
-            skel_head, skel_tail =np.nan, np.nan
+            skel_head, skel_tail = np.nan, np.nan
     return skel_head, skel_tail
 
 
