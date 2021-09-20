@@ -86,8 +86,9 @@ def fourier_plot(x_axis,y_axis,start_frame,end_frame,start_freq,end_freq,win,fps
     plt.figure(figsize=(20,3))
     plt.subplot(1,2,1)
     plt.plot(x,y)
-    plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
-    if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
+    #plt.title('Segment '+str((idx*win))+'-'+str(idx*win+win))
+    #if idx==0: plt.title('Segment '+str(idx)+'-'+str(win))
+    plt.title('Segment '+(str(idx)))
     plt.xlabel('Time (s)')
     plt.ylabel('Signal Amplitude (a.u)')
     

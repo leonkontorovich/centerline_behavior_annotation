@@ -5,6 +5,20 @@ from collections import OrderedDict
 
 
 def get_absolute_bodypart_coordinates(center_coords,bodypart_coords,px_mm,y_width_frame,x_lenght_frame):
+    """
+    returns pandas dataframe containing:centroid coordinates and absolute x and y coordinates of any number of bodyparts
+    annotated with DeepLabcut
+    
+    Parameters:
+    --------------------------
+    center_coords: pandas containing centroid coordinates from micromanager
+    bodypart_coords: pandas containing Deeplabcut Annotations
+    px_mm: ratio of lenght of the Agarplate in millimeter divided by lenght of the agarplat in pixel
+    y_width_frame: width the behavioral recording
+    x_lenght_frame: lenght of the behavioral recording
+    """
+    
+    
     #rename and get the center coordinates for x and y
     center_coords=center_coords.rename(columns = {'x': 'x_center',
                 'y': 'y_center'}, inplace = False)
@@ -22,7 +36,7 @@ def get_absolute_bodypart_coordinates(center_coords,bodypart_coords,px_mm,y_widt
     all_body_parts=list(OrderedDict.fromkeys(all_body_parts))
     number_of_bodyparts=len(list(OrderedDict.fromkeys(all_body_parts)))
     
-    #empty dataframe to store absolute coordinates of differnt bodyparts
+    #create empty dataframe to store absolute coordinates of differnt bodyparts
     absolute_coordinates_all_bodyparts=pd.DataFrame()
 
     for bodypart in range(number_of_bodyparts):
@@ -35,12 +49,11 @@ def get_absolute_bodypart_coordinates(center_coords,bodypart_coords,px_mm,y_widt
         absolute_coordinates_current_body_part=relative2absolute_coordinates(x_center,y_center,bodypart_x_coords,bodypart_y_coords,px_mm,y_width_frame,x_lenght_frame)
     
         #renaming columns according to the bodypart
-        absolute_coordinates_current_body_part=absolute_coordinates_current_body_part.rename(columns = {'x': f'absolute_x_{current_bodypart}','y': f'absolute_y_{current_bodypart}'}, inplace = False)
+        absolute_coordinates_current_body_part.rename(columns = {'x': f'absolute_x_{current_bodypart}','y': f'absolute_y_{current_bodypart}'}, inplace = True)
         
         #append to dataframe
         absolute_coordinates_all_bodyparts=pd.concat([absolute_coordinates_all_bodyparts, absolute_coordinates_current_body_part],axis=1)
         
-    #append center coordinates
     #append center coordinates
     absolute_coordinates_all_bodyparts=pd.concat([absolute_coordinates_all_bodyparts, x_center,y_center],axis=1)
         
