@@ -16,10 +16,10 @@ def sigmoid_fit(x, L ,x0, k, b):
     Parameters:
     ---------------------------
     x: data
-    L: The Max value of the sigmoid fit
-    x0: midpoint of the function
-    k: slope
-    b:intercept
+    k:steepness
+    b:shift along y axis
+    L:upper limit
+    x0:Inflection point
     """
     y = L / (1 + np.exp(-k*(x-x0)))+b
     return (y)
@@ -30,23 +30,37 @@ def quadratic_fit(x, a, b, c):
     Parameters:
     ------------------------------
     x:data
-    a: quadratic coificient
-    b:linear coificient
-    c:intercept
+    a:quadratic coificient (steepness)
+    b: linear coificient (moves the parabola along a parabolic path, given by y=−ax2+c)
+    c:move along y axis (y intercept)
     """
     return a*np.power(x,2)+b*x+c
+
+
+
+#exp_fit_2
+def exponential_fit(x, y0, plateau, K):
+    """
+    Equation after this:
+    https://www.graphpad.com/guides/prism/latest/curve-fitting/reg_exponential_decay_1phase.htm
+    y0:y value when X (time) is zero.
+    plateau value at infinite x
+    K: steepness (rate constant)
+    """
+    return (y0-plateau) * np.exp(-K*x) + plateau
 
 #function for changing pixels to mm
 def pixelmm(dist_mm, dist_px, data_px):
     """
+    calculates how much pixels are within 1 mm and then mulitplies it with 
+    the distance in pixels wihtin the data to convert it to distance in mm
+    
     Parameters:
     -----------------------
     dist_mm: measured distance in mm
     dist_px: measured distance in px
     data_px: data
     ------------------------
-    calculates how much pixels are within 1 mm and then mulitplies it with 
-    the distance in pixels wihtin the data to convert it to distance in mm
     """
     
     return ((dist_mm / dist_px) * data_px)

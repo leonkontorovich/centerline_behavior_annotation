@@ -4,6 +4,50 @@ import matplotlib.pyplot as plt
 from collections import OrderedDict
 
 
+
+
+#function for sigmoid curve
+def sigmoid_fit(x, L ,x0, k, b):
+    """
+    Parameters:
+    ---------------------------
+    x: data
+    k:steepness
+    b:shift along y axis
+    L:upper limit
+    x0:Inflection point
+    """
+    y = L / (1 + np.exp(-k*(x-x0)))+b
+    return (y)
+
+#function for quadratic curve
+def quadratic_fit(x, a, b, c):
+    """
+    Parameters:
+    ------------------------------
+    x:data
+    a:quadratic coificient (steepness)
+    b: linear coificient (moves the parabola along a parabolic path, given by y=−ax2+c)
+    c:move along y axis (y intercept)
+    """
+    return a*np.power(x,2)+b*x+c
+
+
+
+#exp_fit_2
+def exponential_fit(x, y0, plateau, K):
+    """
+    Equation after this:
+    https://www.graphpad.com/guides/prism/latest/curve-fitting/reg_exponential_decay_1phase.htm
+    y0:y value when X (time) is zero.
+    plateau value at infinite x
+    K: steepness (rate constant)
+    """
+    return (y0-plateau) * np.exp(-K*x) + plateau
+
+
+
+
 def get_absolute_bodypart_coordinates(center_coords,bodypart_coords,px_mm,y_width_frame,x_lenght_frame):
     """
     returns pandas dataframe containing:centroid coordinates and absolute x and y coordinates of any number of bodyparts
@@ -91,3 +135,111 @@ def relative2absolute_coordinates(center_x,center_y,data_x,data_y, px_mm, width,
     absolute_y=center_y-distance_center_dlc_y
     
     return pd.DataFrame({'x': absolute_x,'y': absolute_y,})
+
+
+def calculate_concentration_for_bodyparts(df,type_of_fit, *parameters_of_fit):
+    """
+    returns pandas dataframe containing concentration of position x of different bodyparts
+    
+    Parameters:
+    ----------------------
+    df: pandas dataframe containing x coordinates of differnt bodyparts
+    type_of_fit: str,model to calculate the concentration (sigmoid,quadratic,exponential)
+    parameters: of the model (determined with the curve fit script)
+        
+    #sigmoid (L,x0,k,b)
+    based on function y = L / (1 + np.exp(-k*(x-x0)))+b
+    L:upper limit
+    x0:Inflection point
+    k:steepness
+    b:shift along y axis
+    
+    #quadratic (a,b,c)
+    based on function: y=a*np.power(x,2)+b*x+c
+    a:steepness
+    b: moves the  parabola along a parabolic path, given by y=−ax2+c
+    c:move along y axis
+
+    #exponential (x0,plateau,K)
+    based on function: y=(y0-plateau) * np.exp(-K*x) + plateau
+    https://www.graphpad.com/guides/prism/latest/curve-fitting/reg_exponential_decay_1phase.htm
+    y0:y value when X (time) is zero.
+    plateau: value at infinite x
+    K: steepness (rate constant)
+    """
+#grab values for which the concentration should be calculated (in the stripe assay this only depends on x position)
+    bodypart_coordinates=df[df.columns[pd.Series(df.columns).str.contains('x_')]]
+    
+    
+
+    #empty dataframe to collect the concentraiton for each bodypart as a column
+    concentration_all_bodyparts=pd.DataFrame()
+
+    number_of_bodyparts=len(bodypart_coordinates.columns)
+
+    # loop calculates concentration for each bodypart and appends it to concentration_all_bodyparts
+    for bodypart in range(number_of_bodyparts):
+    
+        #grab bodypart
+        current_bodypart=bodypart_coordinates.iloc[:,bodypart]
+        
+        if type_of_fit=='exponential':
+            #unpack parameters
+            y0,plateau,K=parameters_of_fit
+            #calculate concentration
+            concentration_current_bodypart=exponential_fit(current_bodypart,y0,plateau,K)
+        
+        #apply specified fit
+        if type_of_fit=='sigmoid':
+            #unpack parameters
+            L, x0, k, b=parameters_of_fit
+        #calculate concentration
+            concentration_current_bodypart=sigmoid_fit(current_bodypart, L, x0, k, b)
+            
+        if type_of_fit=='quadratic':
+            #unpack parameters
+            a,b,c=parameters_of_fit
+            #calculate concentration
+            concentration_current_bodypart=quadratic_fit(current_bodypart,a,b,c)
+            
+        
+    
+        #append to dataframe
+        concentration_all_bodyparts=pd.concat([concentration_all_bodyparts, concentration_current_bodypart],axis=1)
+    
+        #rename column
+        concentration_all_bodyparts.rename(columns = {current_bodypart.name: f'concentration_{current_bodypart.name}'},inplace=True)
+    
+
+    #append to original dataframe
+    df=pd.concat([df,concentration_all_bodyparts],axis=1)
+    
+    return df
+
+
+
+
+
+def adjust_for_food_position(df,x_ref,y_ref=0):
+    """
+    returns pandas df with coordinates adjusted for food position
+    
+    Parameters:
+    ---------------------
+    df:dataframe containing x and y coordinates
+    x_ref: coordinates of the food patch (measured manually after recording)
+    y_ref: optional, only needed if not a stripe assay
+    """
+    
+    
+    #index all x_coordinate columns and substract food position
+    x_ref_substracted=df[df.columns[pd.Series(df.columns).str.contains('x_')]]-x_ref
+    #replace old x_coordinates with the new ones
+    df.update(x_ref_substracted)
+    
+    if y_ref!=0:
+        #index all y_coordinate columns and substract food position
+        y_ref_subtracted=df[df.columns[pd.Series(df.columns).str.contains('y_')]]-y_ref
+        #replace old x_coordinates with the new ones
+        df.update(y_ref_subtracted)
+    return df
