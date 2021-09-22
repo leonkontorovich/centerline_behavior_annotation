@@ -163,7 +163,7 @@ def calculate_concentration_for_bodyparts(df,type_of_fit, *parameters_of_fit):
     #exponential (x0,plateau,K)
     based on function: y=(y0-plateau) * np.exp(-K*x) + plateau
     https://www.graphpad.com/guides/prism/latest/curve-fitting/reg_exponential_decay_1phase.htm
-    y0:y value when X (time) is zero.
+    y0:y value when X  is zero.
     plateau: value at infinite x
     K: steepness (rate constant)
     """
