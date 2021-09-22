@@ -132,16 +132,21 @@ def make_skeleton_from_DLC(input_stack, h5_filename, num_splines, min_worm_len=0
 
 
 def find_nan_centerlines(centerline_csv):
-	"""
-	Should work on the make_skeleton output or on the image (make_skeleton input?)
-	Should use the extract frames function
+    """
+    Should work on the make_skeleton output or on the image (make_skeleton input?)
+    Should use the extract frames function
 
-	-----------
-	centerline: centerline csv file
-	
-	Returns: wrong centerlines, correct_centerlines
-	"""
-	#declare wrong_centerlines empty list
+    Parameters
+    -----------
+    centerline: centerline csv file
+
+    Returns:
+    ----------
+    wrong centerlines,
+    correct_centerlines
+    """
+    # declare wrong_centerlines and correct_centerlines empty list
+
 	wrong_centerlines=[]
 	correct_centerlines=[]
 
