@@ -97,14 +97,31 @@ def plot_bodypart_coordinates(bodypart_coordinates,*bodyparts_to_plot,resolution
     figsize_y:int, optional, default:5
     line_width:int,float,optional, default:0.5
     """
-    
     #draw figure
     fig, ax = plt.subplots(1,1, figsize = (figsize_x,figsize_y), dpi=resolution)
     
-    #get part of the df not containing concentration and grab coulumns
+    #grab all bodypart coordinates
     bodypart_coordinates=bodypart_coordinates[bodypart_coordinates.columns[pd.Series(bodypart_coordinates.columns).str.contains('concentration')==False]]
+    
+    #if no bodyparts specified as arguments plot all
+    if len(bodyparts_to_plot)==0:
+       
+        #empty list collecting bodyparts
+        bodyparts_to_plot=[]
+    
+        #get column names
+        all_bodyparts=list(bodypart_coordinates.columns)
+    
+        #put name of bodyparts in list
+        for i in range(len(all_bodyparts)):
+            before, sep, after = all_bodyparts[i].partition('x_') 
+            bodyparts_to_plot.append(after)
 
-    #from all bodyparts grab only the ones specified as arguments in the function
+        #remove empty strings
+        while '' in bodyparts_to_plot: bodyparts_to_plot.remove('')
+    
+    
+    #plot bodyparts in the list
     for i in range(len(bodyparts_to_plot)):
         current_bodypart=bodyparts_to_plot[i]
         current_bodypart_coordinates=bodypart_coordinates[bodypart_coordinates.columns[pd.Series(bodypart_coordinates.columns).str.contains(current_bodypart)]]
@@ -123,10 +140,6 @@ def plot_bodypart_coordinates(bodypart_coordinates,*bodyparts_to_plot,resolution
     
     #plot food lawn
     ax.axvline(x=0, ymin=0, ymax=1, lw=5, alpha=.5, color='y')
-    
-    
-    plt.xlabel('X position (mm)')
-    plt.ylabel('Y position (mm)')
 
     return ax
 
