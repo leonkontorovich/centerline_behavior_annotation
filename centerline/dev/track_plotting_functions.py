@@ -89,9 +89,11 @@ def plot_bodypart_coordinates(bodypart_coordinates,*bodyparts_to_plot,resolution
     Parameters:
     --------------------------
     bodypart_coordinates: pandas dataframe containing centroid coordinates from micromanager of coordinates of differnt bodyparts form DLC
-    bodyparts_to_plot: str, bodyparts to be displayed in the figure (eg. 'Head')
     
-    Optional Parameters
+    
+    Optional Parameters:
+    ------------------------------------
+    bodyparts_to_plot: str, bodyparts to be displayed in the figure (eg. 'Head')
     resolution:int,optional, default:300
     figsize_x:int, optional, default:10
     figsize_y:int, optional, default:5
@@ -201,9 +203,11 @@ def plot_bodypart_concentration(bodypart_coordinates_concentration,*bodyparts_to
     Parameters:
     -----------------------
     bodypart_coordinates_concentration: pandas dataframe containing concentration of differnt bodyparts
-    bodyparts_to_plot: str, bodyparts to be displayed in the figure (eg. 'Head')
     
-    Optional Parameters
+    
+    Optional Parameters:
+    -------------------------------
+    bodyparts_to_plot: str, bodyparts to be displayed in the figure (eg. 'Head')
     resolution:int,optional, default:300
     figsize_x:int, optional, default:10
     figsize_y:int, optional, default:5
@@ -223,6 +227,28 @@ def plot_bodypart_concentration(bodypart_coordinates_concentration,*bodyparts_to
     bodypart_concentration=bodypart_coordinates_concentration[(bodypart_coordinates_concentration.columns[pd.Series(bodypart_coordinates_concentration.columns).str.contains('concentration')])
         & (bodypart_coordinates_concentration.columns[pd.Series(bodypart_coordinates_concentration.columns).str.contains('change')==False])]
 
+    
+    
+    #if no bodyparts specified as arguments plot all
+    if len(bodyparts_to_plot)==0:
+       
+        #empty list collecting bodyparts
+        bodyparts_to_plot=[]
+    
+        #get column names
+        all_bodyparts=list(bodypart_concentration.columns)
+    
+        #put name of bodyparts in list
+        for i in range(len(all_bodyparts)):
+            before, sep, after = all_bodyparts[i].partition('x_') 
+            bodyparts_to_plot.append(after)
+
+        #remove empty strings and duplicates
+        while '' in bodyparts_to_plot: bodyparts_to_plot.remove('') 
+        
+    
+    
+    
     #grab concentration of specific bodypart
     for i in range(len(bodyparts_to_plot)):
         current_bodypart=bodyparts_to_plot[i]
@@ -236,4 +262,3 @@ def plot_bodypart_concentration(bodypart_coordinates_concentration,*bodyparts_to
         ax.legend()
         
     return ax
-    
