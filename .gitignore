@@ -8,3 +8,5 @@ __pycache__/*
 *.png
 *.pyc
 *-checkpoint.ipynb
+centerline/dev/.ipynb_checkpoints/extract_centerlines-checkpoint.ipynb
+centerline/dev/.ipynb_checkpoints/skeleton_utils-checkpoint.ipynb
