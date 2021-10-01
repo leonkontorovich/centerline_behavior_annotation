@@ -22,7 +22,7 @@ def plot_tracks(df, ax=None):
     # change column name x,y to X, Y (the old version had x and y instead of X and Y)
     df = df.rename(columns={"x":"X"})
     df = df.rename(columns={"y":"Y"})
-    print(df.tail(1))
+    
     if ax is None:
         ax=df.plot(x='X', y='Y', linewidth=2, figsize=(10,10))
     else:
