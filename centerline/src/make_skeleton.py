@@ -19,70 +19,70 @@ import skimage.graph
 
 
 def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
-	"""
+    """
     Make an skeleton from binary image and start and end point
     Parameters:
     -----------
-	start_point: tuple with x,y coordinates
-	end_point: tuple with x,y coordinates
-	min_worm_len: minimum worm length in pixels, if the found centerline is below it will be nan (default is 0)
-	num_splines: number of splines you want to fit
-	img: binary img from where the skeleton will be calculated
-	min_worm_len: int, minimun length the worm should have. Default 0.
-	"""
+    start_point: tuple with x,y coordinates
+    end_point: tuple with x,y coordinates
+    min_worm_len: minimum worm length in pixels, if the found centerline is below it will be nan (default is 0)
+    num_splines: number of splines you want to fit
+    img: binary img from where the skeleton will be calculated
+    min_worm_len: int, minimun length the worm should have. Default 0.
+    """
 
-	#this defines the costs for the shortest path
-	costs=cv2.distanceTransform(img, cv2.DIST_L2,3)
-	cv2.normalize(costs, costs, 0, 255, cv2.NORM_MINMAX)
-	costs=costs.max()-costs
-
-
-	#to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
-	costs=np.where(costs>254.9, 255*100, costs)
-	#actual skeleton based on route through array from skimage
-	path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
+    #this defines the costs for the shortest path
+    costs=cv2.distanceTransform(img, cv2.DIST_L2,3)
+    cv2.normalize(costs, costs, 0, 255, cv2.NORM_MINMAX)
+    costs=costs.max()-costs
 
 
+    #to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
+    costs=np.where(costs>254.9, 255*100, costs)
+    #actual skeleton based on route through array from skimage
+    path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
 
-	x,y=np.asarray(list(zip(*path)), dtype=int)
-	#pts=np.asarray(path, dtype=np.int)
 
-	#if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
-	if len(x)<min_worm_len or len(x)<num_splines:
-		#print('Knots are Nans in: '+str(i))
-		K=np.full(num_splines, np.nan)
-		x=np.full(num_splines, np.nan)
-		y=np.full(num_splines, np.nan)
-		x_new=np.full(num_splines, np.nan)
-		y_new=np.full(num_splines, np.nan)
-		u=np.nan
-	#else, the path was good, fit a spline and find curvature
-	else:
-		####
+
+    x,y=np.asarray(list(zip(*path)), dtype=int)
+    #pts=np.asarray(path, dtype=np.int)
+
+    #if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
+    if len(x)<min_worm_len or len(x)<num_splines:
+        #print('Knots are Nans in: '+str(i))
+        K=np.full(num_splines, np.nan)
+        x=np.full(num_splines, np.nan)
+        y=np.full(num_splines, np.nan)
+        x_new=np.full(num_splines, np.nan)
+        y_new=np.full(num_splines, np.nan)
+        u=np.nan
+    #else, the path was good, fit a spline and find curvature
+    else:
+        ####
         ##SHOULD THIS PART HERE BE CONVERTED TO A FUNCTION?? (or some of it)
-		#s is the smoothing condition should have around the size of points/2 (keep it low)
-		#k is the degree of freedom for the polynom it fits, 5 is good
-		#splprep calculates automatically the number of knots. One can see how many in tck.shape[1].
-		#everytime splprep is run the number may differ
-		tck, u = splprep([x,y], u=None, s=x.shape[0]/2, per=0, k=5) 
-		u_new = np.linspace(u.min(), u.max(), num_splines)#1000)
+        #s is the smoothing condition should have around the size of points/2 (keep it low)
+        #k is the degree of freedom for the polynom it fits, 5 is good
+        #splprep calculates automatically the number of knots. One can see how many in tck.shape[1].
+        #everytime splprep is run the number may differ
+        tck, u = splprep([x,y], u=None, s=x.shape[0]/2, per=0, k=5)
+        u_new = np.linspace(u.min(), u.max(), num_splines)#1000)
 
-		x_new, y_new = splev(u_new, tck, der=0)
+        x_new, y_new = splev(u_new, tck, der=0)
 
-		#this returns x'(s), y'(s)
-		x_der, y_der = splev(u_new, tck, der=1)
-		#to have y'(x):
-		der=y_der/x_der
+        #this returns x'(s), y'(s)
+        x_der, y_der = splev(u_new, tck, der=1)
+        #to have y'(x):
+        der=y_der/x_der
 
-		#this returns x''(s), y''(s)
-		x_der2, y_der2 = splev(u_new, tck, der=2)
-		#to have y''(x), also called K for Curvature:
-		#we need the following equation:
-		#ref in: https://en.wikipedia.org/wiki/Curvature#In_terms_of_a_general_parametrization (1st equation)
-		K=(x_der*y_der2-y_der*x_der2)/np.sqrt(x_der**2+y_der**2)**3
+        #this returns x''(s), y''(s)
+        x_der2, y_der2 = splev(u_new, tck, der=2)
+        #to have y''(x), also called K for Curvature:
+        #we need the following equation:
+        #ref in: https://en.wikipedia.org/wiki/Curvature#In_terms_of_a_general_parametrization (1st equation)
+        K=(x_der*y_der2-y_der*x_der2)/np.sqrt(x_der**2+y_der**2)**3
 
 
-	return u, (x,y), (x_new, y_new), K
+    return u, (x,y), (x_new, y_new), K
 
 def make_skeleton_from_DLC(input_stack, h5_filename, num_splines, min_worm_len=0):
     """
@@ -114,14 +114,14 @@ def make_skeleton_from_DLC(input_stack, h5_filename, num_splines, min_worm_len=0
             tail_y = int(df.loc[i][scorer,'Tail','x'])
             tail_x = int(df.loc[i][scorer,'Tail','y'])
             end=(tail_y, tail_x)
-            
+
             annotated_img=img.copy()
-            
+
             cv2.circle(annotated_img,(head_y, head_x),10, (150,150,150), 2)
             cv2.circle(annotated_img,(tail_y, tail_x),10, (150,150,150), 2)
             plt.imshow(annotated_img)
             plt.show()
-            
+
             print(start, end)
 
             #make skeleton function itself
@@ -147,23 +147,23 @@ def find_nan_centerlines(centerline_csv):
     """
     # declare wrong_centerlines and correct_centerlines empty list
 
-	wrong_centerlines=[]
-	correct_centerlines=[]
+    wrong_centerlines=[]
+    correct_centerlines=[]
 
-	# open file in read mode
-	with open(centerline_csv, 'r') as read_obj:
-	# pass the file object to reader() to get the reader object
-		csv_reader = csv.reader(read_obj)
-		# Iterate over each row in the csv using reader object
-		for idx, row in enumerate(csv_reader):
-			# row variable is a list that represents a row in csv
-			row_array=np.asarray(row, dtype=np.float64)
-			if True in np.isnan(row_array):
-				wrong_centerlines.append(idx)
-			else: correct_centerlines.append(idx)
+    # open file in read mode
+    with open(centerline_csv, 'r') as read_obj:
+    # pass the file object to reader() to get the reader object
+        csv_reader = csv.reader(read_obj)
+        # Iterate over each row in the csv using reader object
+        for idx, row in enumerate(csv_reader):
+            # row variable is a list that represents a row in csv
+            row_array=np.asarray(row, dtype=np.float64)
+            if True in np.isnan(row_array):
+                wrong_centerlines.append(idx)
+            else: correct_centerlines.append(idx)
 
 
-	return wrong_centerlines, correct_centerlines
+    return wrong_centerlines, correct_centerlines
 
 #def draw_centerline(x_coords_csv, y_coords_csv):
 
@@ -173,7 +173,7 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
     The function receives image file, locations of head and tail,
     and returns a spline fit that include x and y positions and curvature data per spline
     as csv files
-    
+
     Parameters:
     -----------
     input_image: str
@@ -186,20 +186,20 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
         the full path of the output
     num_splines:int
         the number of spline parts for output
-        default is 100. 
+        default is 100.
     outside_contour_cost_handicap: int
-        fold multiplication of the highest cost for the spline fit. 
+        fold multiplication of the highest cost for the spline fit.
         This prevents from skelaton doing bad shortcuts not through contour
         default value is 2
     save_skel_image:bool
         should a skelaton image series be produced for quality control
         default is False
-        
+
     """
     #define the output path
     recording_name = os.path.splitext(os.path.basename(input_image))[0]
     folder_path = os.path.dirname(input_image) ## directory of file
-    
+
     if output_filename is None:
         if print_log == True: print("no output path defined, using default")
         input_folder_path = os.path.dirname(input_filename) ## directory of file
@@ -207,8 +207,8 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
         output_filename = output_path + os.path.splitext(os.path.basename(input_filename))[0] +"_skelaton.tiff"
     else:
         output_path = os.path.dirname(output_filename)+'/' ## directory of file
-        
-    
+
+
     #make sure the output folder path exists
     try:
         os.mkdir(output_path)
@@ -216,19 +216,19 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
     except:
         if print_log == True: print('output dir exists')
 
-    #load head and tail tracking data 
-    try: 
-        hd5_df=pd.read_hdf(path_to_h5)     
-    except:            
+    #load head and tail tracking data
+    try:
+        hd5_df=pd.read_hdf(path_to_h5)
+    except:
         print("could not find h5 file in path: "+path_to_h5)
         return None
-    
+
     DLC_run_name = hd5_df.columns[0][0]
-    
+
     #get name of head and tail anotations
     head_anotation = anotation_names[0]
     tail_anotation = anotation_names[1]
-    
+
     #prepare to save data
     csvfilePathX=open(output_path+recording_name+'_skeleton_X_coords.csv','w', newline='')
     csvfilePathY=open(output_path+recording_name+'_skeleton_Y_coords.csv','w', newline='')
@@ -241,7 +241,7 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
     csv_writerX=csv.writer(csvfileX)
     csv_writerY=csv.writer(csvfileY)
     csv_writerK=csv.writer(csvfileK)
-    
+
     #iterate over time and extract skelaton
     with tiff.TiffWriter(output_path + recording_name +'_skelaton.tif', bigtiff=False) as tif_writer:
         with tiff.TiffFile(input_image, multifile=True) as tif:
@@ -254,7 +254,7 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
 #             for timepoint in np.arange(0,tif.shape[0]):
 #                 print("timepoint",timepoint)
 #                 frame=tif[timepoint,:,:]
-                
+
                 #get locations
                 head_x=hd5_df.loc[timepoint,:][DLC_run_name][head_anotation]['x']
                 head_y=hd5_df.loc[timepoint,:][DLC_run_name][head_anotation]['y']
@@ -262,7 +262,7 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
                 tail_y=hd5_df.loc[timepoint,:][DLC_run_name][tail_anotation]['y']
                 start_point =  (int(head_y), int(head_x))
                 end_point = (int(tail_y), int(tail_x))
-                
+
                 #this defines the costs for the shortest path
                 costs=cv2.distanceTransform(frame.astype('uint8'), cv2.DIST_L2,3) #important that img type would be uint8 for stability
 
@@ -283,7 +283,7 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
                 #mark centerline
                 x,y=np.asarray(list(zip(*path)), dtype=int)
 
-                #make skelaton  
+                #make skelaton
                 _, (x,y), (x_new, y_new), K = make_skeleton(start_point, end_point, num_splines, frame.astype('uint8'))
 
                 #save data for this frame
@@ -298,14 +298,14 @@ def skelatonize_image_series(input_image,path_to_h5,anotation_names:list,output_
                     for x,y in path:
                         frame[x][y]=20
                     tif_writer.save(frame)
-            
-         
+
+
     csvfilePathX.close()
     csvfilePathY.close()
     csvfileX.close()
     csvfileY.close()
     csvfileK.close()
-    
+
     if print_log == True: print("finished processing file: "+os.path.basename(input_image))
     return None
 
@@ -339,7 +339,7 @@ def batch_skeletonize_files(bin_file_list:list,h5_folder_path:str,sufix_len:int,
 
     print("Starting to skelatonize binary images...")
     unsuccesful_files_list = []
-    
+
     for i,bin_image in enumerate(tqdm(bin_file_list)):
         #get recording name
         recording_name = os.path.splitext(os.path.basename(bin_image))[0]
@@ -405,4 +405,3 @@ import_correct_tqdm()
 #     if pos[0] >= shape[0]: new_pos[0] = shape[0]-1
 #     if pos[1] >= shape[1]: new_pos[1] = shape[1]-1
 #     return tuple(new_pos)
-    
