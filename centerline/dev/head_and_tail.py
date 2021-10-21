@@ -114,9 +114,12 @@ def get_skeleton_points(skel, number_of_neighbors):
     """
 
     # obtain the degrees of each skeleton coordinate
-    pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
-
-    skel_points_coords = list(zip(*np.where(degrees == number_of_neighbors)))
+    # if skel return empty, if not return skel_points
+    if np.all(skel == 0):
+        skel_points_coords=[]
+    else:
+        pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
+        skel_points_coords = list(zip(*np.where(degrees == number_of_neighbors)))
 
     return skel_points_coords
 
