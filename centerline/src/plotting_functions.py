@@ -21,7 +21,7 @@ from sklearn import preprocessing
 def draw_centerline_wrapper(input_filename, skel_folder, output_filename, min_val, max_val, cmap_name):
     """"
     return a btf with a colored skeleton on top
-    It is taking too many inputs
+    TODO: It is taking too many inputs, make it more modular
     """
     cmap = plt.get_cmap(cmap_name)
 
