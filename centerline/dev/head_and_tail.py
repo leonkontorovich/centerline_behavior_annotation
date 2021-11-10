@@ -16,8 +16,9 @@ def load_bodypart_coords_from_DLC(dlc_df, bodypart):
     Parameters:
     -----------
     dlc_df, dataframe
+    dataframe where the DLC coordinates of the bodyparts are stored
     bodypart, str
-    name of the bodypart (case sensitive!)
+    name of the bodypart (case sensitive!), e.g. 'Head'
     Returns:
     -----------
     bodypart cooords, array
@@ -73,8 +74,8 @@ def cartesian_product_sum(list1, list2):
     Calculate the cartesian product of the numbers in the two lists.
     Parameters:
     -----------
-    list1, list of values
-    list2, second list of values
+    list1, list of distances
+    list2, second list of distances
     Returns:
     -----------
     df, pandas dataframe
@@ -84,7 +85,7 @@ def cartesian_product_sum(list1, list2):
     somelists = [list1,
                  list2]
 
-    # with itertools we calculate the product of all the distance combinations (aka cartesian product)
+    # with itertools we calculate the cartesian product of all the distance combinations (aka cartesian product)
     # and save them in the dataframe
     for i, (value1, value2) in enumerate(itertools.product(*somelists)):
         # print(i,dist1,dist2)
@@ -114,7 +115,7 @@ def get_skeleton_points(skel, number_of_neighbors):
     """
 
     # if skel return empty, if not return skel_points
-    if np.all(skel == 0):
+    if np.all(skel == 0): #what does this exactly do??
         skel_points_coords=[]
     else:
         # obtain the degrees of each skeleton coordinate
@@ -203,22 +204,20 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
         skel_head, skel_tail = head_coords, tail_coords
         if fill_with_DLC == False:
             skel_head, skel_tail = np.nan, np.nan
-    # my function to get the edge_coords
-    edge_coords = get_skeleton_points(skel, number_of_neighbors)
 
-    if edge_coords:  # if edge_coords is not empty
-        skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords=edge_coords)
+    # else, run function to get the edge_coords
+    else:
+        edge_coords = get_skeleton_points(skel, number_of_neighbors)
 
-        if np.isnan(skel_head[0]):
-            skel_head, skel_tail = head_coords, tail_coords
+        if edge_coords:  # if edge_coords is not empty
+            skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords=edge_coords)
 
-            if fill_with_DLC==False:
-                skel_head, skel_tail = np.nan, np.nan
-    if not edge_coords:
-        skel_head, skel_tail = head_coords, tail_coords
+            if np.isnan(skel_head[0]):
+                skel_head, skel_tail = head_coords, tail_coords
 
-        if fill_with_DLC==False:
-            skel_head, skel_tail = np.nan, np.nan
+                if fill_with_DLC==False:
+                    skel_head, skel_tail = np.nan, np.nan
+
     return skel_head, skel_tail
 
 
