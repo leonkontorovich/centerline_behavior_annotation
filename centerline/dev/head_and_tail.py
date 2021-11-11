@@ -194,7 +194,10 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     Return:
     ----------
     :return:
-
+    skel_head, tuple
+    assigned head coordinates based on skeletonize() and DeepLabCut predictions
+    skel_tail, tuple
+    assigned tail coordinates based on skeletonize() and DeepLabCut predictions
     """
 
     skel = skeletonize(img / 255)
@@ -203,7 +206,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     if not skel.any():
         skel_head, skel_tail = head_coords, tail_coords
         if fill_with_DLC == False:
-            skel_head, skel_tail = np.nan, np.nan
+            skel_head, skel_tail = (np. nan, np.nan), (np.nan, np.nan)
 
     # else, run function to get the edge_coords
     else:
@@ -216,7 +219,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
                 skel_head, skel_tail = head_coords, tail_coords
 
                 if fill_with_DLC==False:
-                    skel_head, skel_tail = np.nan, np.nan
+                    skel_head, skel_tail = (np. nan, np.nan), (np.nan, np.nan)
 
     return skel_head, skel_tail
 
