@@ -10,6 +10,7 @@ from skan import skeleton_to_csgraph
 from skimage.morphology import skeletonize
 from centerline.src.make_skeleton import make_skeleton
 
+import matplotlib.pyplot as plt
 
 def load_bodypart_coords_from_DLC(dlc_df, bodypart):
     """
@@ -42,7 +43,7 @@ def calculate_distances(head_coords, tail_coords, candidate_coords):
     tail_coords, tuple
     (x,y) coordinates of the tail position
     candidate_coords, list
-    candidate coordinates from which the distance to head and tail will be calculated
+    candidate coordinates from which the distance to head and tail will be calculated (could have only 1 element)
     Returns:
     -----------
     dataframe with the distances
@@ -160,6 +161,7 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     # print min sum value:
     # print(cp_df['value_sum'].min())
 
+    #when does this fail? when there is only one element in the candidate_coords
     try:
 
         # Head Part
@@ -217,15 +219,13 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     else:
         edge_coords = get_skeleton_points(skel, number_of_neighbors)
 
-        if edge_coords:  # if edge_coords is not empty
+        if len(edge_coords)>=2:  # if edge_coords is 2 or bigger
             skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords,
                                                                   candidate_coords=edge_coords)
 
-            if np.isnan(skel_head[0]):  # if skel_head is nan, assign DLC
-                skel_head, skel_tail = head_coords, tail_coords
-
-                if fill_with_DLC == False:  # If fill with DLC is set to False, then write NaNs
-                    skel_head, skel_tail = (np.nan, np.nan), (np.nan, np.nan)
+        else:
+            if fill_with_DLC == True: skel_head, skel_tail = head_coords, tail_coords
+            if fill_with_DLC == False: skel_head, skel_tail = (np.nan, np.nan), (np.nan, np.nan)
 
     return skel_head, skel_tail
 
@@ -312,6 +312,14 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
 
     return
 
+#run code
+tiff_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/btf_all_binary_after_new_unet_raw_eroded_twice_29322956_3_w_validation500steps_100epochs/binary/2020-07-01_10-10-48_control_worm1-channel-0-bigtiff.btf'
+hdf5_dlc_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/avi_all/2020-07-01_10-10-48_control_worm1-channel-0-bigtiffDLC_resnet50_HeadTailAug10shuffle1_275000_filtered.h5'
+csv_output_path='/Users/ulises.rey/local_data/test/'
+head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
+                          fill_with_DLC=True)
+
+
 
 # assembling:
 
@@ -322,3 +330,4 @@ parser.add_commands([head_and_tail_wrapper])
 
 if __name__ == '__main__':
     parser.dispatch()
+
