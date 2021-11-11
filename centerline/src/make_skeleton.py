@@ -36,13 +36,10 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
     cv2.normalize(costs, costs, 0, 255, cv2.NORM_MINMAX)
     costs=costs.max()-costs
 
-
     #to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
     costs=np.where(costs>254.9, 255*100, costs)
     #actual skeleton based on route through array from skimage
     path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
-
-
 
     x,y=np.asarray(list(zip(*path)), dtype=int)
     #pts=np.asarray(path, dtype=np.int)

@@ -281,6 +281,8 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     # iterate over pages of the tiff file
     with tiff.TiffFile(tiff_path) as tif:
         for idx, page in enumerate(tif.pages):
+            print(idx)
+            if idx<17386:continue
             img = page.asarray()
 
             # access the head and tail coordinates of the frame
@@ -290,7 +292,16 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
             skel_head, skel_tail = head_and_tail_correction_from_img(img, number_of_neighbors, head_coords_i,
                                                                      tail_coords_i, fill_with_DLC)
             # TODO: add if skel_head or skel_tail == (np.nan, np.nan) dont run make skeleton and make u, skel, spline and K =np.nan
-            u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail, num_splines=100,
+            num_splines=100
+            if np.isnan(skel_head[0]): #if the skel_head or skel_tail are nan start
+                K = np.full(num_splines, np.nan)
+                x = np.full(num_splines, np.nan)
+                y = np.full(num_splines, np.nan)
+                x_new = np.full(num_splines, np.nan)
+                y_new = np.full(num_splines, np.nan)
+                u = np.nan
+            else:
+                u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail, num_splines=num_splines,
                                                            img=img, min_worm_len=300)
 
             # write csvs
@@ -312,12 +323,12 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
 
     return
 
-#run code
-tiff_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/btf_all_binary_after_new_unet_raw_eroded_twice_29322956_3_w_validation500steps_100epochs/binary/2020-07-01_10-10-48_control_worm1-channel-0-bigtiff.btf'
-hdf5_dlc_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/avi_all/2020-07-01_10-10-48_control_worm1-channel-0-bigtiffDLC_resnet50_HeadTailAug10shuffle1_275000_filtered.h5'
-csv_output_path='/Users/ulises.rey/local_data/test/'
-head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
-                          fill_with_DLC=True)
+#run code locally
+# tiff_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/btf_all_binary_after_new_unet_raw_eroded_twice_29322956_3_w_validation500steps_100epochs/binary/2020-07-01_10-10-48_control_worm1-channel-0-bigtiff.btf'
+# hdf5_dlc_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/avi_all/2020-07-01_10-10-48_control_worm1-channel-0-bigtiffDLC_resnet50_HeadTailAug10shuffle1_275000_filtered.h5'
+# csv_output_path='/Users/ulises.rey/local_data/test/'
+# head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
+#                           fill_with_DLC=False)
 
 
 
