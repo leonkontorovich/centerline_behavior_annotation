@@ -10,6 +10,7 @@ from skan import skeleton_to_csgraph
 from skimage.morphology import skeletonize
 from centerline.src.make_skeleton import make_skeleton
 
+
 def load_bodypart_coords_from_DLC(dlc_df, bodypart):
     """
     Returns the coordinates of the specified bodypart in an array format
@@ -111,12 +112,12 @@ def get_skeleton_points(skel, number_of_neighbors):
     Returns:
     -----------
     skel_points_coords, list
-    list of tuples with the coordinates of the edges
+    list of tuples with the coordinates of the skeleton points with the specified number of neighbours
     """
 
     # if skel return empty, if not return skel_points
-    if np.all(skel == 0): #what does this exactly do??
-        skel_points_coords=[]
+    if np.all(skel == 0):  # what does this exactly do??
+        skel_points_coords = []
     else:
         # obtain the degrees of each skeleton coordinate
         pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
@@ -143,7 +144,8 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     """
 
     df_distance = calculate_distances(head_coords, tail_coords, candidate_coords)
-    df_cartesian_product = cartesian_product_sum(df_distance.loc[:, 'dist_edge_to_head'], df_distance.loc[:, 'dist_edge_to_tail'])
+    df_cartesian_product = cartesian_product_sum(df_distance.loc[:, 'dist_edge_to_head'],
+                                                 df_distance.loc[:, 'dist_edge_to_tail'])
 
     # exclude overlapping distances by writing nan on the impossible combinations
     number_of_edges = len(candidate_coords)
@@ -162,14 +164,16 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
 
         # Head Part
         # optimal distance head
-        optimal_distance_head = df_cartesian_product['value1'][df_cartesian_product['value_sum'] == df_cartesian_product['value_sum'].min()]
+        optimal_distance_head = df_cartesian_product['value1'][
+            df_cartesian_product['value_sum'] == df_cartesian_product['value_sum'].min()]
 
         # find the edge coords that have dist_edge_to_head the dist1_good
         head_row = df_distance[df_distance['dist_edge_to_head'] == optimal_distance_head.values[0]]
         skel_head_coords = (int(head_row['edge_x_coords'].values), int(head_row['edge_y_coords'].values))
 
         # optimal distance tail
-        optimal_distance_tail = df_cartesian_product['value2'][df_cartesian_product['value_sum'] == df_cartesian_product['value_sum'].min()]
+        optimal_distance_tail = df_cartesian_product['value2'][
+            df_cartesian_product['value_sum'] == df_cartesian_product['value_sum'].min()]
 
         # find the edge coords that have dist_edge_to_head the dist1_good
         tail_row = df_distance[df_distance['dist_edge_to_tail'] == optimal_distance_tail.values[0]]
@@ -180,7 +184,8 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
         skel_tail_coords = (np.nan, np.nan)
     return skel_head_coords, skel_tail_coords
 
-def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tail_coords, fill_with_DLC:bool=True):
+
+def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tail_coords, fill_with_DLC: bool = True):
     """
     return head and tail skeleton coordinates from img, number of neighbors and head and tail coordinates predicted
 
@@ -206,26 +211,27 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     if not skel.any():
         skel_head, skel_tail = head_coords, tail_coords
         if fill_with_DLC == False:
-            skel_head, skel_tail = (np. nan, np.nan), (np.nan, np.nan)
+            skel_head, skel_tail = (np.nan, np.nan), (np.nan, np.nan)
 
     # else, run function to get the edge_coords
     else:
         edge_coords = get_skeleton_points(skel, number_of_neighbors)
 
         if edge_coords:  # if edge_coords is not empty
-            skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords=edge_coords)
+            skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords,
+                                                                  candidate_coords=edge_coords)
 
-            if np.isnan(skel_head[0]):
+            if np.isnan(skel_head[0]):  # if skel_head is nan, assign DLC
                 skel_head, skel_tail = head_coords, tail_coords
 
-                if fill_with_DLC==False:
-                    skel_head, skel_tail = (np. nan, np.nan), (np.nan, np.nan)
+                if fill_with_DLC == False:  # If fill with DLC is set to False, then write NaNs
+                    skel_head, skel_tail = (np.nan, np.nan), (np.nan, np.nan)
 
     return skel_head, skel_tail
 
 
-
-def head_and_tail_wrapper(tiff_path:str, hdf5_dlc_path:str, csv_output_path:str, number_of_neighbors=1, fill_with_DLC=True):
+def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, number_of_neighbors=1,
+                          fill_with_DLC=True):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
     # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
@@ -241,12 +247,11 @@ def head_and_tail_wrapper(tiff_path:str, hdf5_dlc_path:str, csv_output_path:str,
     ------------
     :return:
     """
-    #load DLC head and tail coordinates
+    # load DLC head and tail coordinates
     df = pd.read_hdf(hdf5_dlc_path)
 
     head_coords = load_bodypart_coords_from_DLC(df, 'Head')
     tail_coords = load_bodypart_coords_from_DLC(df, 'Tail')
-
 
     # create csv objects
     csvfile_corrected_head = open(csv_output_path + '_skeleton_corrected_head_coords.csv', 'w', newline='')
@@ -276,16 +281,19 @@ def head_and_tail_wrapper(tiff_path:str, hdf5_dlc_path:str, csv_output_path:str,
     # iterate over pages of the tiff file
     with tiff.TiffFile(tiff_path) as tif:
         for idx, page in enumerate(tif.pages):
-            img=page.asarray()
+            img = page.asarray()
 
             # access the head and tail coordinates of the frame
             head_coords_i = (int(head_coords[1][idx]), int(head_coords[0][idx]))
             tail_coords_i = (int(tail_coords[1][idx]), int(tail_coords[0][idx]))
 
-            skel_head, skel_tail=head_and_tail_correction_from_img(img,number_of_neighbors, head_coords_i, tail_coords_i, fill_with_DLC)
-            u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail, num_splines=100,img=img, min_worm_len=300)
+            skel_head, skel_tail = head_and_tail_correction_from_img(img, number_of_neighbors, head_coords_i,
+                                                                     tail_coords_i, fill_with_DLC)
+            # TODO: add if skel_head or skel_tail == (np.nan, np.nan) dont run make skeleton and make u, skel, spline and K =np.nan
+            u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail, num_splines=100,
+                                                           img=img, min_worm_len=300)
 
-            #write csvs
+            # write csvs
             csv_writer_head.writerow(skel_head)
             csv_writer_tail.writerow(skel_tail)
             csv_writerPathX.writerow(skel_coord[0])
