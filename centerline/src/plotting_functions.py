@@ -18,6 +18,8 @@ import matplotlib.colors
 
 from sklearn import preprocessing
 
+import argh
+
 def draw_centerline_wrapper(input_filename, skel_folder, output_filename, min_val, max_val, cmap_name):
     """"
     return a btf with a colored skeleton on top
@@ -61,3 +63,14 @@ def draw_centerline_wrapper(input_filename, skel_folder, output_filename, min_va
                     # plt.imshow(img)
                     # plt.show()
                 tif_writer.write(img, contiguous=True)
+                
+                
+# assembling:
+
+parser = argh.ArghParser()
+parser.add_commands([draw_centerline_wrapper])
+
+# dispatching:
+
+if __name__ == '__main__':
+    parser.dispatch()
