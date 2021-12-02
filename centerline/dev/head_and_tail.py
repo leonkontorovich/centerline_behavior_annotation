@@ -6,7 +6,7 @@ import argh
 import numpy as np
 import pandas as pd
 import tifffile as tiff
-from skan import skeleton_to_csgraph
+from skan import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
 from centerline.src.make_skeleton import make_skeleton
 
@@ -120,7 +120,7 @@ def get_skeleton_points(skel, number_of_neighbors):
     if np.all(skel == 0):  # what does this exactly do??
         skel_points_coords = []
     else:
-        # obtain the degrees of each skeleton coordinate
+        # obtain the degrees of each skeleton coordinate (requires skan version 0.9)
         pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
         skel_points_coords = list(zip(*np.where(degrees == number_of_neighbors)))
 
