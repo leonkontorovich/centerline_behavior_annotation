@@ -58,7 +58,7 @@ def calculate_distances(head_coords, tail_coords, candidate_coords):
         df.loc[i, 'edge_x_coords'] = x
         df.loc[i, 'edge_y_coords'] = y
 
-        # store head and tail position
+        # store head and tail position in the dataframe
         df.loc[i, 'head_x'] = head_coords[0]
         df.loc[i, 'head_y'] = head_coords[1]
 
@@ -168,6 +168,7 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
         # optimal distance head
         optimal_distance_head = df_cartesian_product['value1'][
             df_cartesian_product['value_sum'] == df_cartesian_product['value_sum'].min()]
+
 
         # find the edge coords that have dist_edge_to_head the dist1_good
         head_row = df_distance[df_distance['dist_edge_to_head'] == optimal_distance_head.values[0]]
@@ -281,7 +282,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     with tiff.TiffFile(tiff_path) as tif:
         for idx, page in enumerate(tif.pages):
             print(idx)
-            if idx < 17386: continue
+            #if idx < 17386: continue
             img = page.asarray()
 
             # access the head and tail coordinates of the frame
@@ -422,12 +423,20 @@ def head_and_tail_wrapper_for_mara(tiff_path: str, hdf5_dlc_path: str, csv_outpu
     return
 
 #run code locally
-tiff_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1bwFullTotalParamTwictNiceCONV.tif'
-hdf5_dlc_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1_mjpeg_AdC_0722_w1DLC_resnet50_reversalAnn2Oct8shuffle1_82000.h5'
-csv_output_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test3/'
+hdf5_dlc_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/avi_all/2020-07-01_10-10-48_control_worm1-channel-0-bigtiffDLC_resnet50_HeadTailAug10shuffle1_275000_filtered.h5'
+tiff_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/btf_all_binary_after_new_unet_raw_eroded_twice_29322956_3_w_validation500steps_100epochs/binary/2020-07-01_10-10-48_control_worm1-channel-0-bigtiff.btf'
+csv_output_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/debugging_head_and_tail/'
+
 head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
                           fill_with_DLC=False)
 
+#run code locally for mara
+# hdf5_dlc_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1_mjpeg_AdC_0722_w1DLC_resnet50_reversalAnn2Oct8shuffle1_82000.h5'
+# tiff_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1bwFullTotalParamTwictNiceCONV.tif'
+# csv_output_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/'
+#
+# head_and_tail_wrapper_for_mara(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
+#                           fill_with_DLC=False)
 
 
 # assembling:
