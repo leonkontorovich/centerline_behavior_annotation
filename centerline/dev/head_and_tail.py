@@ -6,11 +6,16 @@ import argh
 import numpy as np
 import pandas as pd
 import tifffile as tiff
+import skan
 from skan import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
 from centerline.src.make_skeleton import make_skeleton
 
 import matplotlib.pyplot as plt
+if skan.__version__ is not '0.9':
+    print('This code was written to work with skan version 0.9. You have skan version ',skan.__version__)
+    #would this be better:
+    #raise Exception(message)
 
 def load_bodypart_coords_from_DLC(dlc_df, bodypart):
     """
