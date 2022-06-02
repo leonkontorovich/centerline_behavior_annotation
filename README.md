@@ -66,9 +66,11 @@ If you want to generate the binary images with U-net, you will have to generate 
 Use the DLC GUi or the DLC.ipynb notebook for this.
 Consider Filtering.
 
-##3. Obtain Centerlines from the binary images and the hdf5 with Head and Tail position
+## 3. Obtain Centerlines from the binary images and the hdf5 with Head and Tail position
 
-##4. Analyze data (Fourier Transform, PCA, etc.)
+At the moment this is done with the script head_and_tail.py
+
+## 4. Analyze data (Fourier Transform, PCA, etc.)
 Use notebooks:
 /code/centerline/centerline/dev/FourierTransform.ipynb
 /code/centerline/centerline/dev/PCA_eigenworm.ipynb
