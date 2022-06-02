@@ -1,6 +1,5 @@
 # Installation
-To install this as package you should check
-https://bitbucket.vbc.ac.at/projects/ZL/repos/protocols/browse/Installing_personal_Python_packages.md
+To install this as package you should know how to install local python packages and how to handle conda environments.
 
 Shortly:
 1. Open Terminal and activate your environment (example your_env)
@@ -64,7 +63,7 @@ If you want to generate the binary images with U-net, you will have to generate 
 ## 2. Run the recordings on the DLC network to detect Head and Tail
 
 ### 2.1. Train the network, evaluate it, etc.
-Use the DLC.ipynb notebook for this.
+Use the DLC GUi or the DLC.ipynb notebook for this.
 Consider Filtering.
 
 ##3. Obtain Centerlines from the binary images and the hdf5 with Head and Tail position
