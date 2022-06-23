@@ -2,7 +2,6 @@ import csv
 import itertools
 import math
 
-import argh
 import numpy as np
 import pandas as pd
 import tifffile as tiff
@@ -255,8 +254,8 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     # load DLC head and tail coordinates
     df = pd.read_hdf(hdf5_dlc_path)
 
-    head_coords = load_bodypart_coords_from_DLC(df, 'Head')
-    tail_coords = load_bodypart_coords_from_DLC(df, 'Tail')
+    head_coords = load_bodypart_coords_from_DLC(df, 'nose')
+    tail_coords = load_bodypart_coords_from_DLC(df, 'tail')
 
     # create csv objects
     csvfile_corrected_head = open(csv_output_path + '_skeleton_corrected_head_coords.csv', 'w', newline='')
@@ -331,109 +330,15 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
 
     return
 
-def head_and_tail_wrapper_for_mara(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, number_of_neighbors=1,
-                          fill_with_DLC=True):
-    """
-    wrapper for Mara to create corrected head and tail coordinates AND skeleton. Reads tiff file with different format.
-    # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
-    Parameters:
-    ------------
-    :param tiff_path:
-    :param hdf5_dlc_path:
-    :param csv_output_path:
-    :param number_of_neighbors:
-    :param fill_with_DLC:
-
-    Returns:
-    ------------
-    :return:
-    """
-    # load DLC head and tail coordinates
-    df = pd.read_hdf(hdf5_dlc_path)
-
-    head_coords = load_bodypart_coords_from_DLC(df, 'nose')
-    tail_coords = load_bodypart_coords_from_DLC(df, 'tail')
-
-    # create csv objects
-    csvfile_corrected_head = open(csv_output_path + '_skeleton_corrected_head_coords.csv', 'w', newline='')
-    csv_writer_head = csv.writer(csvfile_corrected_head)
-
-    csvfile_corrected_tail = open(csv_output_path + '_skeleton_corrected_tail_coords.csv', 'w', newline='')
-    csv_writer_tail = csv.writer(csvfile_corrected_tail)
-
-    csvfilePathX = open(csv_output_path + '_skeleton_X_coords.csv', 'w', newline='')
-    csv_writerPathX = csv.writer(csvfilePathX)
-
-    csvfilePathX = open(csv_output_path + '_skeleton_X_coords.csv', 'w', newline='')
-    csv_writerPathX = csv.writer(csvfilePathX)
-
-    csvfilePathY = open(csv_output_path + '_skeleton_Y_coords.csv', 'w', newline='')
-    csv_writerPathY = csv.writer(csvfilePathY)
-
-    csvfileX = open(csv_output_path + '_spline_X_coords.csv', 'w', newline='')
-    csv_writerX = csv.writer(csvfileX)
-
-    csvfileY = open(csv_output_path + '_spline_Y_coords.csv', 'w', newline='')
-    csv_writerY = csv.writer(csvfileY)
-
-    csvfileK = open(csv_output_path + '_spline_K.csv', 'w', newline='')
-    csv_writerK = csv.writer(csvfileK)
-
-    # iterate over pages of the tiff file
-    with tiff.TiffFile(tiff_path) as tif:
-        volume=tif.asarray()
-        for idx, img in enumerate(volume):
-            print(idx)
-            if idx>500:continue
-            #img = page.asarray()
-
-            # access the head and tail coordinates of the frame
-            head_coords_i = (int(head_coords[1][idx]), int(head_coords[0][idx]))
-            tail_coords_i = (int(tail_coords[1][idx]), int(tail_coords[0][idx]))
-
-            skel_head, skel_tail = head_and_tail_correction_from_img(img, number_of_neighbors, head_coords_i,
-                                                                     tail_coords_i, fill_with_DLC)
-            
-            num_splines=100
-            if np.isnan(skel_head[0]): #if the skel_head or skel_tail are nan start
-                K = np.full(num_splines, np.nan)
-                x = np.full(num_splines, np.nan)
-                y = np.full(num_splines, np.nan)
-                x_new = np.full(num_splines, np.nan)
-                y_new = np.full(num_splines, np.nan)
-                u = np.nan
-                skel_coord=(x,y)
-                spline_coord=(x_new,y_new)
-            else:
-                u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail, num_splines=num_splines,
-                                                           img=img, min_worm_len=300)
-
-            # write csvs
-            csv_writer_head.writerow(skel_head)
-            csv_writer_tail.writerow(skel_tail)
-            csv_writerPathX.writerow(skel_coord[0])
-            csv_writerPathY.writerow(skel_coord[1])
-            csv_writerX.writerow(spline_coord[0])
-            csv_writerY.writerow(spline_coord[1])
-            csv_writerK.writerow(K)
-
-    csvfile_corrected_head.close()
-    csvfile_corrected_tail.close()
-    csvfilePathX.close()
-    csvfilePathY.close()
-    csvfileX.close()
-    csvfileY.close()
-    csvfileK.close()
-
-    return
 
 #run code locally
-hdf5_dlc_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/avi_all/2020-07-01_10-10-48_control_worm1-channel-0-bigtiffDLC_resnet50_HeadTailAug10shuffle1_275000_filtered.h5'
-tiff_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/btf_all_binary_after_new_unet_raw_eroded_twice_29322956_3_w_validation500steps_100epochs/binary/2020-07-01_10-10-48_control_worm1-channel-0-bigtiff.btf'
-csv_output_path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/debugging_head_and_tail/'
+if __name__ == '__main__':
+    hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substractedDLC_resnet50_wbfm_noise_tailJun13shuffle1_175000.h5'
+    tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substracted_unet_segmented_weights_2626261_1_V2_mask.btf'
+    csv_output_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/skel_test/2022-01-27_21-26-53_worm4'
 
-head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
-                          fill_with_DLC=False)
+    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
+                              fill_with_DLC=False)
 
 #run code locally for mara
 # hdf5_dlc_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1_mjpeg_AdC_0722_w1DLC_resnet50_reversalAnn2Oct8shuffle1_82000.h5'
