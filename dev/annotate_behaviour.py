@@ -34,8 +34,8 @@ def extract_vectors_from_PC_df(df,avg_win):
     extracts PC1 and PC2 from PC dataframe (principalDf) and writes them in a new dataframe
 
     """
-    x = df.loc[:, 'PC1'].rolling(window=avg_win).mean()
-    y = df.loc[:, 'PC2'].rolling(window=avg_win).mean()
+    x = df.loc[:, 'PC1'].rolling(window=avg_win, center=True).mean()
+    y = df.loc[:, 'PC2'].rolling(window=avg_win, center=True).mean()
     frame = {'X': x, 'Y': y}
     pc1_pc2_df = pd.DataFrame(data=frame)
 
