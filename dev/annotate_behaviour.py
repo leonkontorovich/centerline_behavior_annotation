@@ -29,9 +29,9 @@ def make_pca(df, inital_segment, end_segment, n_components):
     return principalDf
 
 #extract vectors from PC space
-def extract_vectors_from_PC_df(df,avg_win):
+def extract_vectors_from_PC_df(df, avg_win):
     """
-    extracts PC1 and PC2 from PC dataframe (principalDf) and writes them in a new dataframe
+    extracts PC1 and PC2 from PC dataframe (principalDf), averages them, and writes them in a new dataframe
 
     """
     x = df.loc[:, 'PC1'].rolling(window=avg_win, center=True).mean()
