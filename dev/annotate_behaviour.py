@@ -37,9 +37,9 @@ def extract_vectors_from_PC_df(df,avg_win):
     x = df.loc[:, 'PC1'].rolling(window=avg_win).mean()
     y = df.loc[:, 'PC2'].rolling(window=avg_win).mean()
     frame = {'X': x, 'Y': y}
-    cross_product_df = pd.DataFrame(data=frame)
+    pc1_pc2_df = pd.DataFrame(data=frame)
 
-    return cross_product_df
+    return pc1_pc2_df
 
 #calculate cross product
 def calculate_cross_product(cross_product_df):
