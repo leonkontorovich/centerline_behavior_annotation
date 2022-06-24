@@ -10,15 +10,17 @@ def make_pca(df, inital_segment, end_segment, n_components):
     """"
     calculates PCA from dataframe
     Parameters:
-        df
-        inital_segment
-        end_segment
-        n_components
-
+        df, nans need to be removed before hand
+        inital_segment, initial segment of the worm body from where to do PCA
+        end_segment, end segment of the worm body
+        n_components, int
+        number of components
+    TODO: At the moment the columns names are hard coded and would crash with n_components!=5
     """
-    df.fillna(0, inplace=True)  # alternative change nans to zeros
+    #df.fillna(0, inplace=True)  # alternative change nans to zeros
     features = np.arange(inital_segment, end_segment)  # Separating out the features (starting bodypart, ending bodypart)
     data = df.loc[:, features].values
+    data = StandardScaler().fit_transform(data)
     print('data shape: ', data.shape)
 
     # PCA
