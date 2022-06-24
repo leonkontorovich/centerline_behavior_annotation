@@ -44,54 +44,87 @@ def extract_vectors_from_PC_df(df, avg_win):
     return pc1_pc2_df
 
 #calculate cross product
-def calculate_cross_product(cross_product_df):
+def calculate_cross_product(pc1_pc2_df):
     """
-    calcualtes the cross product from the vectors in X and Y in the cross_product_df
+    calcualtes the cross product from the vectors in X and Y in the pc1_pc2_df
     """
 
-
+    # create empty array where each cross product value will be appended
     ra = [np.array(np.nan)]  # before was np.nan
-    for i, row in enumerate(cross_product_df.iterrows()):
-        if i == len(cross_product_df) - 1: continue
+    for i, row in enumerate(pc1_pc2_df.iterrows()):
+        if i == len(pc1_pc2_df) - 1: continue
 
-        vector_a=[cross_product_df['X'].values[i], cross_product_df['Y'].values[i]]
-        vector_b=[cross_product_df['X'].values[i + 1], cross_product_df['Y'].values[i + 1]]
+        vector_a=[pc1_pc2_df['X'].values[i], pc1_pc2_df['Y'].values[i]]
+        vector_b=[pc1_pc2_df['X'].values[i + 1], pc1_pc2_df['Y'].values[i + 1]]
+
+        # calculate cross product
         r = np.cross(vector_a,vector_b)
+
         ra.append(r)
 
-    cross_product_df['Cross Product'] = ra
+    cross_product_df = pd.DataFrame()
+
+    cross_product_df['Cross_Product'] = ra
+
     return cross_product_df
 
 
-#smoothen cross product
+def binarize_cross_product(cross_product_df):
+    """"Binarize cross product dataframe"""
+    values = [float(value) for value in cross_product_df['Cross_Product'].values]
+    values_arr = np.array(values)
+    # simple binarization of cross product
+    values_arr[values_arr > 0] = 1
+    values_arr[values_arr < 0] = -1
 
-#binarize cross product
+    return values_arr
 
+def ethogram_figure(kymogram_df, ethogram_df):
+    """
+    Make an ethogram figure with the kymogram
+    """
+
+    return fig, axes
 #generate pandas dataframe or vector or wahtever with Forward and Reversal annotation
 
 #Further behavioural annotation:
     #Turns and Dorsal Turns, Ventral Turns
 
+if __name__ == "__main__":
+    import argparse
+    import os
 
-#path='/Volumes/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/skeleton_after_new_unet/2020-07-01_18-36-25_control_worm6_spline_K.csv'
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--i_path', help='input path', required=True)
+    args = vars(parser.parse_args())
+    main_path = args['i_path']
 
-# has no reversals path='/groups/zimmer/Ulises/wbfm/chemotaxis_assay/2020_Only_behaviour/all_good_skeleton/2020-06-30_18-17-47_chemotaxis_worm5_spline_K.csv'
-# df=pd.read_csv(path, header=None)
-# inital_segment, end_segment, n_components = 30, 90, 5
-# principalDf=make_pca(df, inital_segment, end_segment, n_components)
-#
-# cross_product_df=extract_vectors_from_PC_df(principalDf,avg_win=16)
-# #calculate cross product
-# cross_product_df=calculate_cross_product(cross_product_df)
-#
-# values = [float(value) for value in cross_product_df['Cross Product'].values]
-#
-#
-# values_arr=np.array(values)
-#
-# fig, ax =plt.subplots(figsize=(40,2))
-# ax.imshow(values_arr.reshape(1,-1),origin="upper",cmap='seismic', aspect=10000, vmin=-0.00005, vmax=0.00005)
-# ax.set_axis_off()
-# # fig, ax2 =plt.subplots(figsize=(40,2))
-# # ax2.plot(values)
-# plt.show()
+
+    kymo_path = os.path.join(main_path, 'skeleton_spline_K.csv')
+
+    df = pd.read_csv(kymo_path, header=None)
+    df.fillna(0, inplace=True)
+    initial_segment, end_segment, n_components = 30, 80, 5
+
+    principalDf = make_pca(df, initial_segment, end_segment, n_components)
+    pc1_pc2_df = extract_vectors_from_PC_df(principalDf, avg_win=167)
+    cross_product_df = calculate_cross_product(pc1_pc2_df)
+
+    values_arr = binarize_cross_product(cross_product_df)
+    values_df=pd.DataFrame(values_arr)
+    values_df.to_csv(os.path.join(main_path, 'beh_annotation.csv'))
+
+    # Plotting part
+
+    # fig, ax = plt.subplots(figsize=(10, 2))
+    # ax.imshow(values_arr.reshape(1, -1), origin="upper", cmap='seismic', aspect=10000, vmin=-0.00005, vmax=0.00005)
+    # ax.set_axis_off()
+    # plt.show()
+    #
+    # fig2, axes = plt.subplots(nrows=3, figsize=(10, 2), sharex=True)
+    # axes[0].imshow(df.T, origin="upper", cmap='seismic', extent=[0, df.shape[0], df.shape[1], 0], aspect=10,
+    #             vmin=-0.06, vmax=0.06)
+    #
+    # pc1_pc2_df.plot(ax=axes[1])
+    # axes[2].imshow(values_arr.reshape(1, -1), origin="upper", cmap='seismic', aspect=1000, vmin=-0.00005, vmax=0.00005)
+    # plt.show()
