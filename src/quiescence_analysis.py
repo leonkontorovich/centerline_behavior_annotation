@@ -1,11 +1,207 @@
-#imports
+# imports
 
-import os
 import numpy as np
-import cv2
 import tifffile as tiff
+from skimage.measure import label, regionprops
 
-def load_tiff(input_filename:str):
+
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4,debug:bool=False):
+    """
+    Calculates difference in pixels between two time points
+    it recieves a binarized image and outputs a numpy array of pixel_diffs
+
+    Parameters:
+    ----------
+    img:nd.array
+        8 bit binarized image series
+    frame_shift:int
+        shift in time to calculate pixel difference
+    norm_size_threshold: float
+        threshold to remove small object noise
+    """
+
+    # get reference size
+    ref_size = get_average_ref_area(img_path,fraction_frames=0.1)
+    tiff_read_buffer = frame_shift + 1
+    if debug: print("ref size is",ref_size)
+
+    # read binarized image in a buffered manner
+    with tiff.TiffFile(img_path) as tif:
+        # get tiff stats
+        frames_num = len(tif.pages)
+        img_temp = tif.pages[0].asarray()
+        img_shape = (tiff_read_buffer,) + (img_temp.shape)
+        if debug:print("image shape",img_shape)
+        if debug:print("frame num",frames_num)
+        # initialize
+        # -buffered img
+        img = np.zeros(img_shape, dtype=np.int16)
+
+        # -array to hold the results
+        frame_diff_arr = np.zeros(frames_num)
+        frame_diff_arr[:] = np.nan
+
+        # iterate over frames
+        for idx, page in enumerate(tif.pages):
+            if debug: print("idx",idx)
+            # preload first batch of stacks
+            if idx < tiff_read_buffer - 1:
+                img[idx] = page.asarray()
+                if debug: print("idx skip", idx)
+                continue
+
+            # get idx for two frames to compare
+            if idx == frames_num:
+                if debug: print("idx is",idx,"stopped")
+                break
+
+            jdx = idx + 1
+            frame_assign_idx = idx % tiff_read_buffer
+            frame_reference_idx = jdx % tiff_read_buffer
+            next_frame_idx = (tiff_read_buffer + jdx - 1) % tiff_read_buffer
+
+            # insert frame
+            img[frame_assign_idx] = page.asarray()
+            if debug: print("frames set")
+            # define frames to compare
+            frame = img[frame_reference_idx]
+            next_frame = img[next_frame_idx]
+
+            if debug: print("function called")
+            # calculate pixel diff
+            curr_pixel_diff = calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug=debug)
+            if debug: print("current idx",idx,"pixel_diff",curr_pixel_diff)
+            # save pixel diff into array
+            frame_diff_arr[idx] = curr_pixel_diff
+
+    # remove NaNs
+    frame_diff_arr = frame_diff_arr[~np.isnan(frame_diff_arr)]
+
+    return frame_diff_arr
+
+from math import floor
+
+
+def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: bool = False):
+    """
+    recieves an binarize image stack, make sure it has at least 3 dimentions.
+    measures the average worm size (area in pixels),
+    to save processing time takes only fraction of all frames defined in fraction_frames
+
+    Parameters:
+    -----------
+    img_path:str
+    fraction_frames: float
+    debug:bool
+    """
+
+    with tiff.TiffFile(img_path) as tif:
+        total_frames = len(tif.pages)
+
+        # calculate which frames to take
+        if fraction_frames < 0.01 or fraction_frames > 1:
+            fraction_frames = 0.1
+            if debug: print("fraction does not match >0.01<1, 0.1 was chosen as default")
+        frames_interval = floor(total_frames / (total_frames * fraction_frames))
+        frames_range = range(0, total_frames, frames_interval)
+        total_frames_taken = len(frames_range)
+
+        # -initialize numpy array to hold area data
+        measured_area = np.empty(total_frames_taken)
+        measured_area[:] = np.nan
+        jdx=0
+
+        # iterate over frames
+        for idx, page in enumerate(tif.pages):
+            # skip frame if not in range
+            if idx not in frames_range:
+                continue
+            # take frame
+            curr_frame = page.asarray().astype(np.int16)
+
+            # get main segment
+            labeles = label(curr_frame)
+            segments = regionprops(labeles)
+
+            # make sure there's only one segment..
+            # COMMENT: we could implement take the biggest if there's more than one
+            if len(segments) == 1:
+                measured_area[jdx] = segments[0].area
+            else:
+                # skip if there's not one clear object
+                continue
+            jdx+=1
+
+    average_ref_area = np.nanmean(measured_area)
+    if np.isnan(average_ref_area):
+        if debug: print("problem with getting worm average size")
+        return None
+
+    return average_ref_area
+
+
+def get_segments_area(segments,debug:bool=False):
+    """
+    segments: skimage label object
+    size_threshold: int
+        threshold for area to take
+    """
+
+    # use skimage to get properties of segments
+    segments_props = regionprops(segments)
+    if debug:print(".......segment area",len(segments),"segments")
+    # initialize
+    segments_area = np.zeros(len(segments_props))
+    # loop over segments to get sizes
+    for idx, segment_prop in enumerate(segments_props):
+        segments_area[idx] = segment_prop.area
+
+    # filter sizes
+    #     filtered_segments_area = segments_area[segments_area>threshold]
+    #     I decided better to filter outside this function
+    #     print(segments_area)
+    return segments_area
+
+
+def calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug:bool=False):
+    """
+    Calculates the difference in amount of pixels between two images
+    ignores small changes set by norm_size_threshold
+    takes into account a reference size to normalize data to fraction of reference size
+
+    Parameters:
+    -----------
+    frame: nd.array
+        2d image frame
+    next_frame: nd.array
+        2d image frame
+    ref_size: float
+        reference size to normalize pixel area to
+    norm_size_threshold: float
+        threshold for ignoring small differences, given as fraction of reference size
+
+    """
+
+    # calcualte the diff between frames, take absolute diff
+    frames_diff = np.abs(next_frame - frame)
+    if debug: print("...calc pixel diff - total diff",frames_diff.sum())
+    # get segments
+    segments = label(frames_diff)
+    # get area
+    segments_area = get_segments_area(segments,debug=debug)
+    # normalize to reference size (worm size)
+    norm_segments_area = (segments_area / ref_size) * 100
+    # filter segments
+    filtered_segments_area = norm_segments_area[norm_segments_area > norm_size_threshold]
+    if debug:print("...calc pixel diff - filtered segments area",filtered_segments_area)
+    # calculate pixel_diff
+    pixel_diff = np.nansum(filtered_segments_area)
+
+    return pixel_diff
+
+### functions used only during development of this package ###
+
+def load_tiff(input_filename: str):
     """
     this function uses tiffile package to load a tiff file to memory
     :param filepath: str, path to the binarized image file
@@ -13,87 +209,42 @@ def load_tiff(input_filename:str):
     loaded numpy img object
     """
     with tiff.TiffFile(input_filename) as tif:
+        img = tif.pages[0].asarray()
+        shape = (len(tif.pages),) + (img.shape)
+        img = np.empty(shape, dtype=np.int16)
         for i, page in enumerate(tif.pages):
-            if i == 0:
-                img_shape = page.asarray().shape
-                img = np.empty((img_shape[0], img_shape[1], 1))
-            img = np.dstack((page.asarray(), img))
+            img[i] = page.asarray()
     return img
 
-def get_frame_diff(img,frame_shift:int=3,contour_size_thresh:float=1.5):
-    ### 1. get binarized frame and frame +3
-    ### 2. make diff between the two binarized frames
-    ### 3. find contours in the diff image
-    ### 4. filter contours based on size/ area (make histogram of contour sizes, decide on threshold)
-    ### 5. calculate the sum of area(#pixels) all relevent (i.e., big enough) contours
-    ### 6. divide pixel_change by time (input fps.. to know)
-    ### ------
-    ### 7. save information in some format
+def get_segment_area_stats(img,frame_shift:int=3):
+    """
+    A temporary function used just to accumualte data for later estimation of noise in this type of data
+    recieves a binarized image stack and calculates the diff between frames
+    returns an array with all the pixel diff events found
+    """
 
-    #intialize array to hold the data
-    frame_diff_arr = np.empty(img.shape[3])
+    area_array = np.zeros(100)
+    area_array[:] = np.nan
+    segment_idx = 0
 
-    #iterate over frames
-    for idx in range(0, img.shape[3] - frame_shift):
-        #get the two frames
-        frame = img[:, :, idx]
-        next_frame = img[:, :, idx + frame_shift]
-        #calcualte the diff between frames, take absolute diff
+    for frame_idx in range(0, img.shape[0] - frame_shift):
+        # get the two frames
+        frame = img[frame_idx]
+        next_frame = img[frame_idx + frame_shift]
+        # calcualte the diff between frames, take absolute diff
         frames_diff = np.abs(next_frame - frame)
-        #get contours
-        contours, hierarchy = cv2.findContours(frames_diff, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        #filter contours
-        filtered_contours = filter_contours(contours,contour_size_thresh)
-        #calculate pixel_diff
-        curr_pixel_diff = calculate_pixel_diff(filtered_contours)
-        frame_diff_arr[idx] = curr_pixel_diff
+        # get segments
+        segments = label(frames_diff)
+        # measure all areas
+        segments_props = regionprops(segments)
 
-    return frame_diff_arr
+        for segment_prop in segments_props:
+            area_array[segment_idx] = segment_prop.area
+            segment_idx += 1
+            if segment_idx == (area_array.shape[0]):
+                add_array = np.zeros(100)
+                add_array[:] = np.nan
+                area_array = np.append(area_array, add_array)
 
-
-from math import floor
-def get_average_worm_area(img, fraction_frames: float = 0.3, debug: bool = False):
-    """
-    recieves an binarize image stack, make sure it has at least 3 dimentions.
-    measures the average worm size (area in pixels),
-    to save processing time takes only fraction of all frames defined in fraction_frames
-    """
-
-    # make sure image is shape is usable
-    if len(img.shape) < 3:
-        if debug: print("image file currupt, less than 3 dimentions")
-        return None
-
-    # calculate which frames to take
-    total_frames = img.shape[2]
-    if fraction_frames < 0.01 or fraction_frames > 1:
-        fraction_frames = 0.3
-    frames_interval = floor(total_frames / (total_frames * fraction_frames))
-    frames_range = range(0, total_frames, frames_interval)
-    total_frames_taken = len(frames_range)
-    # initialize numpy array to hold area data
-    measured_area = np.empty(total_frames_taken)
-    measured_area[:] = np.nan
-
-    # loop over frames and get area
-    for idx, i in enumerate(frames_range):
-        curr_frame = img[:, :, idx]
-        # -get main segment
-        labeles = label(curr_frame)
-        segments = regionprops(labeles)
-        # make sure there's only one segment..
-        # Itamar we could implement take the biggest if there's more than one
-        if len(segments) == 1:
-            measured_area[idx] = segments[0].area
-        else:
-            # skip if there's not one clear object
-            continue
-
-    average_worm_area = np.nanmean(measured_area)
-
-    if np.isnan(average_worm_area):
-        if debug: print("problem with getting worm average size")
-        return None
-
-    return average_worm_area
-
+    area_array = area_array[~np.isnan(area_array)]
+    return area_array
