@@ -23,7 +23,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
 
     #decide if frame cropping should be corrected
     #if centroid is given then correct frame croping
-    if centroid:
+    if centroid is not None:
         fix_crop = True
 
     # get reference size
