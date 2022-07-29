@@ -5,7 +5,8 @@ import tifffile as tiff
 from skimage.measure import label, regionprops
 
 
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4,debug:bool=False):
+# centroid = np.vstack((mat["Tracks"]["Path"][0,ID][:,0],mat["Tracks"]["Path"][0,ID][:,1])).T
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4,centroid=None,debug:bool=False):
     """
     Calculates difference in pixels between two time points
     it recieves a binarized image and outputs a numpy array of pixel_diffs
@@ -19,6 +20,11 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
     norm_size_threshold: float
         threshold to remove small object noise
     """
+
+    #decide if frame cropping should be corrected
+    #if centroid is given then correct frame croping
+    if centroid:
+        fix_crop = True
 
     # get reference size
     ref_size = get_average_ref_area(img_path,fraction_frames=0.1)
@@ -40,6 +46,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         # -array to hold the results
         frame_diff_arr = np.zeros(frames_num)
         frame_diff_arr[:] = np.nan
+        buffer_idxs = ['']*tiff_read_buffer
 
         # iterate over frames
         for idx, page in enumerate(tif.pages):
@@ -51,6 +58,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
                 continue
 
             # get idx for two frames to compare
+            #-stop if last frame
             if idx == frames_num:
                 if debug: print("idx is",idx,"stopped")
                 break
@@ -62,12 +70,21 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
 
             # insert frame
             img[frame_assign_idx] = page.asarray()
+            # keep the idx of the inserted frame
+            buffer_idxs[frame_assign_idx] = idx
+
             if debug: print("frames set")
             # define frames to compare
             frame = img[frame_reference_idx]
             next_frame = img[next_frame_idx]
+            #get original frame indexes
+            abs_frame_idx = buffer_idxs[frame_reference_idx]
+            abs_next_frame_idx = buffer_idxs[next_frame_idx]
 
-            if debug: print("function called")
+            #fix frames based of centroid if needed
+            if fix_crop:
+                next_frame = get_fixed_crop_based_on_centroid(frame,next_frame,centroid[abs_frame_idx],centroid[abs_next_frame_idx],debug=debug)
+
             # calculate pixel diff
             curr_pixel_diff = calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug=debug)
             if debug: print("current idx",idx,"pixel_diff",curr_pixel_diff)
@@ -79,8 +96,68 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
 
     return frame_diff_arr
 
-from math import floor
 
+def get_fixed_crop_based_on_centroid(frame, next_frame, centroid, next_centroid, debug: bool = False):
+    """
+    Fixes the cropping frames. For the times when the cropping function used int converted positions for its cropping
+
+    :param frame: numpy array current frame
+    :param next_frame:  numpy array next frame to be analyzed
+    :param centroid: float, the centroid position of current frame
+    :param next_centroid: float, the centroid position of the next frame
+    :param debug: boolean, should print out debug?
+    :return:
+    fixed_next_frame: numpy array, corrected cropping of next frame based on current
+    """
+
+    # organize x,y diff
+    shape_frame = frame.shape
+    max_x = shape_frame[1]
+    max_y = shape_frame[0]
+
+    x = int(centroid[0])
+    y = int(centroid[1])
+    x2 = int(next_centroid[0])
+    y2 = int(next_centroid[1])
+
+    diff_x = x2 - x
+    diff_y = y2 - y
+
+    if debug: print("original diff_x", diff_x, "diff_y", diff_y)
+
+    if diff_x == 0 and diff_y == 0:
+        return next_frame
+
+    # initialize ranges
+    x_range_src = (0, max_x)
+    y_range_src = (0, max_y)
+    x_range_dst = (0, max_x)
+    y_range_dst = (0, max_y)
+
+    # calculate ranges based on sign of diff
+    if diff_x > 0:
+        x_range_src = (0, max_x - diff_x)
+        x_range_dst = (diff_x, max_x)
+        if debug: print("x range src", x_range_src, "x range dst", x_range_dst)
+    if diff_x < 0:
+        x_range_src = (0 - diff_x, max_x)
+        x_range_dst = (0, max_x + diff_x)
+        if debug: print("x range src", x_range_src, "x range dst", x_range_dst)
+    if diff_y > 0:
+        y_range_src = (0, max_y - diff_y)
+        y_range_dst = (diff_y, max_y)
+    if diff_y < 0:
+        y_range_src = (0 - diff_y, max_y)
+        y_range_dst = (0, max_y + diff_y)
+
+    fixed_next_frame = np.zeros_like(frame)
+    fixed_next_frame[y_range_dst[0]:y_range_dst[1], x_range_dst[0]:x_range_dst[1]] = next_frame[
+                                                                                     y_range_src[0]:y_range_src[1],
+                                                                                     x_range_src[0]:x_range_src[1]]
+
+    return fixed_next_frame
+
+from math import floor
 
 def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: bool = False):
     """
@@ -138,7 +215,6 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
         return None
 
     return average_ref_area
-
 
 def get_segments_area(segments,debug:bool=False):
     """
