@@ -5,8 +5,8 @@ import tifffile as tiff
 from skimage.measure import label, regionprops
 
 
-# centroid = np.vstack((mat["Tracks"]["Path"][0,ID][:,0],mat["Tracks"]["Path"][0,ID][:,1])).T
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4,centroid=None,debug:bool=False):
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,
+                   debug: bool = False):
     """
     Calculates difference in pixels between two time points
     it recieves a binarized image and outputs a numpy array of pixel_diffs
@@ -21,15 +21,15 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         threshold to remove small object noise
     """
 
-    #decide if frame cropping should be corrected
-    #if centroid is given then correct frame croping
+    # decide if frame cropping should be corrected
+    # if centroid is given then correct frame croping
     if centroid is not None:
         fix_crop = True
 
     # get reference size
-    ref_size = get_average_ref_area(img_path,fraction_frames=0.1)
+    ref_size = get_average_ref_area(img_path, fraction_frames=0.1)
     tiff_read_buffer = frame_shift + 1
-    if debug: print("ref size is",ref_size)
+    if debug: print("ref size is", ref_size)
 
     # read binarized image in a buffered manner
     with tiff.TiffFile(img_path) as tif:
@@ -37,8 +37,8 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         frames_num = len(tif.pages)
         img_temp = tif.pages[0].asarray()
         img_shape = (tiff_read_buffer,) + (img_temp.shape)
-        if debug:print("image shape",img_shape)
-        if debug:print("frame num",frames_num)
+        if debug: print("image shape", img_shape)
+        if debug: print("frame num", frames_num)
         # initialize
         # -buffered img
         img = np.zeros(img_shape, dtype=np.int16)
@@ -46,21 +46,22 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         # -array to hold the results
         frame_diff_arr = np.zeros(frames_num)
         frame_diff_arr[:] = np.nan
-        buffer_idxs = ['']*tiff_read_buffer
+        buffer_idxs = [''] * tiff_read_buffer
 
         # iterate over frames
         for idx, page in enumerate(tif.pages):
-            if debug: print("idx",idx)
+            if debug: print("idx", idx)
             # preload first batch of stacks
             if idx < tiff_read_buffer - 1:
                 img[idx] = page.asarray()
+                buffer_idxs[idx] = idx
                 if debug: print("idx skip", idx)
                 continue
 
             # get idx for two frames to compare
-            #-stop if last frame
+            # -stop if last frame
             if idx == frames_num:
-                if debug: print("idx is",idx,"stopped")
+                if debug: print("idx is", idx, "stopped")
                 break
 
             jdx = idx + 1
@@ -77,17 +78,18 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             # define frames to compare
             frame = img[frame_reference_idx]
             next_frame = img[next_frame_idx]
-            #get original frame indexes
+            # get original frame indexes
             abs_frame_idx = buffer_idxs[frame_reference_idx]
             abs_next_frame_idx = buffer_idxs[next_frame_idx]
 
-            #fix frames based of centroid if needed
+            # fix frames based of centroid if needed
             if fix_crop:
-                next_frame = get_fixed_crop_based_on_centroid(frame,next_frame,centroid[abs_frame_idx],centroid[abs_next_frame_idx],debug=debug)
-
+                next_frame = get_fixed_crop_based_on_centroid(frame, next_frame, centroid[abs_frame_idx],
+                                                              centroid[abs_next_frame_idx], debug=debug)
             # calculate pixel diff
-            curr_pixel_diff = calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug=debug)
-            if debug: print("current idx",idx,"pixel_diff",curr_pixel_diff)
+            curr_pixel_diff = calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold, debug=debug)
+
+            if debug: print("current idx", idx, "pixel_diff", curr_pixel_diff)
             # save pixel diff into array
             frame_diff_arr[idx] = curr_pixel_diff
 
