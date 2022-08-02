@@ -48,17 +48,16 @@ In one 20min recording there can be 20 ome tiff files.
 
 Run ometiff2bigtiff function as an array of jobs for every behavioural recording (See Cluster jobs repository). This will make one big tiff file for each folder.
 
-#### 1.1.2 Copy all the .btf files in a separate directory, like 'btf'
 
-### 1.2. Run tiff2avi
+### 1.2. Substract background
+Check the cluster_jobs files. Use stack_subtract_background.sh file which calls the imfunctions.stack_substract_background()
 
-Run tiff2avi function as an array of jobs for every behavioural recording
-
-### 1.3. Substract background
-Check the cluster_jobs files. Use substract_background.sh file which calls the imfunctions.stack_substract_background()
-
-### 1.4. Generate binary images from the recordings
+### 1.3. Generate binary images from the recordings
 If you want to generate the binary images with U-net, you will have to generate training data. See the unet-master package to see how.
+
+### 1.4. Run tiff2avi
+
+Run tiff2avi function as an array of jobs for every behavioural recording, avi files are needed for the next DLC step.
 
 ## 2. Run the recordings on the DLC network to detect Head and Tail
 
