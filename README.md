@@ -52,12 +52,18 @@ Run ometiff2bigtiff function as an array of jobs for every behavioural recording
 ### 1.2. Substract background
 Check the cluster_jobs files. Use stack_subtract_background.sh file which calls the imfunctions.stack_substract_background()
 
-### 1.3. Generate binary images from the recordings
-If you want to generate the binary images with U-net, you will have to generate training data. See the unet-master package to see how.
+### 1.3. Run tiff2avi
+Run tiff2avi on your background subtracted behavioural data. Avi files are needed for the DLC step of predicting head and tail position.
 
-### 1.4. Run tiff2avi
+### 1.4. Generate binary images from the recordings
+From the behavioural stacks where background has been subtracted you can run the unet network:
+```
+scratch/neurobiology/zimmer/ulises/code/unet-master/data/2022_04_24_worm_segmentation_all_worms_good_background/training_results/2626261_1_w_validation_1batchsize_500steps_100epochs_5patience/unet_master.hdf5
+```
+with the script unet_segmentation_stack.sh in cluster_jobs.
 
-Run tiff2avi function as an array of jobs for every behavioural recording, avi files are needed for the next DLC step.
+If your data looks different and you need U-net, you will have to generate training data. See the unet-master package to see how.
+
 
 ## 2. Run the recordings on the DLC network to detect Head and Tail
 
