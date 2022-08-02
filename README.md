@@ -75,6 +75,9 @@ Consider Filtering.
 
 At the moment this is done with the script head_and_tail.py
 
+Reformat them witht the script __reformat_skeleton_files.py__
+
+
 ## 4. Analyze data (Fourier Transform, PCA, etc.)
 Use notebooks:
 /code/centerline/centerline/dev/FourierTransform.ipynb
