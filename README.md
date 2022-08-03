@@ -82,7 +82,7 @@ Consider Filtering.
 
 ## 3. Obtain Centerlines from the binary images and the hdf5 with Head and Tail position
 
-At the moment this is done with the script head_and_tail.py
+At the moment this is done with the script **head_and_tail.py** which you can run from **head_and_tail.sh** in cluster_jobs/
 
 Reformat them witht the script __reformat_skeleton_files.py__
 
