@@ -94,9 +94,6 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             # save pixel diff into array
             frame_diff_arr[idx] = curr_pixel_diff
 
-    # remove NaNs
-    frame_diff_arr = frame_diff_arr[~np.isnan(frame_diff_arr)]
-
     return frame_diff_arr
 
 
