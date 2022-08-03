@@ -3,6 +3,7 @@
 import numpy as np
 import tifffile as tiff
 from skimage.measure import label, regionprops
+from scipy.stats import zscore
 
 
 def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,
@@ -326,3 +327,29 @@ def get_segment_area_stats(img,frame_shift:int=3):
 
     area_array = area_array[~np.isnan(area_array)]
     return area_array
+
+def filter_with_zscore(arr:np.array,frame_diff_zscore_threshold:float):
+    """
+    simple function uses scipy stats zscore to filter numpy array
+    :param input_arr: np.array
+    :param frame_diff_zscore_threshold: float
+    :return:
+        filtered numpy array
+    """
+
+    arr[np.abs(zscore(arr) > frame_diff_zscore_threshold)] = np.nan
+
+    return arr
+
+def get_crop_positions_from_mat(mat,wormID:int):
+    """
+    gets a tracker als.mat file loaded using scipy, and a worm ID number
+    and returns the centroid of the worm in a convinent format
+
+    :param mat:
+    :param wormID: int
+    :return:
+    """
+    centroid = np.vstack((mat["Tracks"]["Path"][0, wormID][:, 0], mat["Tracks"]["Path"][0, wormID][:, 1])).T
+
+    return centroid
