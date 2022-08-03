@@ -62,10 +62,19 @@ scratch/neurobiology/zimmer/ulises/code/unet-master/data/2022_04_24_worm_segment
 ```
 with the script unet_segmentation_stack.sh in cluster_jobs.
 
+On the U-net output you can run the **binarize.sh** on cluster_jobs, to have a binary image.
+
 If your data looks different and you need U-net, you will have to generate training data. See the unet-master package to see how.
 
 
 ## 2. Run the recordings on the DLC network to detect Head and Tail
+If you already have a network trained, you can run it.
+For ZIM01 recordings on background subtracted images this network is good:
+
+**/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_noise_tail-Ulises-2022-06-13/config.yaml**
+
+analyze videos with **bash_to_analyze_videos.sh in dlc_utils_code.
+
 
 ### 2.1. Train the network, evaluate it, etc.
 Use the DLC GUi or the DLC.ipynb notebook for this.
