@@ -73,7 +73,7 @@ For ZIM01 recordings on background subtracted images this network is good:
 
 **/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_noise_tail-Ulises-2022-06-13/config.yaml**
 
-analyze videos with **bash_to_analyze_videos.sh in dlc_utils_code.
+analyze videos with **bash_to_analyze_videos.sh** in dlc_utils_code.
 
 
 ### 2.1. Train the network, evaluate it, etc.
