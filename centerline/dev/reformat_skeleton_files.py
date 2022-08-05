@@ -14,7 +14,7 @@ import os
 def read_skeleton_files(main_path):
     """
 
-    :param main_path:
+    :param main_path: folder where the files skeleton_spline**.csv are
     :return:
     """
     df_splineX = pd.read_csv(os.path.join(main_path, 'skeleton_spline_X_coords.csv'), header=None)
@@ -42,6 +42,7 @@ def reformat_skeleton_files(df_splineX, df_splineY, df_splineK):
 
 
 if __name__ == "__main__":
+    #run it with cluster_jobs/array_job_directories.sh
     import argparse
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--i_path', help='input path', required=True)
@@ -59,12 +60,3 @@ if __name__ == "__main__":
     new_df = reformat_skeleton_files(df_splineX, df_splineY, df_splineK)
     new_df.to_csv(os.path.join(input_path, 'skeleton_spline_merged.csv'))
     print('python complete')
-
-    # input_path = '/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220216/data/worm6/2022-02-16_17-14-18_worm6-channel-0-behaviour-'
-    # df_splineX, df_splineY, df_splineK = read_skeleton_files(input_path)
-    # new_df = reformat_skeleton_files(df_splineX, df_splineY, df_splineK)
-    # new_df.to_csv(os.path.join(input_path, 'skeleton_spline_merged.csv'))
-    #
-    # df = pd.read_csv(os.path.join(input_path, 'skeleton_spline_merged.csv'))
-    #
-    # print('end')
