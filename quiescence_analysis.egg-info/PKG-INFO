@@ -1,0 +1,41 @@
+Metadata-Version: 2.1
+Name: quiescence-analysis
+Version: 0.0.1
+Summary: A small package to extract worm movement
+Home-page: 
+Author: Itamar Lev and Johaness Frank
+Author-email: 
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+
+# Installation
+To install this as package you should check
+https://bitbucket.vbc.ac.at/projects/ZL/repos/protocols/browse/Installing_personal_Python_packages.md
+
+Shortly:
+1. Open Terminal and activate your environment (example your_env)
+	```
+	conda activate your_env
+	```
+2. Install it with a pip command (pointing to the directory where you cloned it)
+	```
+	pip install /code/quiescence/
+	```
+	or better:
+	cd to the directory where you cloned the directory
+	```
+	cd ../code/quiescence/
+	```
+	And then pip install the local directory
+	```
+	pip install .
+	```
+	
+	This would be wrong:
+	```
+	pip install quiescence/
+	```
+	Because it will install another centerline package that someone has uploaded to pip.

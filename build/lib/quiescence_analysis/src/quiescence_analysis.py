@@ -79,7 +79,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             # get original frame indexes
             abs_frame_idx = buffer_idxs[frame_reference_idx]
             abs_next_frame_idx = buffer_idxs[next_frame_idx]
-            # if debug: print("...diff: abs frame:",abs_frame_idx,"abs next frame",abs_next_frame_idx)
+            if debug: print("...diff: abs frame:",abs_frame_idx,"abs next frame",abs_next_frame_idx)
 
             # fix frames based of centroid if needed
             if fix_crop:
@@ -88,7 +88,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             # calculate pixel diff
             curr_pixel_diff = calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold, debug=debug)
 
-            # if debug: print("current idx", idx, "pixel_diff", curr_pixel_diff)
+            if debug: print("current idx", idx, "pixel_diff", curr_pixel_diff)
             # save pixel diff into array
             frame_diff_arr[idx] = curr_pixel_diff
 
@@ -136,11 +136,11 @@ def get_fixed_crop_based_on_centroid(frame, next_frame, centroid, next_centroid,
     if diff_x > 0:
         x_range_src = (0, max_x - diff_x)
         x_range_dst = (diff_x, max_x)
-        # if debug: print("x range src", x_range_src, "x range dst", x_range_dst)
+        if debug: print("x range src", x_range_src, "x range dst", x_range_dst)
     if diff_x < 0:
         x_range_src = (0 - diff_x, max_x)
         x_range_dst = (0, max_x + diff_x)
-        # if debug: print("x range src", x_range_src, "x range dst", x_range_dst)
+        if debug: print("x range src", x_range_src, "x range dst", x_range_dst)
     if diff_y > 0:
         y_range_src = (0, max_y - diff_y)
         y_range_dst = (diff_y, max_y)
@@ -267,7 +267,7 @@ def calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug:
     norm_segments_area = (segments_area / ref_size) * 100
     # filter segments
     filtered_segments_area = norm_segments_area[norm_segments_area > norm_size_threshold]
-    # if debug:print("...calc pixel diff - filtered segments area",filtered_segments_area)
+    if debug:print("...calc pixel diff - filtered segments area",filtered_segments_area)
     # calculate pixel_diff
     pixel_diff = np.nansum(filtered_segments_area)
 
