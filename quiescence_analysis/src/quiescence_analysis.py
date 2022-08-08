@@ -241,7 +241,7 @@ def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=
     """
     validated_frame = False
 
-    segments_area_frame = get_segments_area(frame)
+    segments_area_frame = get_segments_area(frame,debug=debug)
     #if less than 1 object, or no objects do not validate frame
 
     if len(segments_area_frame) == 1:
@@ -261,14 +261,15 @@ def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=
 
     return validated_frame
 
-def get_segments_area(segments,debug:bool=False):
+def get_segments_area(img,debug:bool=False):
     """
-    segments: skimage label object
+    img : numpy array, image to segment and get segments area
     """
-
+    # get segments
+    segments = label(img)
     # use skimage to get properties of segments
     segments_props = regionprops(segments)
-    if debug:print(".......segment area",len(segments),"segments")
+    if debug:print("....pixel_diff...segment area",len(segments),"# of segments")
     # initialize
     segments_area = np.zeros(len(segments_props))
     # loop over segments to get sizes
@@ -300,10 +301,8 @@ def calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug:
     # calcualte the diff between frames, take absolute diff
     frames_diff = np.abs(next_frame - frame)
     # if debug: print("...calc pixel diff - total diff",frames_diff.sum())
-    # get segments
-    segments = label(frames_diff)
     # get area
-    segments_area = get_segments_area(segments,debug=debug)
+    segments_area = get_segments_area(frames_diff,debug=debug)
     # normalize to reference size (worm size)
     norm_segments_area = (segments_area / ref_size) * 100
     # filter segments
