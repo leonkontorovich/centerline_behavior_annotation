@@ -208,7 +208,7 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
 
             # make sure there's only one segment..
             # COMMENT: we could implement take the biggest if there's more than one
-            if len(segments) == 1:
+            if len(segments_area) == 1:
                 measured_area[jdx] = segments_area[0]
             else:
                 # skip if there's not one clear object

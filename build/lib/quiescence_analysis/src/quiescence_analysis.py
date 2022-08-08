@@ -6,8 +6,7 @@ from skimage.measure import label, regionprops
 from scipy.stats import zscore
 
 
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5
-                   debug: bool = False):
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5, debug: bool = False):
     """
     Calculates difference in pixels between two time points
     it recieves a binarized image and outputs a numpy array of pixel_diffs
@@ -209,7 +208,7 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
 
             # make sure there's only one segment..
             # COMMENT: we could implement take the biggest if there's more than one
-            if len(segments) == 1:
+            if len(segments_area) == 1:
                 measured_area[jdx] = segments_area[0]
             else:
                 # skip if there's not one clear object

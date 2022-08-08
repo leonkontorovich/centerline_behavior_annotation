@@ -6,7 +6,8 @@ from skimage.measure import label, regionprops
 from scipy.stats import zscore
 
 
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5, debug: bool = False):
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5
+                   debug: bool = False):
     """
     Calculates difference in pixels between two time points
     it recieves a binarized image and outputs a numpy array of pixel_diffs
