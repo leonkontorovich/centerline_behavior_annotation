@@ -6,7 +6,7 @@ from skimage.measure import label, regionprops
 from scipy.stats import zscore
 
 
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5
                    debug: bool = False):
     """
     Calculates difference in pixels between two time points
@@ -20,6 +20,8 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         shift in time to calculate pixel difference
     norm_size_threshold: float
         threshold to remove small object noise
+    zscore_threshold: float
+        absolute zscore threshold to remove frames where worm is too big/small than the rest
     """
 
     # decide if frame cropping should be corrected
@@ -28,7 +30,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         fix_crop = True
 
     # get reference size
-    ref_size = get_average_ref_area(img_path, fraction_frames=0.1)
+    ref_size,ref_size_std = get_average_ref_area(img_path, fraction_frames=0.2)
     tiff_read_buffer = frame_shift + 1
     if debug: print("...diff: img path", img_path)
 
@@ -76,11 +78,19 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             # define frames to compare
             frame = img[frame_reference_idx]
             next_frame = img[next_frame_idx]
+
             # get original frame indexes
             abs_frame_idx = buffer_idxs[frame_reference_idx]
             abs_next_frame_idx = buffer_idxs[next_frame_idx]
-            # if debug: print("...diff: abs frame:",abs_frame_idx,"abs next frame",abs_next_frame_idx)
 
+            # avoid artefacts of too big objects (other worms going into bin worm area)
+            # ignore frame if too big
+            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
+            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
+            if validated_frame == False or validated_next_frame == False:
+                frame_diff_arr[idx] = np.nan
+                continue
+                
             # fix frames based of centroid if needed
             if fix_crop:
                 next_frame = get_fixed_crop_based_on_centroid(frame, next_frame, centroid[abs_frame_idx],
@@ -194,31 +204,65 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
             # take frame
             curr_frame = page.asarray().astype(np.int16)
 
-            # get main segment
-            labeles = label(curr_frame)
-            segments = regionprops(labeles)
+            # get segments area
+            segments_area = get_segments_area(curr_frame,debug=debug)
 
             # make sure there's only one segment..
             # COMMENT: we could implement take the biggest if there's more than one
             if len(segments) == 1:
-                measured_area[jdx] = segments[0].area
+                measured_area[jdx] = segments_area[0]
             else:
                 # skip if there's not one clear object
                 continue
             jdx+=1
 
     average_ref_area = np.nanmean(measured_area)
-    if np.isnan(average_ref_area):
+    average_ref_area_std = np.nanstd(measured_area)
+
+    if np.isnan(average_ref_area) or np.isnan(average_ref_area_std):
         if debug: print("problem with getting worm average size")
         return None
 
-    return average_ref_area
+    return average_ref_area,average_ref_area_std
+
+def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=1.5,debug:bool=False):
+    """
+    Validates that a frame has exactly one worm object with the right size
+    considering an absolute zscore threshold
+
+    :param frame: binarized frame as numpy array
+    :param ref_size: size of reference to calculate zscore
+    :param ref_size_std: std of reference sizes to calculate zscore
+    :param zscore_thresh: zscore threshold
+    :param debug: bool, should print debug?
+
+    :return:
+    :param validated_frame: bool, is this frame validated?
+
+    """
+    validated_frame = False
+
+    segments_area_frame = get_segments_area(frame)
+    #if less than 1 object, or no objects do not validate frame
+
+    if segments_area_frame == 1:
+        area = segments_area_frame[0]
+    else:
+        if debug: print("frame not validated since no object or more than 1 object in frame")
+        return validated_frame
+
+    #if worm size in that frame is more than threshold throw it
+
+    zscore_area = (area-ref_size)/ref_size_std
+
+    if np.abs(zscore_area)<zscore_thresh:
+        validated_frame = True
+
+    return validated_frame
 
 def get_segments_area(segments,debug:bool=False):
     """
     segments: skimage label object
-    size_threshold: int
-        threshold for area to take
     """
 
     # use skimage to get properties of segments
@@ -230,10 +274,6 @@ def get_segments_area(segments,debug:bool=False):
     for idx, segment_prop in enumerate(segments_props):
         segments_area[idx] = segment_prop.area
 
-    # filter sizes
-    #     filtered_segments_area = segments_area[segments_area>threshold]
-    #     I decided better to filter outside this function
-    #     print(segments_area)
     return segments_area
 
 
