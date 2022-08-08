@@ -82,12 +82,12 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             abs_frame_idx = buffer_idxs[frame_reference_idx]
             abs_next_frame_idx = buffer_idxs[next_frame_idx]
 
-            # avoid artefacts of too big objects (other worms going into bin worm area)
-            # ignore frame if too big
-            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
-            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
+            # avoid artefacts of too big objects i.e., having more than one worm in frame
+            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold,debug=debug)
+            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold,debug=debug)
             if validated_frame == False or validated_next_frame == False:
                 frame_diff_arr[idx] = np.nan
+                if debug: print("...pixel_diff...frame skipped",idx)
                 continue
 
             # fix frames based of centroid if needed
@@ -244,16 +244,18 @@ def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=
     segments_area_frame = get_segments_area(frame)
     #if less than 1 object, or no objects do not validate frame
 
-    if segments_area_frame == 1:
+    if len(segments_area_frame) == 1:
         area = segments_area_frame[0]
     else:
-        if debug: print("frame not validated since no object or more than 1 object in frame")
+        if debug: print("...frame_diff...val_frame...not validated since no object or more than 1 object in frame")
+        # if debug: print("...frame_diff...val_frame...areas",segments_area_frame)
         return validated_frame
 
     #if worm size in that frame is more than threshold throw it
 
     zscore_area = (area-ref_size)/ref_size_std
 
+    # if debug: print("...frame_diff...val_frame...frame_area_zscore",zscore_area)
     if np.abs(zscore_area)<zscore_thresh:
         validated_frame = True
 
