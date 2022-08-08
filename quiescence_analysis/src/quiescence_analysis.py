@@ -50,7 +50,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
 
         # iterate over frames
         for idx, page in enumerate(tif.pages):
-            if debug: print("idx", idx)
+            # if debug: print("idx", idx)
             # preload first batch of stacks
             if idx < tiff_read_buffer - 1:
                 img[idx] = page.asarray()
