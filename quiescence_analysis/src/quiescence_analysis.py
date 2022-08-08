@@ -269,7 +269,7 @@ def get_segments_area(img,debug:bool=False):
     segments = label(img)
     # use skimage to get properties of segments
     segments_props = regionprops(segments)
-    if debug:print("....pixel_diff...segment area",len(segments),"# of segments")
+    if debug:print("....pixel_diff...segment area",len(segments_props),"# of segments")
     # initialize
     segments_area = np.zeros(len(segments_props))
     # loop over segments to get sizes
