@@ -91,8 +91,8 @@ def ethogram_figure(kymogram_df, ethogram_df):
     ax1.imshow(ethogram_df.values.T, origin="upper",cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100) #
     ax1.set_axis_off()
     ax2.imshow(kymogram_df.T, origin="upper", cmap='seismic', extent=[0, kymogram_df.shape[0], kymogram_df.shape[1], 0], vmin=-0.06, vmax=0.06, aspect=20)
-
-    return fig, axes
+    
+    return fig
 #generate pandas dataframe or vector or wahtever with Forward and Reversal annotation
 
 #Further behavioural annotation:
