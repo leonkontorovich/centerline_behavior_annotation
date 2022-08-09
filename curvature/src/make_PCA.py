@@ -40,7 +40,7 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
         last_body_part = int(segments[1])
         
     features = np.arange(first_body_part, last_body_part)# Separating out the features
-    data = no_nan_K_df.loc[:, features].values
+    data = no_nan_K_df.iloc[:, features].values
 
     #scale data
     data = StandardScaler().fit_transform(data)
@@ -53,7 +53,7 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
     
     #if output folder save the pca weight model
     if output_folder is not None:
-        pca_path=os.path.join(output_folder, "eignenworm_PCA_bodypart_"+str(first_body_part)+"_to_"+str(last_body_part)+".pkl")
+        pca_path=os.path.join(output_folder, "eigenworm_PCA_bodypart_"+str(first_body_part)+"_to_"+str(last_body_part)+".pkl")
         #print(pca_path)
         pickle.dump(pca, open(pca_path,"wb"))
         print("saved pca in: ", pca_path)
@@ -72,8 +72,8 @@ def concatenate_dataframes(dataframe_path_list:list):
 
 
 def pca_transform_data(pca_path, data):
-    pca_reload = pickle.load(open(pca_path, 'rb'))
-    principalComponents = pca_reload.transform(data)
+    pca = pickle.load(open(pca_path, 'rb'))
+    principalComponents = pca.transform(data)
     print(principalComponents.shape)
     principalDf = pd.DataFrame(data=principalComponents, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5'])
     return principalDf
@@ -457,7 +457,7 @@ def heatmap2d(arr: np.ndarray,v_min=-0.6,v_max=0.6):
 if __name__ == "__main__":
     import os
     #variables
-    K_df=pd.read_csv('/Users/ulises.rey/local_data/PCA_analysis/res.csv', header = None)
+    K_df=pd.read_csv('/Users/ulises.rey/local_data/PCA_analysis/skeleton_spline_K.csv')#, header = None)
     K_df.fillna(0, inplace=True)
     segments=[30,80]
     output_folder='/Users/ulises.rey/local_data/PCA_analysis/'
