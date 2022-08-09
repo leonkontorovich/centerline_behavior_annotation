@@ -1,6 +1,8 @@
 #import pckgs
 import pandas as pd
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
 from pickle import dump
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,7 +13,7 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
     """
     Make a PCA model of all K data, for eigenworm analysis
     gets K values from skeleton csv file, and then computes the PCA model
-    
+    #TODO: return only PCA, save outside the function
     Parameters:
     -----------
     K_df: pd.DataFrame
@@ -37,7 +39,7 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
         first_body_part = int(segments[0])
         last_body_part = int(segments[1])
         
-    features = np.arange(first_body_part,last_body_part)# Separating out the features
+    features = np.arange(first_body_part, last_body_part)# Separating out the features
     data = no_nan_K_df.loc[:, features].values
 
     #scale data
@@ -51,17 +53,32 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
     
     #if output folder save the pca weight model
     if output_folder is not None:
-        dump(pca, open(output_folder+"eignenworm_PCA_bodypart_"+str(first_body_part)+"_to_"+str(last_body_part)+".pkl","wb"))
-        print("saved pca in: "+output_folder+"pca.pkl")
+        pca_path=os.path.join(output_folder, "eignenworm_PCA_bodypart_"+str(first_body_part)+"_to_"+str(last_body_part)+".pkl")
+        #print(pca_path)
+        dump(pca, open(pca_path,"wb"))
+        print("saved pca in: ", pca_path)
     
     return pca
 
+def concatenate_dataframes(dataframe_path_list:list):
+    """
+    Concatenate dataframes from a list of dataframe paths
+    :param dataframe_path_list:
+    :return:
+    """
+    dfs = (pd.read_csv(p, encoding='utf8', header=None) for p in dataframe_path_list)
+    concatenated_df = pd.concat(dfs)
+    return concatenated_df
+
+
 def concat_curvature_data(filelist:list, number_of_segments:int=100):
     """
+    Deprecated: see concatenate_dataframes()
     this function collects curvature data from a list of worm curvature files
     and returns a pandas dataframe with all the curvature together
 
     """
+    print('Deprecated: see concatenate_dataframes()')
     K_df_all = pd.DataFrame(columns=np.arange(0,number_of_segments))
 
     for K_file in filelist:    
@@ -450,3 +467,12 @@ def heatmap2d(arr: np.ndarray,v_min=-0.6,v_max=0.6):
     plt.imshow(arr.T,origin="lower",cmap='seismic',vmin=v_min,vmax=v_max)
     plt.colorbar()
     return figure
+
+if __name__ == "__main__":
+    import os
+    #variables
+    K_df=pd.read_csv('/Users/ulises.rey/local_data/PCA_analysis/res.csv', header = None)
+    K_df.fillna(0, inplace=True)
+    segments=[30,80]
+    output_folder='/Users/ulises.rey/local_data/PCA_analysis/'
+    make_eigenworm_PCA_model(K_df, num_PCA_components = 5, segments=segments, output_folder=output_folder)
