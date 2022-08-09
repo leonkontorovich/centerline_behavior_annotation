@@ -83,6 +83,14 @@ def ethogram_figure(kymogram_df, ethogram_df):
     """
     Make an ethogram figure with the kymogram
     """
+    fig = plt.figure(dpi=150, figsize=(100,0.5))#, dpi=200
+    fig.tight_layout()
+    plt.subplots_adjust(left=0, bottom=0, wspace = 0, hspace = 0)
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, (2))
+    ax1.imshow(ethogram_df.values.T, origin="upper",cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100) #
+    ax1.set_axis_off()
+    ax2.imshow(kymogram_df.T, origin="upper", cmap='seismic', extent=[0, kymogram_df.shape[0], kymogram_df.shape[1], 0], vmin=-0.06, vmax=0.06, aspect=20)
 
     return fig, axes
 #generate pandas dataframe or vector or wahtever with Forward and Reversal annotation
@@ -101,6 +109,7 @@ if __name__ == "__main__":
 
 
     kymo_path = os.path.join(main_path, 'skeleton_spline_K.csv')
+    print(kymo_path)
 
     df = pd.read_csv(kymo_path, header=None)
     df.fillna(0, inplace=True)
@@ -111,7 +120,7 @@ if __name__ == "__main__":
     cross_product_df = calculate_cross_product(pc1_pc2_df)
 
     values_arr = binarize_cross_product(cross_product_df)
-    values_df=pd.DataFrame(values_arr)
+    values_df = pd.DataFrame(values_arr)
     values_df.to_csv(os.path.join(main_path, 'beh_annotation.csv'))
 
     # Plotting part
