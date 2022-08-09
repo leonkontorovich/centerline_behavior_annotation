@@ -1,11 +1,11 @@
 import sys
 
-sys.path.append(str('/Volumes/scratch/neurobiology/zimmer/ulises/code/curvature_analysis/curvature_analysis-pkg'))
+#sys.path.append(str('/Volumes/scratch/neurobiology/zimmer/ulises/code/curvature_analysis/curvature_analysis-pkg'))
 print(sys.path)
 
 import pandas as pd
-from curvature_analysis.dev.annotate_behaviour import *
-from curvature_analysis.src.make_PCA import *
+from curvature-analysis.dev.annotate_behaviour import *
+from curvature-analysis.src.make_PCA import *
 
 if __name__ == "__main__":
 
@@ -13,8 +13,8 @@ if __name__ == "__main__":
     import os
     import pandas as pd
     import numpy as np
-    from curvature_analysis.dev.annotate_behaviour import *
-    from curvature_analysis.src.make_PCA import *
+    from curvature-analysis.dev.annotate_behaviour import *
+    from curvature-analysis.src.make_PCA import *
 
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--i_path', help='input path', required=True)
