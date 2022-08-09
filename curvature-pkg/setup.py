@@ -4,7 +4,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="curvature_analysis",
+    name="curvature",
     version="0.0.1",
     author="Ulises Rey and Itamar Lev",
     author_email="ulises.rey@univie.ac.at",
