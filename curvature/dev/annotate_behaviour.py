@@ -19,7 +19,7 @@ def make_pca(df, inital_segment, end_segment, n_components):
     """
     #df.fillna(0, inplace=True)  # alternative change nans to zeros
     features = np.arange(inital_segment, end_segment)  # Separating out the features (starting bodypart, ending bodypart)
-    data = df.loc[:, features].values
+    data = df.iloc[:, features].values
     #scale data
     data = StandardScaler().fit_transform(data)
     print('data shape: ', data.shape)
@@ -100,43 +100,3 @@ def ethogram_figure(kymogram_df, ethogram_df):
 
 #Further behavioural annotation:
     #Turns and Dorsal Turns, Ventral Turns
-
-if __name__ == "__main__":
-    import argparse
-    import os
-
-    parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--i_path', help='input path', required=True)
-    args = vars(parser.parse_args())
-    main_path = args['i_path']
-
-
-    kymo_path = os.path.join(main_path, 'skeleton_spline_K.csv')
-    print(kymo_path)
-
-    df = pd.read_csv(kymo_path, header=None)
-    df.fillna(0, inplace=True)
-    initial_segment, end_segment, n_components = 30, 80, 5
-
-    pca, principalDf = make_pca(df, initial_segment, end_segment, n_components)
-    pc1_pc2_df = extract_vectors_from_PC_df(principalDf, avg_win=167)
-    cross_product_df = calculate_cross_product(pc1_pc2_df)
-
-    values_arr = binarize_cross_product(cross_product_df)
-    values_df = pd.DataFrame(values_arr)
-    values_df.to_csv(os.path.join(main_path, 'beh_annotation.csv'))
-
-    # Plotting part
-
-    # fig, ax = plt.subplots(figsize=(10, 2))
-    # ax.imshow(values_arr.reshape(1, -1), origin="upper", cmap='seismic', aspect=10000, vmin=-0.00005, vmax=0.00005)
-    # ax.set_axis_off()
-    # plt.show()
-    #
-    # fig2, axes = plt.subplots(nrows=3, figsize=(10, 2), sharex=True)
-    # axes[0].imshow(df.T, origin="upper", cmap='seismic', extent=[0, df.shape[0], df.shape[1], 0], aspect=10,
-    #             vmin=-0.06, vmax=0.06)
-    #
-    # pc1_pc2_df.plot(ax=axes[1])
-    # axes[2].imshow(values_arr.reshape(1, -1), origin="upper", cmap='seismic', aspect=1000, vmin=-0.00005, vmax=0.00005)
-    # plt.show()
