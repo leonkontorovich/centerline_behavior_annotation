@@ -73,8 +73,10 @@ def concatenate_dataframes(dataframe_path_list:list):
 
 def pca_transform_data(pca_path, data):
     pca_reload = pickle.load(open(pca_path, 'rb'))
-    result_new = pca_reload.transform(data)
-    return result_new
+    principalComponents = pca_reload.transform(data)
+    print(principalComponents.shape)
+    principalDf = pd.DataFrame(data=principalComponents, columns=['PC1', 'PC2', 'PC3', 'PC4', 'PC5'])
+    return principalDf
 
 
 def eigenworm_PCA_analysis(K_df,PCA_model,segments:list = None,output_path:str=None):
