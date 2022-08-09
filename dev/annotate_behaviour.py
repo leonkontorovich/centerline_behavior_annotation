@@ -20,6 +20,7 @@ def make_pca(df, inital_segment, end_segment, n_components):
     #df.fillna(0, inplace=True)  # alternative change nans to zeros
     features = np.arange(inital_segment, end_segment)  # Separating out the features (starting bodypart, ending bodypart)
     data = df.loc[:, features].values
+    #scale data
     data = StandardScaler().fit_transform(data)
     print('data shape: ', data.shape)
 
@@ -34,7 +35,7 @@ def make_pca(df, inital_segment, end_segment, n_components):
 def extract_vectors_from_PC_df(df, avg_win):
     """
     extracts PC1 and PC2 from PC dataframe (principalDf), averages them, and writes them in a new dataframe
-
+    #TODO: delete. pc1_df=df.loc[:,'PC1'].rolling(window=avg_window, center=True).mean() does the job. Needs to be combined with the TODO from calculate_cross_product()
     """
     x = df.loc[:, 'PC1'].rolling(window=avg_win, center=True).mean()
     y = df.loc[:, 'PC2'].rolling(window=avg_win, center=True).mean()
@@ -46,7 +47,8 @@ def extract_vectors_from_PC_df(df, avg_win):
 #calculate cross product
 def calculate_cross_product(pc1_pc2_df):
     """
-    calcualtes the cross product from the vectors in X and Y in the pc1_pc2_df
+    calcualte the cross product from the vectors in X and Y in the pc1_pc2_df
+    #TODO: take as input two separate df (or vectors)
     """
 
     # create empty array where each cross product value will be appended
