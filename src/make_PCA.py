@@ -26,8 +26,9 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
         recommended to focus on middle body parts   
     """
     #remove NaNs
-    no_nan_K_df = K_df.dropna()
-
+    #no_nan_K_df = K_df.dropna()
+    print('Nans are not being removed')
+    no_nan_K_df = K_df
     #focus on specific body segments PCA?
     if segments is None:
         first_body_part = 0
@@ -37,13 +38,16 @@ def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments
         last_body_part = int(segments[1])
         
     features = np.arange(first_body_part,last_body_part)# Separating out the features
-    no_nan_K_df = no_nan_K_df.loc[:, features].values
+    data = no_nan_K_df.loc[:, features].values
+
+    #scale data
+    data = StandardScaler().fit_transform(data)
         
     print("PCA is now performed on segments: "+str(first_body_part)+" to " +str(last_body_part))
     
     #get PCA
     pca = PCA(n_components=num_PCA_components)
-    principal_components = pca.fit_transform(no_nan_K_df)    
+    principal_components = pca.fit_transform(data)
     
     #if output folder save the pca weight model
     if output_folder is not None:
