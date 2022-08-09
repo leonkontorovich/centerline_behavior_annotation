@@ -1,7 +1,0 @@
-setup.py
-curvature_analysis.egg-info/PKG-INFO
-curvature_analysis.egg-info/SOURCES.txt
-curvature_analysis.egg-info/dependency_links.txt
-curvature_analysis.egg-info/top_level.txt
-src/__init__.py
-src/make_PCA.py
