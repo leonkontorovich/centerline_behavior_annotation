@@ -57,6 +57,7 @@ def binarize_cross_product(cross_product_df):
 
     return values_arr
 
+
 def ethogram_figure(kymogram_df, ethogram_df):
     """
     Make an ethogram figure with the kymogram
@@ -76,7 +77,7 @@ def rename_beh_annotation(df, rename_dict):
     """
     rename from -1,1 to 'reversal, 'forward' with a dictionary
     """
-
+    renamed_df=df #modify
     return renamed_df
 
 #generate pandas dataframe or vector or wahtever with Forward and Reversal annotation
