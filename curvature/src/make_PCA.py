@@ -56,20 +56,24 @@ def pca_transform_data(pca_path, data):
 
 if __name__ == "__main__":
     import os
+    from datetime import datetime
 
     # variables
-    df = pd.read_csv('/Users/ulises.rey/local_data/PCA_analysis/skeleton_spline_K.csv')  # , header = None)
+    df = pd.read_csv('/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220729/20220729_12ms/analysis/merged_skeleton_spline_K.csv')  # , header = None)
     df.fillna(0, inplace=True)
-    inital_segment, end_segment = 30, 80
+    initial_segment, end_segment = 30, 80
     n_components = 5
-    pca, principal_components = make_pca(df, inital_segment, end_segment, n_components)
+    pca, principal_components = make_pca(df, initial_segment, end_segment, n_components)
 
     # save pc
-    output_folder = '/Users/ulises.rey/local_data/PCA_analysis/'
+    output_folder = '/Volumes/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/'
     columns = ['PC' + str(i) for i in range(1, n_components + 1)]
     principal_df = pd.DataFrame(data=principal_components, columns=columns)
     principal_df.to_csv(os.path.join(output_folder, 'principal_components.csv'))
+
     # save pca object
+    date_string=datetime.now().strftime("%H%M_%Y%m%d")
+    print(date_string)
     pca_path = os.path.join(output_folder,
-                            "eigenworm_PCA_bodypart_" + str(inital_segment) + "_to_" + str(end_segment) + ".pkl")
+                            date_string+"_eigenworm_PCA_bodypart_" + str(initial_segment) + "_to_" + str(end_segment) + ".pkl")
     pickle.dump(pca, open(pca_path, "wb"))
