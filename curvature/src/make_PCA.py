@@ -23,7 +23,7 @@ def make_pca(df, inital_segment, end_segment, n_components):
 
     features = np.arange(inital_segment,
                          end_segment)  # Separating out the features (starting bodypart, ending bodypart)
-    data = df.iloc[:, features].values
+    data = df.loc[:, features].values
     # scale data
     data = StandardScaler().fit_transform(data)
     # print('data shape: ', data.shape)
@@ -59,7 +59,8 @@ if __name__ == "__main__":
     from datetime import datetime
 
     # variables
-    df = pd.read_csv('/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220729/20220729_12ms/analysis/merged_skeleton_spline_K.csv')  # , header = None)
+    spline_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220729/20220729_12ms/analysis/merged_skeleton_spline_K.csv'
+    df = pd.read_csv(spline_path, header = None)
     df.fillna(0, inplace=True)
     initial_segment, end_segment = 30, 80
     n_components = 5
@@ -73,7 +74,7 @@ if __name__ == "__main__":
     # save principal components
     columns = ['PC' + str(i) for i in range(1, n_components + 1)]
     principal_df = pd.DataFrame(data=principal_components, columns=columns)
-    principal_df.to_csv(os.path.join(output_folder, 'principal_components.csv'))
+    principal_df.to_csv(os.path.join(output_folder, 'principal_components.csv'), index=False)
 
     # save pca object
     date_string=datetime.now().strftime("%H%M_%Y%m%d")
