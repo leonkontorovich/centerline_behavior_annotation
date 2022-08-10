@@ -109,7 +109,7 @@ if __name__ == "__main__":
     data = df.loc[:, features].values
     principal_components_df = pca_transform_data(pca_path, data)
     # save PCs?
-    principal_components_df.to_csv(os.path.join(main_path, 'principal_components.csv'))
+    principal_components_df.to_csv(os.path.join(main_path, 'principal_components.csv'), index=False)
 
     pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=average_window)
     cross_product_df = calculate_cross_product(pc1_pc2_df)
