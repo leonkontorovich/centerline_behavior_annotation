@@ -103,10 +103,10 @@ if __name__ == "__main__":
     pca_path = args['pca_model_path']
 
 
-    df = pd.read_csv(os.path.join(main_path, 'skeleton_spline_K.csv'))
+    df = pd.read_csv(os.path.join(main_path, 'skeleton_spline_K.csv'), header=None)
     df.fillna(0, inplace=True)  # alternative change nans to zeros
     features = np.arange(30, 80)  # Separating out the features (starting bodypart, ending bodypart)
-    data = df.iloc[:, features].values
+    data = df.loc[:, features].values
     principal_components_df = pca_transform_data(pca_path, data)
     # save PCs?
     principal_components_df.to_csv(os.path.join(main_path, 'principal_components.csv'))
