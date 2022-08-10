@@ -63,10 +63,14 @@ if __name__ == "__main__":
     df.fillna(0, inplace=True)
     initial_segment, end_segment = 30, 80
     n_components = 5
+    #output folder
+    output_folder = '/Volumes/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/'
+
+
+    #do PCA
     pca, principal_components = make_pca(df, initial_segment, end_segment, n_components)
 
-    # save pc
-    output_folder = '/Volumes/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/'
+    # save principal components
     columns = ['PC' + str(i) for i in range(1, n_components + 1)]
     principal_df = pd.DataFrame(data=principal_components, columns=columns)
     principal_df.to_csv(os.path.join(output_folder, 'principal_components.csv'))
