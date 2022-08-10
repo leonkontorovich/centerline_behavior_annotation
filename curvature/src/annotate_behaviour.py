@@ -96,6 +96,8 @@ if __name__ == "__main__":
     parser.add_argument('-i', '--i_path', help='input path', required=True)
     parser.add_argument('-pca', '--pca_model_path', help='path tot he PCA model', required=True)
 
+    average_window=167
+
     args = vars(parser.parse_args())
     main_path = args['i_path']
     pca_path = args['pca_model_path']
@@ -109,7 +111,7 @@ if __name__ == "__main__":
     # save PCs?
     principal_components_df.to_csv(os.path.join(main_path, 'principal_components.csv'))
 
-    pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=167)
+    pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=average_window)
     cross_product_df = calculate_cross_product(pc1_pc2_df)
 
     values_arr = binarize_cross_product(cross_product_df)
