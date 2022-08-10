@@ -22,4 +22,4 @@ if __name__ == "__main__":
 
     values_arr = binarize_cross_product(cross_product_df)
     values_df = pd.DataFrame(values_arr)
-    values_df.to_csv(os.path.join(main_path, 'beh_annotation.csv'))
+    values_df.to_csv(os.path.join(main_path, 'beh_annotation_single_worm.csv'))

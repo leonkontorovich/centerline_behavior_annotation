@@ -71,7 +71,46 @@ def ethogram_figure(kymogram_df, ethogram_df):
     ax2.imshow(kymogram_df.T, origin="upper", cmap='seismic', extent=[0, kymogram_df.shape[0], kymogram_df.shape[1], 0], vmin=-0.06, vmax=0.06, aspect=20)
     
     return fig
+
+def rename_beh_annotation(df, rename_dict):
+    """
+    rename from -1,1 to 'reversal, 'forward' with a dictionary
+    """
+
+    return renamed_df
+
 #generate pandas dataframe or vector or wahtever with Forward and Reversal annotation
 
 #Further behavioural annotation:
     #Turns and Dorsal Turns, Ventral Turns
+
+if __name__ == "__main__":
+    import argparse
+    import os
+    import pandas as pd
+    import numpy as np
+    from curvature.src.make_PCA import *
+
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--i_path', help='input path', required=True)
+    parser.add_argument('-pca', '--pca_model_path', help='path tot he PCA model', required=True)
+
+    args = vars(parser.parse_args())
+    main_path = args['i_path']
+    pca_path = args['pca_model_path']
+
+
+    df = pd.read_csv(os.path.join(main_path, 'skeleton_spline_K.csv'))
+    df.fillna(0, inplace=True)  # alternative change nans to zeros
+    features = np.arange(30, 80)  # Separating out the features (starting bodypart, ending bodypart)
+    data = df.iloc[:, features].values
+    principal_components_df = pca_transform_data(pca_path, data)
+    # save PCs?
+    principal_components_df.to_csv(os.path.join(main_path, 'principal_components.csv'))
+
+    pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=167)
+    cross_product_df = calculate_cross_product(pc1_pc2_df)
+
+    values_arr = binarize_cross_product(cross_product_df)
+    values_df = pd.DataFrame(values_arr)
+    values_df.to_csv(os.path.join(main_path, 'beh_annotation.csv'))
