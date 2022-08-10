@@ -9,56 +9,30 @@ import matplotlib.pyplot as plt
 
 #i can do what ever i want since it is my branch
 
-def make_eigenworm_PCA_model(K_df:pd.DataFrame,num_PCA_components:int=5,segments:list=None,output_folder:str=None):
+def make_pca(df, inital_segment, end_segment, n_components):
     """
-    Make a PCA model of all K data, for eigenworm analysis
-    gets K values from skeleton csv file, and then computes the PCA model
-    #TODO: return only PCA, save outside the function
-    Parameters:
-    -----------
-    K_df: pd.DataFrame
-        dataframe holding the K values
-    num_PCA_components: int
-       the number of PCA components to compute
-    anotation_names:list
-        names of anotation of head and then the tail.
-    segments:list
-        the number of the first bodypart segment to use for analysis
-        default is 0, meaning the first one. 
-        recommended to focus on middle body parts   
+    Perform PCA analysis on a dataframe, specifying the start and end in the dataframe
+    #TODO: Probably the dataframe should be curated outside this function
+    :param df: dataframe without Nans
+    :param inital_segment: int, initial segment
+    :param end_segment: int, end segment
+    :param n_components: number of PC components
+    :return:
+    pca, pca object
+    principal_components, principal components
     """
-    #remove NaNs
-    #no_nan_K_df = K_df.dropna()
-    print('Nans are not being removed')
-    no_nan_K_df = K_df
-    #focus on specific body segments PCA?
-    if segments is None:
-        first_body_part = 0
-        last_body_part = K_df.shape[1]
-    else:
-        first_body_part = int(segments[0])
-        last_body_part = int(segments[1])
-        
-    features = np.arange(first_body_part, last_body_part)# Separating out the features
-    data = no_nan_K_df.iloc[:, features].values
 
+    features = np.arange(inital_segment, end_segment)  # Separating out the features (starting bodypart, ending bodypart)
+    data = df.iloc[:, features].values
     #scale data
     data = StandardScaler().fit_transform(data)
-        
-    print("PCA is now performed on segments: "+str(first_body_part)+" to " +str(last_body_part))
-    
-    #get PCA
-    pca = PCA(n_components=num_PCA_components)
+    #print('data shape: ', data.shape)
+
+    # PCA
+    pca = PCA(n_components=n_components)
     principal_components = pca.fit_transform(data)
-    
-    #if output folder save the pca weight model
-    if output_folder is not None:
-        pca_path=os.path.join(output_folder, "eigenworm_PCA_bodypart_"+str(first_body_part)+"_to_"+str(last_body_part)+".pkl")
-        #print(pca_path)
-        pickle.dump(pca, open(pca_path,"wb"))
-        print("saved pca in: ", pca_path)
-    
-    return pca
+
+    return pca, principal_components
 
 def concatenate_dataframes(dataframe_path_list:list):
     """
