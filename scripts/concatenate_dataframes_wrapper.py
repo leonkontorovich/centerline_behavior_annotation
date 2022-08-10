@@ -1,4 +1,3 @@
-
 if __name__ == "__main__":
     import argparse
     import glob
@@ -13,4 +12,5 @@ if __name__ == "__main__":
     concatenated_dataframe = concatenate_dataframes(dataframe_path_list)
 
     output_path = '/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220729/20220729_12ms/analysis/merged_skeleton_spline_K.csv'
-    concatenated_dataframe.to_csv(output_path)
+    #very important to have index and header to False!
+    concatenated_dataframe.to_csv(output_path, index=False, header=False)
