@@ -313,6 +313,46 @@ def calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug:
 
     return pixel_diff
 
+def get_quiescence(speed_arr, pixel_diff_arr, speed_threshold, pixel_diff_threshold, debug: bool = False):
+    """
+    receives two time matched numpy arrays with centroid speed and with pixel difference
+    returns a binary array of the same length indicating whether worm was quiescent
+    based on speed and pixel diff thresholds
+
+    Parameters
+    ----------
+    speed_arr: np.array
+        numpy array holding worm centroid speed
+    pixel_diff_arr: np.array
+        numpy array holding pixel difference
+    speed_threshold: float
+        threshold number, below this number the worms speed is too slow
+    pixel_diff_threshold:float
+        below this number worm does not move
+    """
+    # merge into a pandas dataframe
+    speed_vs_pixel_df = pd.DataFrame()
+    speed_vs_pixel_df['speed'] = speed_arr
+    speed_vs_pixel_df['pixel_diff'] = pixel_diff_arr
+
+    # keep na values
+    nan_idx = speed_vs_pixel_df[speed_vs_pixel_df.isnull().any(axis=1)].index
+
+    # initialize quiescence array
+    quiescence_arr = np.zeros(speed_vs_pixel_df.shape[0])
+
+    # condition on thresholds
+    quiescence_idx = speed_vs_pixel_df[
+        (speed_vs_pixel_df['speed'] < speed_threshold) & (speed_vs_pixel_df['pixel_diff'] < pixel_diff_threshold)].index
+
+    # set 1 when worm is quiescence
+    quiescence_arr[quiescence_idx] = 1
+
+    # return original nan values
+    quiescence_arr[nan_idx] = np.nan
+
+    return quiescence_arr
+
 ### functions used only during development of this package ###
 
 def load_tiff(input_filename: str):
@@ -389,42 +429,3 @@ def get_crop_positions_from_mat(mat,wormID:int):
 
     return centroid
 
-def get_quiescence(speed_arr, pixel_diff_arr, speed_threshold, pixel_diff_threshold, debug: bool = False):
-    """
-    receives two time matched numpy arrays with centroid speed and with pixel difference
-    returns a binary array of the same length indicating whether worm was quiescent
-    based on speed and pixel diff thresholds
-
-    Parameters
-    ----------
-    speed_arr: np.array
-        numpy array holding worm centroid speed
-    pixel_diff_arr: np.array
-        numpy array holding pixel difference
-    speed_threshold: float
-        threshold number, below this number the worms speed is too slow
-    pixel_diff_threshold:float
-        below this number worm does not move
-    """
-    # merge into a pandas dataframe
-    speed_vs_pixel_df = pd.DataFrame()
-    speed_vs_pixel_df['speed'] = speed_arr
-    speed_vs_pixel_df['pixel_diff'] = pixel_diff_arr
-
-    # keep na values
-    nan_idx = speed_vs_pixel_df[speed_vs_pixel_df.isnull().any(axis=1)].index
-
-    # initialize quiescence array
-    quiescence_arr = np.zeros(speed_vs_pixel_df.shape[0])
-
-    # condition on thresholds
-    quiescence_idx = speed_vs_pixel_df[
-        (speed_vs_pixel_df['speed'] < speed_threshold) & (speed_vs_pixel_df['pixel_diff'] < pixel_diff_threshold)].index
-
-    # set 1 when worm is quiescence
-    quiescence_arr[quiescence_idx] = 1
-
-    # return original nan values
-    quiescence_arr[nan_idx] = np.nan
-
-    return quiescence_arr
