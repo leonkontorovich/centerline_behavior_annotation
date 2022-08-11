@@ -6,8 +6,7 @@ from skimage.measure import label, regionprops
 from scipy.stats import zscore
 
 
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5
-                   debug: bool = False):
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5, debug: bool = False):
     """
     Calculates difference in pixels between two time points
     it recieves a binarized image and outputs a numpy array of pixel_diffs
@@ -85,10 +84,11 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
 
             # avoid artefacts of too big objects (other worms going into bin worm area)
             # ignore frame if too big
-            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
-            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
+            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold,debug=debug)
+            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold,debug=debug)
             if validated_frame == False or validated_next_frame == False:
                 frame_diff_arr[idx] = np.nan
+                if debug: print("...pixel_diff...frame skipped",idx)
                 continue
 
             # fix frames based of centroid if needed
@@ -209,7 +209,7 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
 
             # make sure there's only one segment..
             # COMMENT: we could implement take the biggest if there's more than one
-            if len(segments) == 1:
+            if len(segments_area) == 1:
                 measured_area[jdx] = segments_area[0]
             else:
                 # skip if there's not one clear object
@@ -245,16 +245,18 @@ def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=
     segments_area_frame = get_segments_area(frame)
     #if less than 1 object, or no objects do not validate frame
 
-    if segments_area_frame == 1:
+    if len(segments_area_frame) == 1:
         area = segments_area_frame[0]
     else:
-        if debug: print("frame not validated since no object or more than 1 object in frame")
+        if debug: print("...frame_diff...val_frame...not validated since no object or more than 1 object in frame")
+        if debug: print("...frame_diff...val_frame...areas",segments_area_frame)
         return validated_frame
 
     #if worm size in that frame is more than threshold throw it
 
     zscore_area = (area-ref_size)/ref_size_std
 
+    if debug: print("...frame_diff...val_frame...frame_area_zscore",zscore_area)
     if np.abs(zscore_area)<zscore_thresh:
         validated_frame = True
 

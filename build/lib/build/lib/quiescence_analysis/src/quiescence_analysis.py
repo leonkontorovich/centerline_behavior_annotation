@@ -50,7 +50,7 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
 
         # iterate over frames
         for idx, page in enumerate(tif.pages):
-            if debug: print("idx", idx)
+            # if debug: print("idx", idx)
             # preload first batch of stacks
             if idx < tiff_read_buffer - 1:
                 img[idx] = page.asarray()
@@ -82,12 +82,12 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
             abs_frame_idx = buffer_idxs[frame_reference_idx]
             abs_next_frame_idx = buffer_idxs[next_frame_idx]
 
-            # avoid artefacts of too big objects (other worms going into bin worm area)
-            # ignore frame if too big
-            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
-            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold)
+            # avoid artefacts of too big objects i.e., having more than one worm in frame
+            validated_frame = validate_frame(frame=frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold,debug=debug)
+            validated_next_frame = validate_frame(frame=next_frame, ref_size=ref_size, ref_size_std=ref_size_std,zscore_thresh=zscore_threshold,debug=debug)
             if validated_frame == False or validated_next_frame == False:
                 frame_diff_arr[idx] = np.nan
+                if debug: print("...pixel_diff...frame skipped",idx)
                 continue
 
             # fix frames based of centroid if needed
@@ -208,7 +208,7 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
 
             # make sure there's only one segment..
             # COMMENT: we could implement take the biggest if there's more than one
-            if len(segments) == 1:
+            if len(segments_area) == 1:
                 measured_area[jdx] = segments_area[0]
             else:
                 # skip if there's not one clear object
@@ -241,32 +241,35 @@ def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=
     """
     validated_frame = False
 
-    segments_area_frame = get_segments_area(frame)
+    segments_area_frame = get_segments_area(frame,debug=debug)
     #if less than 1 object, or no objects do not validate frame
 
-    if segments_area_frame == 1:
+    if len(segments_area_frame) == 1:
         area = segments_area_frame[0]
     else:
-        if debug: print("frame not validated since no object or more than 1 object in frame")
+        if debug: print("...frame_diff...val_frame...not validated since no object or more than 1 object in frame")
+        # if debug: print("...frame_diff...val_frame...areas",segments_area_frame)
         return validated_frame
 
     #if worm size in that frame is more than threshold throw it
 
     zscore_area = (area-ref_size)/ref_size_std
 
+    # if debug: print("...frame_diff...val_frame...frame_area_zscore",zscore_area)
     if np.abs(zscore_area)<zscore_thresh:
         validated_frame = True
 
     return validated_frame
 
-def get_segments_area(segments,debug:bool=False):
+def get_segments_area(img,debug:bool=False):
     """
-    segments: skimage label object
+    img : numpy array, image to segment and get segments area
     """
-
+    # get segments
+    segments = label(img)
     # use skimage to get properties of segments
     segments_props = regionprops(segments)
-    if debug:print(".......segment area",len(segments),"segments")
+    if debug:print("....pixel_diff...segment area",len(segments),"# of segments")
     # initialize
     segments_area = np.zeros(len(segments_props))
     # loop over segments to get sizes
@@ -298,10 +301,8 @@ def calculate_pixel_diff(frame, next_frame, ref_size, norm_size_threshold,debug:
     # calcualte the diff between frames, take absolute diff
     frames_diff = np.abs(next_frame - frame)
     # if debug: print("...calc pixel diff - total diff",frames_diff.sum())
-    # get segments
-    segments = label(frames_diff)
     # get area
-    segments_area = get_segments_area(segments,debug=debug)
+    segments_area = get_segments_area(frames_diff,debug=debug)
     # normalize to reference size (worm size)
     norm_segments_area = (segments_area / ref_size) * 100
     # filter segments
