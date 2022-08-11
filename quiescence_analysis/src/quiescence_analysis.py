@@ -4,7 +4,7 @@ import numpy as np
 import tifffile as tiff
 from skimage.measure import label, regionprops
 from scipy.stats import zscore
-
+import pandas as pd
 
 def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5, debug: bool = False):
     """
