@@ -1,6 +1,7 @@
 if __name__ == "__main__":
     import argparse
     import os
+    import pandas as pd
 
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--i_path', help='input path', required=True)
