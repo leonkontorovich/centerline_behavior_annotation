@@ -229,6 +229,6 @@ dependencies:
     - requests-unixsocket==0.2.0
     - skan==0.9
     - sniffio==1.2.0
-    - tifffile==2021.3.31
+    - tifffile==2021.11.2
     - websocket-client==1.2.0
 prefix: /scratch/neurobiology/zimmer/ulises/.conda/envs/openCV
