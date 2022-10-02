@@ -21,6 +21,8 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         threshold to remove small object noise
     zscore_threshold: float
         absolute zscore threshold to remove frames where worm is too big/small than the rest
+    norm_size_threshold: float
+        threshold for ignoring small differences, given as fraction of reference size
     """
 
     # decide if frame cropping should be corrected
