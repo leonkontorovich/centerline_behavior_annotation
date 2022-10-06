@@ -333,12 +333,30 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
 
 #run code locally
 if __name__ == '__main__':
-    hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substractedDLC_resnet50_wbfm_noise_tailJun13shuffle1_175000.h5'
-    tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substracted_unet_segmented_weights_2626261_1_V2_mask.btf'
-    csv_output_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/skel_test/2022-01-27_21-26-53_worm4'
+    import argparse
 
-    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
-                              fill_with_DLC=False)
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--input_tiff_path', help='input path', required=True)
+    parser.add_argument('-h', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
+    parser.add_argument('-csv', '--csv_output_path', help='csv_output_path', required=True)
+    parser.add_argument('-n', '--number_of_neighbors', help='number_of_neighbors', required=False)
+    parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC', required=False)
+
+    args = vars(parser.parse_args())
+    tiff_path = args['input_tiff_path']
+    hdf5_dlc_path = args['hdf5_dlc_path']
+    csv_output_path = args['csv_output_path']
+    number_of_neighbors = args['number_of_neighbours']
+    fill_with_DLC = args['fill_with_DLC'] #Not sure this will work, parsing True and false statements is not trivial
+
+
+
+    #hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substractedDLC_resnet50_wbfm_noise_tailJun13shuffle1_175000.h5'
+    #tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substracted_unet_segmented_weights_2626261_1_V2_mask.btf'
+    #csv_output_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/skel_test/2022-01-27_21-26-53_worm4'
+
+    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=number_of_neighbors,
+                              fill_with_DLC=fill_with_DLC)
 
 #run code locally for mara
 # hdf5_dlc_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1_mjpeg_AdC_0722_w1DLC_resnet50_reversalAnn2Oct8shuffle1_82000.h5'
