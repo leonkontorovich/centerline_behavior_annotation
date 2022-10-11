@@ -264,22 +264,22 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     csvfile_corrected_tail = open(csv_output_path + '_skeleton_corrected_tail_coords.csv', 'w', newline='')
     csv_writer_tail = csv.writer(csvfile_corrected_tail)
 
-    csvfilePathX = open(csv_output_path + '_skeleton_X_coords.csv', 'w', newline='')
+    csvfilePathX = open(csv_output_path + '_skeleton_skeleton_X_coords.csv', 'w', newline='')
     csv_writerPathX = csv.writer(csvfilePathX)
 
-    csvfilePathX = open(csv_output_path + '_skeleton_X_coords.csv', 'w', newline='')
+    csvfilePathX = open(csv_output_path + '_skeleton_skeleton_X_coords.csv', 'w', newline='')
     csv_writerPathX = csv.writer(csvfilePathX)
 
-    csvfilePathY = open(csv_output_path + '_skeleton_Y_coords.csv', 'w', newline='')
+    csvfilePathY = open(csv_output_path + '_skeleton_skeleton_Y_coords.csv', 'w', newline='')
     csv_writerPathY = csv.writer(csvfilePathY)
 
-    csvfileX = open(csv_output_path + '_spline_X_coords.csv', 'w', newline='')
+    csvfileX = open(csv_output_path + '_skeleton_spline_X_coords.csv', 'w', newline='')
     csv_writerX = csv.writer(csvfileX)
 
-    csvfileY = open(csv_output_path + '_spline_Y_coords.csv', 'w', newline='')
+    csvfileY = open(csv_output_path + '_skeleton_spline_Y_coords.csv', 'w', newline='')
     csv_writerY = csv.writer(csvfileY)
 
-    csvfileK = open(csv_output_path + '_spline_K.csv', 'w', newline='')
+    csvfileK = open(csv_output_path + '_skeleton_spline_K.csv', 'w', newline='')
     csv_writerK = csv.writer(csvfileK)
 
     # iterate over pages of the tiff file
@@ -337,17 +337,17 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_tiff_path', help='input path', required=True)
-    parser.add_argument('-h', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
+    parser.add_argument('-h5', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
     parser.add_argument('-csv', '--csv_output_path', help='csv_output_path', required=True)
     parser.add_argument('-n', '--number_of_neighbors', help='number_of_neighbors', required=False)
-    parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC', required=False)
+    parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
 
     args = vars(parser.parse_args())
     tiff_path = args['input_tiff_path']
     hdf5_dlc_path = args['hdf5_dlc_path']
     csv_output_path = args['csv_output_path']
-    number_of_neighbors = args['number_of_neighbours']
-    fill_with_DLC = args['fill_with_DLC'] #Not sure this will work, parsing True and false statements is not trivial
+    number_of_neighbors = int(args['number_of_neighbors'])
+    fill_with_DLC = int(args['fill_with_DLC']) #Not sure this will work, parsing True and false statements is not trivial
 
 
 
