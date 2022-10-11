@@ -45,18 +45,29 @@ if __name__ == "__main__":
     #run it with cluster_jobs/array_job_directories.sh
     import argparse
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--i_path', help='input path', required=True)
+    parser.add_argument('-i_K', '--input_spline_K', help='csv file with the spline curvature', required=True)
+    parser.add_argument('-i_X', '--input_spline_X', help='csv file with the spline X coords', required=True)
+    parser.add_argument('-i_Y', '--input_spline_Y', help='csv file with the spline Y coords', required=True)
+    parser.add_argument('-o', '--o_path', help='output path, has t be .csv file', required=True)
 
     args = vars(parser.parse_args())
-    input_path = args['i_path']
-    print('This is the input path python is seeing: ', input_path)
-    df_splineX, df_splineY, df_splineK = read_skeleton_files(input_path)
+    spline_K = args['input_spline_K']
+    spline_X = args['input_spline_X']
+    spline_Y = args['input_spline_Y']
+
+    output_path = args['o_path']
+
+    df_splineK = pd.read_csv(spline_K, header=None)
+    df_splineX = pd.read_csv(spline_X, header=None)
+    df_splineY = pd.read_csv(spline_Y, header=None)
+
 
     # TODO: improve this in a loop
+    df_splineK = df_splineK.round(decimals=6)
     df_splineX = df_splineX.round(decimals=2)
     df_splineY = df_splineY.round(decimals=2)
-    df_splineK = df_splineK.round(decimals=6)
+
 
     new_df = reformat_skeleton_files(df_splineX, df_splineY, df_splineK)
-    new_df.to_csv(os.path.join(input_path, 'skeleton_spline_merged.csv'))
+    new_df.to_csv(output_path)
     print('python complete')
