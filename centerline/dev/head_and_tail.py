@@ -267,9 +267,6 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     csvfilePathX = open(csv_output_path + '_skeleton_skeleton_X_coords.csv', 'w', newline='')
     csv_writerPathX = csv.writer(csvfilePathX)
 
-    csvfilePathX = open(csv_output_path + '_skeleton_skeleton_X_coords.csv', 'w', newline='')
-    csv_writerPathX = csv.writer(csvfilePathX)
-
     csvfilePathY = open(csv_output_path + '_skeleton_skeleton_Y_coords.csv', 'w', newline='')
     csv_writerPathY = csv.writer(csvfilePathY)
 
