@@ -88,6 +88,7 @@ def calculate_speeds(positions_over_time):
     Return a Speed dataframe from a Dataframe containing X and Y coordinates (only)
     source: https://codereview.stackexchange.com/questions/158688/calculating-speed-from-a-pandas-dataframe-with-time-x-and-y-columns
     """
+    print('Do not use this function, use worm_speed() instead. See behaviour_analysis package, calculate_parameters')
     #Filter the dataframe so that it only has the input it needs
     positions_over_time=positions_over_time.filter(['X', 'Y', 'Time Elapsed'])
     time = 'Time Elapsed'
