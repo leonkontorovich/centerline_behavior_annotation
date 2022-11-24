@@ -4,8 +4,11 @@ import matplotlib.pyplot as plt
 import glob
 import os
 
-
 def worm_speed(df):
+    """Calculates the speed in mm/s of a dataframe which has timestamps in ms as index
+    Copy of Charlie function in https://github.com/Zimmer-lab/wbfm/blob/a34c976cf73edea837ce1e2326b974ef36390962/wbfm/utils/general/postures/centerline_classes.py#L239
+    """
+    #TODO: This speed is not by default in mm/s, it is only in mm/s based on the current timestamp
 
     speed = np.sqrt(np.gradient(df['X']) ** 2 + np.gradient(df['Y']) ** 2)
 
@@ -16,42 +19,45 @@ def worm_speed(df):
 
     return speed_mm_per_s
 
+def read_and_save_speed(project):
+    """
+    wrapper
+    :param project:
+    :return:
+    """
+    #print(project)
 
-main_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/*worm[1-9]/*TablePosRecord.txt"
-df_list = glob.glob(main_path, recursive=True)
-print(df_list)
-
-#df_list = ["/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221119/data/ZIM2165_Gcamp7b_worm5_2/2022-11-19_15-06_ZIM2165_GC7b_worm5_2-TablePosRecord.txt"]
-
-mean_speed_list = []
-median_speed_list = []
-for df_path in df_list:
-    #print(df_path)
+    df_path = glob.glob(os.path.join(project,"*TablePosRecord.txt"))[0]
     df = pd.read_csv(df_path, index_col='time')
 
     df.index = pd.DatetimeIndex(df.index)
 
-
+    #print('entered function')
     speed_mm_per_s = worm_speed(df)
+    #print(speed_mm_per_s)
+    speed_mm_per_s_df = pd.DataFrame()
+    speed_mm_per_s_df['Raw Speed (mm/s)']=speed_mm_per_s
+    behaviour_directory = glob.glob(os.path.join(project+"/*BH"))[0]
+    #print(behaviour_directory)
+    speed_mm_per_s_df.to_csv(os.path.join(behaviour_directory, 'raw_worm_speed.csv'))
+    #print('saved to csv')
 
-    #print(type(speed_mm_per_s))
+project = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
+read_and_save_speed(project)
 
-    # print("mean is ", np.mean(speed_mm_per_s))
-    if np.mean(speed_mm_per_s) != 0:
-        mean_speed_list.append(round(np.mean(speed_mm_per_s),3))
-        # print("median is ", np.median(speed_mm_per_s))
-    if np.median(speed_mm_per_s) != 0:
-        median_speed_list.append(round(np.median(speed_mm_per_s),3))
 
-print(mean_speed_list)
 
-print(median_speed_list)
+#TODO: Add argparse
 
-fig, axes = plt.subplots(ncols=2)
-axes[0].hist(mean_speed_list, 20)
-axes[1].hist(median_speed_list, 20)
+# if __name__ == "__main__":
+#     import argparse
+#
+#     parser = argparse.ArgumentParser(description='Description of your program')
+#     parser.add_argument('-i_K', '--input_spline_K', help='csv file with the spline curvature', required=True)
+#
+#     args = vars(parser.parse_args())
+#     spline_K = args['input_spline_K']
 
-for ax in axes:
-    ax.set_xlim([0, .3])
-plt.show()
+
+    #read_and_save_speed(project)
 
