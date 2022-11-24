@@ -89,8 +89,8 @@ def calculate_speeds(positions_over_time):
     source: https://codereview.stackexchange.com/questions/158688/calculating-speed-from-a-pandas-dataframe-with-time-x-and-y-columns
     """
     #Filter the dataframe so that it only has the input it needs
-    positions_over_time=positions_over_time.filter(['X', 'Y', 'time'])
-    time = 'time'
+    positions_over_time=positions_over_time.filter(['X', 'Y', 'Time Elapsed'])
+    time = 'Time Elapsed'
 
     movements_over_timesteps = (
         np.roll(positions_over_time, -1, axis=0)
