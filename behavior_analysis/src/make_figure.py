@@ -55,6 +55,9 @@ def plot_kymogram(kymo_path, axes):
 
 if __name__ == '__main__':
 
+    # TODO: add beh annotation in speed plot
+    # add head speed, total curvature, PC1, PC2, PC3, etc. See notebook wbfm_analysis
+    # TODO: make it for every worm
 
     main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
     project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
@@ -123,5 +126,7 @@ if __name__ == '__main__':
     ax6.set_xlim([-.2, .2])
     ax6.set_xlabel('Speed (mm/s)')
 
+    plt.savefig(os.path.join(project_folder, 'behavioural_figure.png'), dpi=1500)
+    plt.show()
 
-    #plt.show()
+    print('end of script')
