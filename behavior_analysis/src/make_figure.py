@@ -3,11 +3,12 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import pandas as pd
+import numpy as np
 import os
 import glob
 
 from centerline.dev.track_plotting_functions import plot_tracks
-
+from imutils.src.plotting import *
 
 
 
@@ -54,12 +55,19 @@ def plot_kymogram(kymo_path, axes):
 
 
 if __name__ == '__main__':
+    import argparse
+
 
     # TODO: add beh annotation in speed plot
     # add head speed, total curvature, PC1, PC2, PC3, etc. See notebook wbfm_analysis
     # TODO: make it for every worm
 
-    main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--input_path', help='folder with the tracker position', required=True)
+
+    args = vars(parser.parse_args())
+    main_folder = args['input_path']
+    #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
     project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
     print(project_folder)
 
@@ -74,38 +82,62 @@ if __name__ == '__main__':
     plot_kymogram(kymo_path, axes=ax1)
     ax1.set_ylabel('Body Segment')
 
+    #Principal Components
+    ax2 = fig.add_subplot(gs[1, :-2], sharex = ax1)
+    pc_path = glob.glob(os.path.join(project_folder, "*_principal_components.csv"))[0]
+    pcs = pd.read_csv(pc_path)
+    pcs[['PC1', 'PC2', 'PC3']].plot(ax=ax2)
+
+    #PC 3d
+    #beh_annotation =
+    ax9 = fig.add_subplot(gs[1, -2:], projection='3d')
+    pcs_avg = pcs.rolling(window=83*5, center=True).mean()
+    ax9.scatter(pcs_avg[['PC1']], pcs_avg[['PC2']], pcs_avg[['PC3']], s=.25, vmin=-1e-4, vmax=1e-4, cmap='bwr')
+    ax9.set_xlabel('PC1')
+    ax9.set_ylabel('PC2')
+    ax9.set_zlabel('PC3')
+    #ax9.tick_params(labelsize=7)
+    #ax9.set_axis_off()
+
+    #total curvature
+    ax3=fig.add_subplot(gs[2, :-2], sharex = ax1)
+    df_kymo = pd.read_csv(kymo_path, header=None)
+    df_kymo2 = df_kymo.abs()
+    df_kymo2.sum(axis=1).rolling(window=83, center=True).mean().plot(ax=ax3)
+    ax3.set_ylabel('Total Curvature (mm⁻¹)')
+    ax3.set_ylim([0, 4])
+
     # track
     ax4 = fig.add_subplot(gs[0, -2:])
     track_df = pd.read_csv(glob.glob(os.path.join(main_folder, "*-TablePosRecord.txt"))[0])
     plot_tracks(df=track_df, ax=ax4)
 
     #Ethogram
-    ax2 = fig.add_subplot(gs[1, :-2],sharex = ax1)
+    ax5 = fig.add_subplot(gs[3, :-2], sharex = ax1)
     ethogram_path = glob.glob(os.path.join(project_folder, '*beh_annotation.csv'))[0]
     print(ethogram_path)
     ethogram_df = pd.read_csv(ethogram_path, index_col=0) #header should not be None!
-    ax2.imshow(ethogram_df.values.T, origin="upper", cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100)
-    # pie chart
-    ax4 = fig.add_subplot(gs[1, -2:])
+    ax5.imshow(ethogram_df.values.T, origin="upper", cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100)
+    ax5.get_yaxis().set_visible(False)
 
+    # pie chart
+    ax6 = fig.add_subplot(gs[3, -2:])
 
     norm = mpl.colors.Normalize(vmin=-0.00005, vmax=0.00005)
     cmap = cm.get_cmap('seismic')
-
     forward_color = cmap(norm(-1))
     reversal_color = cmap(norm(1))
     quiescence_color = cmap(norm(0))
-    print(quiescence_color)
     explode = (0, 0.1, 0.1)
-    print(ethogram_df.count())
-    ax4.pie(ethogram_df.value_counts(), explode=explode,
+
+    ax6.pie(ethogram_df['0'].value_counts(), explode=explode,
             colors = (forward_color, reversal_color, quiescence_color),
             labels = ['Forward', 'Reverse', 'Quiesence'],
             wedgeprops={"edgecolor":"k",'linewidth': 2})
 
 
     #Speed
-    ax3 = fig.add_subplot(gs[3, :-2], sharex = ax1)
+    ax7 = fig.add_subplot(gs[4, :-2], sharex = ax1)
     speed_df_path=os.path.join(project_folder, 'raw_worm_speed.csv')
     speed_df = pd.read_csv(speed_df_path)
     #speed_df['Raw Speed (mm/s)'].rolling(window=83).mean().plot(ax=ax3)
@@ -114,19 +146,30 @@ if __name__ == '__main__':
     # print(len(ethogram_df.values))
     speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed (mm/s)']*ethogram_df['0']
     speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed Signed (mm/s)'] * -1 # to invert because fwd is -1 in the ethogram
-    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83).mean().plot(ax=ax3)
-    ax3.set_ylabel('Speed (mm/s)')
-    ax3.set_ylim([-.2, .2])
-    ax3.axhline(0, color='r', linestyle='--', alpha=0.5)
+    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot(ax=ax7)
+    ax7.set_xticks(range(0, len(speed_df), 5000))
+    #ax3.set_xlabel(speed_df.index[range(0, len(speed_df), 5000)].values)#,
+    #ax3.set_xlabel(np.arange(0, len(speed_df), 5000))                                                                              #xticklabels=range(0, len(speed_df), 5000))
+    ax7.set_ylabel('Speed (mm/s)')
+    ax7.set_ylim([-.25, .25])
+    ax7.axhline(0, color='r', linestyle='--', alpha=0.5)
 
+    # plot stimuli, does not work yet
+    # start_indexes, counts = consecutive_count(ethogram_df['0'])
+    # print(start_indexes)
+    # print(counts)
+    # # stimulus_start = [100, 7000, 15000]
+    # # stimulus_length = [5000, 1000, 2000]
+    # plot_stimuli(ax=ax3, stimulus_start=start_indexes, stimulus_length=counts, color='red', alpha=0.5)
 
     # Speed histogram
-    ax6 = fig.add_subplot(gs[3, -2:])
-    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83).mean().plot.hist(bins=50, ax=ax6)
-    ax6.set_xlim([-.2, .2])
-    ax6.set_xlabel('Speed (mm/s)')
+    ax8 = fig.add_subplot(gs[4, -2:])
+    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot.hist(bins=50, ax=ax8)
+    ax8.axvline(0, color='r', linestyle='--', alpha=0.5)
+    ax8.set_xlim([-.25, .25])
+    ax8.set_xlabel('Speed (mm/s)')
 
-    plt.savefig(os.path.join(project_folder, 'behavioural_figure.png'), dpi=1500)
-    plt.show()
+    plt.savefig(os.path.join(project_folder, 'behavioral_summary_figure.png'), dpi=1500)
+    #plt.show()
 
     print('end of script')
