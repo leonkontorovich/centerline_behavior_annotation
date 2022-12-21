@@ -41,15 +41,19 @@ def tutorial_example():
     plt.ylabel('cos[\omega(t)]')
     plt.show()
     print('done')
+
+    plt.plot(inst_freq)
+    plt.show()
     return
 
 #tutorial_example()
-
 #load dataframe with body curvature
+
 path  = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm7/2022-10-13_17-27_ZIM2165_worm7_Ch0-BH/2022-10-13_17-27_ZIM2165_worm7_Ch0-BHbigtiff_skeleton_spline_K.csv"
 df=pd.read_csv(path)
-df = df.iloc[:,5].rolling(window=20, center=True).mean()
-df = df.iloc[22000:26000]
+df = df.iloc[22000:26000,2:90:45].rolling(window=10, center=True, min_periods=5).mean()
+#df = df.iloc[]
+print(df.shape)
 
 fs = 83 #600.0 #sampling frequency
 
@@ -60,22 +64,24 @@ fig, axes = plt.subplots(4)
 #signal
 axes[0].plot(x) #plot the "modulated" signal, in my case raw signal
 
-z = hilbert(x) #form the analytical signal
+z = hilbert(x, axis=0)#, axis=)#, axis=0)#form the analytical signal
+print(z.shape)
 inst_amplitude = np.abs(z) #envelope extraction
-inst_phase = np.unwrap(np.angle(z))#inst phase
-inst_freq = np.diff(inst_phase)/(2*np.pi)*fs #inst frequency
-
+inst_phase = np.unwrap(np.angle(z), axis=0)#inst phase
+#inst_freq = np.diff(inst_phase, axis=0)/(2*np.pi)*fs #inst frequency
+inst_freq = np.diff(inst_phase, axis=0)/(2*np.pi)*fs #inst frequency
+print(inst_freq.shape)
 #axes[1].subplot(3,1,2)
 #plt.plot(inst_phase)
-axes[1].plot(inst_freq, color='black')
+axes[1].plot(inst_freq)
 axes[1].set_title('Inst Frequency')
 
 
 #Regenerate the carrier from the instantaneous phase
 regenerated_carrier = np.cos(inst_phase)
 
-axes[2].plot(inst_amplitude,'r'); #overlay the extracted envelope
-axes[0].plot(inst_amplitude,'r'); #overlay the extracted envelope
+axes[2].plot(inst_amplitude) #overlay the extracted envelope
+axes[0].plot(inst_amplitude,'r') #overlay the extracted envelope
 
 axes[2].set_title('Modulated signal and extracted envelope')
 axes[2].set_xlabel('n')
