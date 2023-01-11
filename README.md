@@ -1,3 +1,5 @@
+See [annotate_nose_tail_and_tail] for annotation.
+
 # Installation
 To install this as package you should know how to install local python packages and how to handle conda environments.
 
