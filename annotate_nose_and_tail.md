@@ -30,5 +30,5 @@ rsync -av --partial --progress /Users/ulises.rey/local_code/deeplabcut_projects/
 ```
 
 
-
+Proceed to train with the code in dlc_utils_code (Some info in the main Readme file in this repo).
 
