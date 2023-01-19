@@ -240,6 +240,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
     # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
+    # TODO Add Spline number as input to the function
     Parameters:
     ------------
     :param tiff_path:
