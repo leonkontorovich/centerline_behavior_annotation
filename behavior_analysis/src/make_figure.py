@@ -65,11 +65,21 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_path', help='folder with the tracker position', required=True)
 
+    # parser.add_argument('-i', '--input_path', help='', required=True)
+    # parser.add_argument('-k', '--kymo_path', help='', required=True)
+    # parser.add_argument('-pcs', '--pcs_path', help='', required=True)
+    # parser.add_argument('-stage', '--stage_path', help='', required=True)
+    # parser.add_argument('-beh', '--beh_annotation_path', help='', required=True)
+    # parser.add_argument('-speed', '--raw_worm_speed_path', help='', required=True)
+
+
     args = vars(parser.parse_args())
     main_folder = args['input_path']
+
+
     #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
     project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
-    print(project_folder)
+    print("project folder is: ", project_folder)
 
     #Start Figure
     fig, gs = plot_main_figure(project_folder)
@@ -85,6 +95,7 @@ if __name__ == '__main__':
     #Principal Components
     ax2 = fig.add_subplot(gs[1, :-2], sharex = ax1)
     pc_path = glob.glob(os.path.join(project_folder, "*_principal_components.csv"))[0]
+    print(pc_path)
     pcs = pd.read_csv(pc_path)
     pcs[['PC1', 'PC2', 'PC3']].plot(ax=ax2)
 
@@ -131,7 +142,7 @@ if __name__ == '__main__':
     explode = (0, 0.1, 0.1)
 
     ax6.pie(ethogram_df['0'].value_counts(), explode=explode,
-            colors = (forward_color, reversal_color, quiescence_color),
+            colors = [forward_color, reversal_color, quiescence_color],
             labels = ['Forward', 'Reverse', 'Quiesence'],
             wedgeprops={"edgecolor":"k",'linewidth': 2})
 
