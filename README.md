@@ -3,6 +3,14 @@
 ## Purpose of the package
 Analyze the curvature of the worm centerline.
 
+### Standarize curvature of worms
+The code in centerline package seems to produce consistent sign of the Curvature as a function of the curvature.
+If the anterior part of the worm is up, then a c curvature will be positive. and a ↄ curvature will be negative.
+If the anterior part of the worm is to the left, then a u curvature will be positive and a n curvature will be negative.
+
+However, depending on where the vulva is on each recording, a positive curvature could mean ventral or dorsal. To standarize this and make that Red is always Ventral each recording has to be manually annotated the location of the vulva. This information should be stored in the config.yaml file.
+
+
 ### Create a PCA model
 1. Run make_PCA.py
 
