@@ -121,7 +121,7 @@ def make_skeleton_from_DLC(input_stack, h5_filename, num_splines, min_worm_len=0
 
             print(start, end)
 
-            #make skeleton function itself
+            #make_skeleton function itself
             u, (x,y), (x_new, y_new), K = make_skeleton(start, end, num_splines, img, min_worm_len)
     return u, (x,y), (x_new, y_new), K
 
