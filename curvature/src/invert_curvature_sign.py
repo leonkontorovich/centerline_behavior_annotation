@@ -49,8 +49,6 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
 
 
 
-
-
 if __name__ == "__main__":
     import argparse
 
