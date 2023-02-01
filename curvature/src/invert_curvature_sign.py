@@ -32,12 +32,16 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
     with open(config_yaml_path, "r") as yamlfile:
         data = yaml.load(yamlfile, Loader=yaml.FullLoader)
         ventral = data['ventral']
+        print(ventral)
 
         if ventral == 'left':
+            print('ventral is on the left side of the image, changing signs')
             invert_df(input_path, output_path)
 
         else:
-            if ventral != 'right':
+            if ventral == 'right':
+                print('ventral is on the right side of the image, keeping signs')
+            else:
                 raise AttributeError(f"ventral should be either 'left' or 'right', you have: {ventral}")
 
 
@@ -52,9 +56,9 @@ if __name__ == "__main__":
 
     # # INVERT SIGN
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--i_path', help='input path', required=True)
-    parser.add_argument('-o', '--o_path', help='output path', required=True)
-    parser.add_argument('-c', '--config_yaml', help='path to the config yaml file', required=True)
+    parser.add_argument('-i', '--i_path', type=str, help='input path', required=True)
+    parser.add_argument('-o', '--o_path', type=str, help='output path', required=True)
+    parser.add_argument('-c', '--config_yaml', type=str, help='path to the config yaml file', required=True)
 
     args = vars(parser.parse_args())
     input_path = args['i_path']
