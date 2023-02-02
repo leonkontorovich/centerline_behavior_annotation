@@ -32,7 +32,6 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
     with open(config_yaml_path, "r") as yamlfile:
         data = yaml.load(yamlfile, Loader=yaml.FullLoader)
         ventral = data['ventral']
-        print(ventral)
 
         if ventral == 'left':
             print('ventral is on the left side of the image, changing signs')
@@ -50,17 +49,36 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
 
 
 if __name__ == "__main__":
-    import argparse
 
-    # # INVERT SIGN
+
+    # # INVERT SIGN with all inputs
+    # import argparse
+    # parser = argparse.ArgumentParser(description='Description of your program')
+    # parser.add_argument('-i', '--i_path', type=str, help='input path', required=True)
+    # parser.add_argument('-o', '--o_path', type=str, help='output path', required=True)
+    # parser.add_argument('-c', '--config_yaml', type=str, help='path to the config yaml file', required=True)
+    #
+    # args = vars(parser.parse_args())
+    # input_path = args['i_path']
+    # output_path = args['o_path']
+    # config_yaml_path = args['config_yaml']
+    #
+    # invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
+
+    # Invert sign with folder name PREFERABLY with DATASET FOLDER (NOT BH folder)
+    import argparse
+    import os
+    import glob
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--i_path', type=str, help='input path', required=True)
-    parser.add_argument('-o', '--o_path', type=str, help='output path', required=True)
-    parser.add_argument('-c', '--config_yaml', type=str, help='path to the config yaml file', required=True)
+    parser.add_argument('-i', '--input_path', help='folder pf wbfm dataset', required=True)
 
     args = vars(parser.parse_args())
-    input_path = args['i_path']
-    output_path = args['o_path']
-    config_yaml_path = args['config_yaml']
+    project = args['input_path']
+
+    print(project)
+
+    input_path = glob.glob(os.path.join(project, "*/*spline_K.csv"))[0]
+    output_path = os.path.splitext(input_path)[0]+"_signed.csv"
+    config_yaml_path = glob.glob(os.path.join(project, "*config.yaml"))[0]
 
     invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
