@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--i_spline_path', help='input path', required=True)
-    parser.add_argument('-pca', '--pca_model_path', help='path tot he PCA model', required=True)
+    parser.add_argument('-pca', '--pca_model_path', help='path to the PCA model', required=True)
     parser.add_argument('-o_bh', '--o_beh', help='path to save the behavioural output', required=True)
     parser.add_argument('-o_pc', '--o_pc', help='path to save the PC components', required=True)
 
