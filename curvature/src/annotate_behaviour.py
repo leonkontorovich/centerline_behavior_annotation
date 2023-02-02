@@ -51,9 +51,9 @@ def binarize_cross_product(cross_product_df):
     """"Binarize cross product dataframe"""
     values = [float(value) for value in cross_product_df['Cross_Product'].values]
     values_arr = np.array(values)
-    # simple binarization of cross product
-    values_arr[values_arr > 0] = 1
-    values_arr[values_arr < 0] = -1
+    # simple binarization of cross product, output will depend on model,
+    values_arr[values_arr > 0] = -1
+    values_arr[values_arr < 0] = 1
 
     return values_arr
 
@@ -79,6 +79,7 @@ def rename_beh_annotation(df, rename_dict):
     """
     renamed_df=df #modify
     return renamed_df
+
 
 #generate pandas dataframe or vector or wahtever with Forward and Reversal annotation
 
