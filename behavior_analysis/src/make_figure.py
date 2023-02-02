@@ -84,10 +84,12 @@ if __name__ == '__main__':
     #Start Figure
     fig, gs = plot_main_figure(project_folder)
 
+    #Set size
+    fig.set_size_inches(11.69, 8.27)
 
     # Kymogram
     ax1 = fig.add_subplot(gs[0, :-2])
-    kymo_path = glob.glob(os.path.join(project_folder, "*skeleton_spline_K.csv"))[0]
+    kymo_path = glob.glob(os.path.join(project_folder, "*skeleton_spline_K_signed.csv"))[0]
     print(kymo_path)
     plot_kymogram(kymo_path, axes=ax1)
     ax1.set_ylabel('Body Segment')
@@ -115,7 +117,7 @@ if __name__ == '__main__':
     df_kymo = pd.read_csv(kymo_path, header=None)
     df_kymo2 = df_kymo.abs()
     df_kymo2.sum(axis=1).rolling(window=83, center=True).mean().plot(ax=ax3)
-    ax3.set_ylabel('Total Curvature (mm⁻¹)')
+    ax3.set_ylabel('Total Absolute Curvature (mm⁻¹)')
     ax3.set_ylim([0, 4])
 
     # track
@@ -180,7 +182,7 @@ if __name__ == '__main__':
     ax8.set_xlim([-.25, .25])
     ax8.set_xlabel('Speed (mm/s)')
 
-    plt.savefig(os.path.join(project_folder, 'behavioral_summary_figure.png'), dpi=1500)
+    plt.savefig(os.path.join(project_folder, 'behavioral_summary_figure.pdf'), dpi=500)
     #plt.show()
 
     print('end of script')
