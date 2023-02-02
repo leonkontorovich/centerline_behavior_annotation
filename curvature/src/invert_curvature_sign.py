@@ -40,6 +40,8 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
         else:
             if ventral == 'right':
                 print('ventral is on the right side of the image, keeping signs')
+                df = pd.read_csv(input_path, index_col=None, header=None)
+                df.to_csv(output_path, header=None, index=None)
             else:
                 raise AttributeError(f"ventral should be either 'left' or 'right', you have: {ventral}")
 
