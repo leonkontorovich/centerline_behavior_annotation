@@ -12,13 +12,11 @@ from imutils.src.plotting import *
 
 
 
-def plot_main_figure(project_folder):
+def plot_main_figure(project_folder, nrows, ncols):
     """Function to plot the main behavioural features of a single worm behavioral recording
     input:
     project_folder
     """
-    nrows=5
-    ncols=10
 
     fig = plt.figure(constrained_layout=True)
     gs = GridSpec(nrows, ncols, figure=fig)
@@ -76,13 +74,15 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     main_folder = args['input_path']
 
+    #TO RUN LOCALLY (with debugger)
+    # main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221210/data/ZIM2165_Gcamp7b_worm3"
 
     #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
     project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
     print("project folder is: ", project_folder)
 
     #Start Figure
-    fig, gs = plot_main_figure(project_folder)
+    fig, gs = plot_main_figure(project_folder, nrows=6, ncols=10)
 
     #Set size
     fig.set_size_inches(11.69, 8.27)
@@ -103,12 +103,12 @@ if __name__ == '__main__':
 
     #PC 3d
     #beh_annotation =
-    ax9 = fig.add_subplot(gs[1, -2:], projection='3d')
+    ax10 = fig.add_subplot(gs[1, -2:], projection='3d')
     pcs_avg = pcs.rolling(window=83*5, center=True).mean()
-    ax9.scatter(pcs_avg[['PC1']], pcs_avg[['PC2']], pcs_avg[['PC3']], s=.25, vmin=-1e-4, vmax=1e-4, cmap='bwr')
-    ax9.set_xlabel('PC1')
-    ax9.set_ylabel('PC2')
-    ax9.set_zlabel('PC3')
+    ax10.scatter(pcs_avg[['PC1']], pcs_avg[['PC2']], pcs_avg[['PC3']], s=.25, vmin=-1e-4, vmax=1e-4, cmap='bwr')
+    ax10.set_xlabel('PC1')
+    ax10.set_ylabel('PC2')
+    ax10.set_zlabel('PC3')
     #ax9.tick_params(labelsize=7)
     #ax9.set_axis_off()
 
@@ -120,37 +120,56 @@ if __name__ == '__main__':
     ax3.set_ylabel('Total Absolute Curvature (mm⁻¹)')
     ax3.set_ylim([0, 4])
 
+    # signed curvature
+    ax4=fig.add_subplot(gs[3, :-2], sharex = ax1)
+    df_kymo.sum(axis=1).rolling(window=83, center=True).mean().plot(ax=ax4)
+    ax4.set_ylabel('Signed Curvature (mm⁻¹)')
+    ax4.set_ylim([-2, 2])
+    ax4.axhline(0, color='r', linestyle='--', alpha=0.5)
+
+
     # track
-    ax4 = fig.add_subplot(gs[0, -2:])
+    ax5 = fig.add_subplot(gs[0, -2:])
     track_df = pd.read_csv(glob.glob(os.path.join(main_folder, "*-TablePosRecord.txt"))[0])
-    plot_tracks(df=track_df, ax=ax4)
+    plot_tracks(df=track_df, ax=ax5)
 
     #Ethogram
-    ax5 = fig.add_subplot(gs[3, :-2], sharex = ax1)
+    ax6 = fig.add_subplot(gs[4, :-2], sharex = ax1)
     ethogram_path = glob.glob(os.path.join(project_folder, '*beh_annotation.csv'))[0]
     print(ethogram_path)
     ethogram_df = pd.read_csv(ethogram_path, index_col=0) #header should not be None!
-    ax5.imshow(ethogram_df.values.T, origin="upper", cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100)
-    ax5.get_yaxis().set_visible(False)
+    ax6.imshow(ethogram_df.values.T, origin="upper", cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100)
+    ax6.get_yaxis().set_visible(False)
 
     # pie chart
-    ax6 = fig.add_subplot(gs[3, -2:])
+    ax7 = fig.add_subplot(gs[4, -2:])
 
     norm = mpl.colors.Normalize(vmin=-0.00005, vmax=0.00005)
     cmap = cm.get_cmap('seismic')
     forward_color = cmap(norm(-1))
     reversal_color = cmap(norm(1))
     quiescence_color = cmap(norm(0))
-    explode = (0, 0.1, 0.1)
 
-    ax6.pie(ethogram_df['0'].value_counts(), explode=explode,
-            colors = [forward_color, reversal_color, quiescence_color],
-            labels = ['Forward', 'Reverse', 'Quiesence'],
-            wedgeprops={"edgecolor":"k",'linewidth': 2})
+    #This is to account for the kymogram to have only fwd and reverse (and no quiescence)
+    if len(ethogram_df['0'].value_counts()) ==2:
+        explode = (0, 0.1)
+        ax7.pie(ethogram_df['0'].value_counts(), explode=explode,
+                colors=[forward_color, reversal_color],
+                labels=['Forward', 'Reverse'],
+                wedgeprops={"edgecolor": "k", 'linewidth': 2})
+
+    # this is if there are three behavioural states in the ethogram_df
+    if len(ethogram_df['0'].value_counts()) ==3:
+        explode = (0, 0.1, 0.1)
+
+        ax7.pie(ethogram_df['0'].value_counts(), explode=explode,
+                colors = [forward_color, reversal_color, quiescence_color],
+                labels = ['Forward', 'Reverse', 'Quiesence'],
+                wedgeprops={"edgecolor":"k",'linewidth': 2})
 
 
     #Speed
-    ax7 = fig.add_subplot(gs[4, :-2], sharex = ax1)
+    ax8 = fig.add_subplot(gs[5, :-2], sharex = ax1)
     speed_df_path=os.path.join(project_folder, 'raw_worm_speed.csv')
     speed_df = pd.read_csv(speed_df_path)
     #speed_df['Raw Speed (mm/s)'].rolling(window=83).mean().plot(ax=ax3)
@@ -159,13 +178,13 @@ if __name__ == '__main__':
     # print(len(ethogram_df.values))
     speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed (mm/s)']*ethogram_df['0']
     speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed Signed (mm/s)'] * -1 # to invert because fwd is -1 in the ethogram
-    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot(ax=ax7)
-    ax7.set_xticks(range(0, len(speed_df), 5000))
+    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot(ax=ax8)
+    ax8.set_xticks(range(0, len(speed_df), 5000))
     #ax3.set_xlabel(speed_df.index[range(0, len(speed_df), 5000)].values)#,
     #ax3.set_xlabel(np.arange(0, len(speed_df), 5000))                                                                              #xticklabels=range(0, len(speed_df), 5000))
-    ax7.set_ylabel('Speed (mm/s)')
-    ax7.set_ylim([-.25, .25])
-    ax7.axhline(0, color='r', linestyle='--', alpha=0.5)
+    ax8.set_ylabel('Speed (mm/s)')
+    ax8.set_ylim([-.25, .25])
+    ax8.axhline(0, color='r', linestyle='--', alpha=0.5)
 
     # plot stimuli, does not work yet
     # start_indexes, counts = consecutive_count(ethogram_df['0'])
@@ -176,11 +195,11 @@ if __name__ == '__main__':
     # plot_stimuli(ax=ax3, stimulus_start=start_indexes, stimulus_length=counts, color='red', alpha=0.5)
 
     # Speed histogram
-    ax8 = fig.add_subplot(gs[4, -2:])
-    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot.hist(bins=50, ax=ax8)
-    ax8.axvline(0, color='r', linestyle='--', alpha=0.5)
-    ax8.set_xlim([-.25, .25])
-    ax8.set_xlabel('Speed (mm/s)')
+    ax9 = fig.add_subplot(gs[5, -2:])
+    speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot.hist(bins=50, ax=ax9)
+    ax9.axvline(0, color='r', linestyle='--', alpha=0.5)
+    ax9.set_xlim([-.25, .25])
+    ax9.set_xlabel('Speed (mm/s)')
 
     plt.savefig(os.path.join(project_folder, 'behavioral_summary_figure.pdf'), dpi=500)
     #plt.show()
