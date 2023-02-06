@@ -1,0 +1,10 @@
+files: [""]
+  #["data/IL40_worm1/worm_Ch0-BH/2022-09-13_14-50_IL40_worm1_Ch0-BHbigtiff",
+        #"data/IL40_worm2/worm_Ch0-BH/2022-09-13_15-25_IL40_worm2_Ch0-BHbigtiff",
+        #"data/ZIM2156_worm2/worm_Ch0-BH/2022-09-13_15-08_ZIm2156_worm2_Ch0-BHbigtiff"]#, "2022-09-13_15-08_ZIm2156_worm2_long_Ch0-BHbigtiff"]
+
+#In the future it would be better either files or folder.
+#Even files is not file atm, but file.basename
+
+background_img : "data/background/2022-10-13_19-29_background_Ch0-BH/AVG_2022-10-13_19-29_background_Ch0-BHbigtiff.tif"
+
