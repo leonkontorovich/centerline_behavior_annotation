@@ -4,6 +4,7 @@ import glob
 
 DATASETS=glob.glob("*/w*/*Ch0*/")
 
+background_img = glob.glob("*/background/*AVG_background*")[0]
 
 # FILES = ["2022-09-13_14-50_IL40_worm1_Ch0-BHbigtiff", "2022-09-13_15-25_IL40_worm2_Ch0-BHbigtiff"]
 #FILES = glob_wildcards("{fname}.btf").fname
@@ -14,11 +15,13 @@ print(DATASETS)
 rule targets:
     input:
         worm_mask = expand("{datasets}raw_stack.btf", datasets=DATASETS),
+        binary_img= expand("{datasets}raw_stack_background_subtracted_mask.btf", datasets=DATASETS),
+
         # final_img = expand("{files}_AVG_background_subtracted_normalised_unet_segmented_weights_5358068_1_mask_coil_segmented_mask.btf",files=FILES),
         # # Maybe the avi is not needed because itself it is a requirement for final_img
         # avi = expand("{files}_AVG_background_subtracted.avi", files=FILES),
         # spline = expand("{files}_skeleton_spline_K.csv", files=FILES),
-        # merged_spline_file= expand("{files}_skeleton_merged_spline_data.csv", files=FILES),
+        merged_spline_file = expand("{datasets}skeleton_merged_spline_data.csv", datasets=DATASETS)
         # behaviour_annotation = expand("{files}_beh_annotation.csv", files=FILES),
         # #speed_file= expand("{files}_raw_worm_speed.csv", files=FILES),
         # #speed_file = expand("{bh_folder}/raw_worm_speed.csv", bh_folder=BH_FOLDERS) #This is not actually produced!
@@ -39,17 +42,19 @@ rule ometiff2bigtiff:
         "python {input.script} {params.function} -path {wildcards.datasets} -output_filename {output.btf_file}"
 
 
-
-# # TODO: Correct to cluster_jobs file
-# rule subtract_background:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/snakemake/stack_subtract_background.sh",
-#         raw_img ="{sample}.btf",
-#         background_img = background
-#     output:
-#         background_subtracted_img ="{sample}_AVG_background_subtracted.btf"
-#     shell:
-#         "bash {input.script} {input.raw_img} {input.background_img}"
+# TODO: Correct to cluster_jobs file
+rule subtract_background:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+        raw_img ="{datasets}raw_stack.btf",
+        background_img = background_img
+    params:
+        function = "stack_subtract_background",
+        do_inverse = config["do_inverse"]
+    output:
+        background_subtracted_img ="{datasets}raw_stack_background_subtracted.btf"
+    shell:
+        "python {input.script} {params.function} -i {input.raw_img} -o {output.background_subtracted_img} -bg {input.background_img} -invert {params.do_inverse}"
 
 # # TODO: Correct to cluster_jobs file
 # rule normalize_img:
@@ -63,51 +68,53 @@ rule ometiff2bigtiff:
 #         "bash {input.script} {input.input_img}"
 
 
-# # TODO: Correct to cluster_jobs file
-#rule binarize:
-#    input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/snakemake/binarize.py",
-#         input_img ="{datasets}raw_stack.btf"
-#     params:
-#         threshold = config["threshold"],
-#         new_value = config["new_value"]
-#     output:
-#         #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
-#         binary_img = "{datasets}binary_mask.btf"
-#     shell:
-#         "bash {input.script} -path {dataset} "
+rule binarize:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+        input_img ="{datasets}raw_stack_background_subtracted.btf"
+    params:
+        function = "stack_make_binary",
+        threshold = config["threshold"],
+        max_value = config["new_value"]
+    output:
+        #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
+        binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
+    shell:
+        "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -th {params.threshold} -max_val {params.max_value}"
 
 
- rule tiff2avi:
-     input:
-         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
-         input_img = "{datasets}raw_stack.btf"
-     params:
-         fourcc = config["fourcc"],
-         fps = config["fps"]
+rule tiff2avi:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+        input_img = "{datasets}raw_stack.btf"
+    params:
+        function = "tiff2avi",
+        fourcc = config["fourcc"],
+        fps = config["fps"]
 
-     output:
-#         avi = "AVG_background_subtracted_normalised.avi"
-#     shell:
-#         "python {input.script} tiff2avi -i {input.input_img} -o {output.avi} -fourcc {params.fourcc} -fps {params.fps}" #!
+    output:
+        avi = "{datasets}raw_stack.avi"
+    shell:
+        "python {input.script} {params.function} -i {input.input_img} -o {output.avi} -fourcc {params.fourcc} -fps {params.fps}" #!
 
-# rule dlc_analyze_videos:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/dlc_utils_code/cluster_analyze_videos.py", #python code would be better?
-#         input_avi = "AVG_background_subtracted_normalised.avi" #TODO: change it to background subtracted avi, or normalized, etc.
-#     params:
-#         #dlc_model_configfile_path = "/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_noise_tail-Ulises-2022-06-13/config.yaml", #TODO: path should not be hardcoded
-#         #network_string = "DLC_resnet50_wbfm_noise_tailJun13shuffle1_175000"
-#         dlc_model_configfile_path = config["dlc_model_configfile_path"], #TODO: path should not be hardcoded
 
-#     #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
-#     output:
-#         hdf5_file = "AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
-#     shell:
-#         """
-#         source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
-#         python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {input.input_avi}
-#         """
+rule dlc_analyze_videos:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/dlc_utils_code/cluster_analyze_videos.py", #python code would be better?
+        input_avi = "{datasets}raw_stack.avi" #TODO: change it to background subtracted avi, or normalized, etc.
+    params:
+        #dlc_model_configfile_path = "/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_noise_tail-Ulises-2022-06-13/config.yaml", #TODO: path should not be hardcoded
+        #network_string = "DLC_resnet50_wbfm_noise_tailJun13shuffle1_175000"
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        network_string = config["network_string"]
+    #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+    output:
+        hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5"
+    shell:
+        """
+        source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
+        python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {input.input_avi}
+        """
 
 
 # # rule dlc_label_videos:
@@ -121,35 +128,29 @@ rule ometiff2bigtiff:
 # #     shell:
 # #         ""
 # #
-# rule create_centerline:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/head_and_tail.py",
-#         input_binary_img = "binary_mask.btf",
-#         hdf5_file = "AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
 
-#     params:
-#         #csv_output_path = "{sample}",  # This cant go into inputs because it is not a file
-#         number_of_neighbours = config["number_of_neighbours"],
-#         fill_with_DLC : config["fill_with_DLC"]
-#          # TODO: Improve so agparse takes boolean
-#     output :
-#         output_skel_X = "skeleton_skeleton_X_coords.csv",
-#         output_skel_Y = "skeleton_skeleton_Y_coords.csv",
-#         output_spline_K = "skeleton_spline_K.csv",
-#         output_spline_X = "skeleton_spline_X_coords.csv",
-#         output_spline_Y = "skeleton_spline_Y_coords.csv",
-#         corrected_head = "skeleton_corrected_head_coords.csv",
-#         corrected_tail = "skeleton_corrected_tail_coords.csv"
-#         # output_skel_X = "{sample}_skeleton_skeleton_X_coords.csv",
-#         # output_skel_Y = "{sample}_skeleton_skeleton_Y_coords.csv",
-#         # output_spline_K = "{sample}_skeleton_spline_K.csv",
-#         # output_spline_X = "{sample}_skeleton_spline_X_coords.csv",
-#         # output_spline_Y = "{sample}_skeleton_spline_Y_coords.csv",
-#         # corrected_head = "{sample}_skeleton_skeleton_corrected_head_coords.csv",
-#         # corrected_tail = "{sample}_skeleton_skeleton_corrected_tail_coords.csv"
-#         #skeleton_X = "{sample}_skeleton_skeleton_X_coords.csv, etc..
-#     shell:
-#         "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -csv {params.csv_output_path} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
+rule create_centerline:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/head_and_tail.py",
+        input_binary_img = "{datasets}raw_stack_background_subtracted_mask.btf",
+        hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
+
+    params:
+        csv_output_path = "{datasets}",  # This cant go into inputs because it is not a file
+        number_of_neighbours = config["number_of_neighbours"],
+        fill_with_DLC = config["fill_with_DLC"]
+         # TODO: Improve so agparse takes boolean
+    output :
+        output_skel_X = "{datasets}skeleton_skeleton_X_coords.csv",
+        output_skel_Y = "{datasets}skeleton_skeleton_Y_coords.csv",
+        output_spline_K = "{datasets}skeleton_spline_K.csv",
+        output_spline_X = "{datasets}skeleton_spline_X_coords.csv",
+        output_spline_Y = "{datasets}skeleton_spline_Y_coords.csv",
+        corrected_head = "{datasets}skeleton_corrected_head_coords.csv",
+        corrected_tail = "{datasets}skeleton_corrected_tail_coords.csv"
+
+    shell:
+        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -csv {params.csv_output_path} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
 
 # # This rule has not been functional yet because I need to access its config.yaml file and I do not know how
 # # For the time being there is a cluster_jobs script
@@ -165,35 +166,35 @@ rule ometiff2bigtiff:
 # #         "python {input.script} -i {input.spline_K} -o {output.spline_K} -c {input.config_yaml_file}"
 # #
 
-# rule reformat_skeleton_files:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/reformat_skeleton_files.py",
-#         spline_K= "{sample}_skeleton_spline_K.csv",
-#         spline_X= "{sample}_skeleton_spline_X_coords.csv",
-#         spline_Y= "{sample}_skeleton_spline_Y_coords.csv",
-#         #spline_list = ["{sample}_spline_K.csv", "{sample}_spline_X_coords.csv", "{sample}_spline_Y_coords.csv",]
+rule reformat_skeleton_files:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/reformat_skeleton_files.py",
+        spline_K= "{datasets}skeleton_spline_K.csv",
+        spline_X= "{datasets}skeleton_spline_X_coords.csv",
+        spline_Y= "{datasets}skeleton_spline_Y_coords.csv",
+        #spline_list = datasetssample}_spline_K.csv", "{sample}_spline_X_coords.csv", "{sample}_spline_Y_coords.csv",]
 
-#     output:
-#         merged_spline_file = "{sample}_skeleton_merged_spline_data.csv",
+    output:
+        merged_spline_file = "{datasets}skeleton_merged_spline_data.csv",
 
-#     shell:
-#         "python {input.script} -i_K {input.spline_K} -i_X {input.spline_X} -i_Y {input.spline_Y} -o {output.merged_spline_file}"
+    shell:
+        "python {input.script} -i_K {input.spline_K} -i_X {input.spline_X} -i_Y {input.spline_Y} -o {output.merged_spline_file}"
 
-# #
-# rule annotate_behaviour:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/src/annotate_behaviour_snakemake.py",
-#         curvature_file = "{sample}_skeleton_spline_K_signed.csv"
 
-#     params:
-#         #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
-#         pca_model_path = ["pca_model_path"]
-#     output:
-#         principal_components = "{sample}_principal_components.csv",
-#         behaviour_annotation = "{sample}_beh_annotation.csv"
+rule annotate_behaviour:
+    input:
+        script = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/src/annotate_behaviour_snakemake.py",
+        curvature_file = "{datasets}skeleton_spline_K.csv" #Might or might not need to be the signed version
 
-#     shell :
-#         "python {input.script} -i {input.curvature_file} -pca {params.pca_model_path} -o_pc {output.principal_components} -o_bh {output.behaviour_annotation}"
+    params:
+        #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
+        pca_model_path = config["pca_model_path"]
+    output:
+        principal_components = "{datasets}principal_components.csv",
+        behaviour_annotation = "{datasets}beh_annotation.csv"
+
+    shell :
+        "python {input.script} -i {input.curvature_file} -pca {params.pca_model_path} -o_pc {output.principal_components} -o_bh {output.behaviour_annotation}"
 
 # rule calculate_parameters:
 #     #So far it only calculates speed

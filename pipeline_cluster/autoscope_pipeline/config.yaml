@@ -9,16 +9,17 @@
 #background_img : "data/background/2022-10-13_19-29_background_Ch0-BH/AVG_2022-10-13_19-29_background_Ch0-BHbigtiff.tif"
 
 # rule binarize:
-threshold : 30
+threshold : 25
 new_value : 255
+do_inverse: True
 
 # rule tiff2avi:
 fourcc : 0
 fps : 167
 
 #rule dlc_analyze_videos:
-dlc_model_configfile_path : "/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_nose_tail-ulises-2023-01-04/config.yaml"
-network_string : "DLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000"
+dlc_model_configfile_path : "/scratch/neurobiology/zimmer/jalaja/DLC_models/Autoscope_recordings-jalaja-2023-02-01/config.yaml"
+network_string : "DLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000" # You might need to run the code to find out how the string looks like
 
 #rule create_centerline:
 number_of_neighbours : 1
