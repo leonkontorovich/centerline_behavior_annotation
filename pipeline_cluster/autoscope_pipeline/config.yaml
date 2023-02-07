@@ -1,4 +1,4 @@
-files: [""]
+#files: [""]
   #["data/IL40_worm1/worm_Ch0-BH/2022-09-13_14-50_IL40_worm1_Ch0-BHbigtiff",
         #"data/IL40_worm2/worm_Ch0-BH/2022-09-13_15-25_IL40_worm2_Ch0-BHbigtiff",
         #"data/ZIM2156_worm2/worm_Ch0-BH/2022-09-13_15-08_ZIm2156_worm2_Ch0-BHbigtiff"]#, "2022-09-13_15-08_ZIm2156_worm2_long_Ch0-BHbigtiff"]
@@ -6,5 +6,23 @@ files: [""]
 #In the future it would be better either files or folder.
 #Even files is not file atm, but file.basename
 
-background_img : "data/background/2022-10-13_19-29_background_Ch0-BH/AVG_2022-10-13_19-29_background_Ch0-BHbigtiff.tif"
+#background_img : "data/background/2022-10-13_19-29_background_Ch0-BH/AVG_2022-10-13_19-29_background_Ch0-BHbigtiff.tif"
 
+# rule binarize:
+threshold : 30
+new_value : 255
+
+# rule tiff2avi:
+fourcc : 0
+fps : 167
+
+#rule dlc_analyze_videos:
+dlc_model_configfile_path : "/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_nose_tail-ulises-2023-01-04/config.yaml"
+network_string : "DLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000"
+
+#rule create_centerline:
+number_of_neighbours : 1
+fill_with_DLC : 1
+
+#rule annotate_behaviour:
+pca_model_path : "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"

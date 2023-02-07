@@ -64,29 +64,29 @@ rule ometiff2bigtiff:
 
 
 # # TODO: Correct to cluster_jobs file
-# rule binarize:
-#     input:
+#rule binarize:
+#    input:
 #         script = "/scratch/neurobiology/zimmer/ulises/code/snakemake/binarize.py",
-#         input_img ="raw_stack.btf"
+#         input_img ="{datasets}raw_stack.btf"
 #     params:
 #         threshold = config["threshold"],
 #         new_value = config["new_value"]
 #     output:
 #         #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
-#         binary_img = "binary_mask.btf"
+#         binary_img = "{datasets}binary_mask.btf"
 #     shell:
 #         "bash {input.script} -path {dataset} "
 
 
-# rule tiff2avi:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
-#         input_img = ""raw_stack.btf"
-#     params:
-#         fourcc = config["fourcc"],
-#         fps = config["fps"]
+ rule tiff2avi:
+     input:
+         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+         input_img = "{datasets}raw_stack.btf"
+     params:
+         fourcc = config["fourcc"],
+         fps = config["fps"]
 
-#     output:
+     output:
 #         avi = "AVG_background_subtracted_normalised.avi"
 #     shell:
 #         "python {input.script} tiff2avi -i {input.input_img} -o {output.avi} -fourcc {params.fourcc} -fps {params.fps}" #!
