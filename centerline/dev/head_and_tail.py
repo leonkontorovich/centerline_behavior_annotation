@@ -255,7 +255,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     # load DLC head and tail coordinates
     df = pd.read_hdf(hdf5_dlc_path)
 
-    head_coords = load_bodypart_coords_from_DLC(df, 'nose')
+    head_coords = load_bodypart_coords_from_DLC(df, 'head')
     tail_coords = load_bodypart_coords_from_DLC(df, 'tail')
 
     # create csv objects
@@ -284,7 +284,8 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     with tiff.TiffFile(tiff_path) as tif:
         for idx, page in enumerate(tif.pages):
             print(idx)
-            #if idx < 17386: continue
+            # if idx%1000==0:
+            #     print(idx, 'ha')
             img = page.asarray()
 
             # access the head and tail coordinates of the frame
@@ -349,20 +350,16 @@ if __name__ == '__main__':
 
 
 
-    #hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substractedDLC_resnet50_wbfm_noise_tailJun13shuffle1_175000.h5'
-    #tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20220127/data/worm4/2022-01-27_21-26-53_worm4-channel-0-behaviour-/2022-01-27_21-26-53_worm4-channel-0-behaviour-bigtiff_AVG_background_substracted_unet_segmented_weights_2626261_1_V2_mask.btf'
-    #csv_output_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/skel_test/2022-01-27_21-26-53_worm4'
+    # hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stackDLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000.h5'
+    # tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stack_background_subtracted_mask.btf'
+    # csv_output_path='/Users/ulises.rey/local_data/test_spline/'
+    # number_of_neighbors = 1
+    # fill_with_DLC = True
 
     head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=number_of_neighbors,
                               fill_with_DLC=fill_with_DLC)
 
-#run code locally for mara
-# hdf5_dlc_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1_mjpeg_AdC_0722_w1DLC_resnet50_reversalAnn2Oct8shuffle1_82000.h5'
-# tiff_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/Camera1bwFullTotalParamTwictNiceCONV.tif'
-# csv_output_path='/Users/ulises.rey/Desktop/Mara_Centerline_test/test2/'
-#
-# head_and_tail_wrapper_for_mara(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=1,
-#                           fill_with_DLC=False)
+
 
 
 # assembling:
