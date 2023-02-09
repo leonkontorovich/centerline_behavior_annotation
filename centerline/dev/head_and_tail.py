@@ -284,8 +284,9 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     with tiff.TiffFile(tiff_path) as tif:
         for idx, page in enumerate(tif.pages):
             print(idx)
-            # if idx%1000==0:
+            # if idx%50==0:
             #     print(idx, 'ha')
+
             img = page.asarray()
 
             # access the head and tail coordinates of the frame
@@ -349,9 +350,9 @@ if __name__ == '__main__':
     fill_with_DLC = int(args['fill_with_DLC']) #Not sure this will work, parsing True and false statements is not trivial
 
 
-
-    # hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stackDLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000.h5'
+    ## To run locally
     # tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stack_background_subtracted_mask.btf'
+    # hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stackDLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000.h5'
     # csv_output_path='/Users/ulises.rey/local_data/test_spline/'
     # number_of_neighbors = 1
     # fill_with_DLC = True
