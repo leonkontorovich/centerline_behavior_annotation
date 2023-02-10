@@ -49,9 +49,12 @@ def tutorial_example():
 #tutorial_example()
 #load dataframe with body curvature
 
-path  = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm7/2022-10-13_17-27_ZIM2165_worm7_Ch0-BH/2022-10-13_17-27_ZIM2165_worm7_Ch0-BHbigtiff_skeleton_spline_K.csv"
+#path  = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm7/2022-10-13_17-27_ZIM2165_worm7_Ch0-BH/2022-10-13_17-27_ZIM2165_worm7_Ch0-BHbigtiff_skeleton_spline_K.csv"
+path = "/Users/ulises.rey/local_data/hilbert/2022-10-13_17-27_ZIM2165_worm7_Ch0-BHbigtiff_skeleton_spline_K.csv"
+#df = df.iloc[13500+9000:28000,:].rolling(window=25, center=True, min_periods=1).mean()
+path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm3/2022-11-27_15-59_ZIM2165_worm3_GC7b_Ch0-BH/2022-11-27_15-59_ZIM2165_worm3_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
 df=pd.read_csv(path)
-df = df.iloc[22000:26000,2:90:45].rolling(window=10, center=True, min_periods=5).mean()
+df = df.rolling(window=83, center=True, min_periods=1).mean()
 #df = df.iloc[]
 print(df.shape)
 
@@ -94,4 +97,23 @@ axes[3].plot(regenerated_carrier)
 axes[3].set_title('Extracted carrier or TFS')
 axes[3].set_xlabel('n')
 axes[3].set_ylabel('cos[\omega(t)]')
+plt.show(block=False)
+
+
+fig2, axes2 = plt.subplots(4, sharex=True, sharey=True)
+axes2[0].imshow(x.T, origin="upper", cmap='seismic', extent=[0, x.shape[0], x.shape[1], 0],
+                    aspect=20, vmin=-0.06, vmax=0.06)
+
+axes2[1].imshow(inst_freq.T, origin="upper", cmap='seismic', extent=[0, inst_freq.shape[0],
+                    inst_freq.shape[1], 0], aspect=20, vmin=-1, vmax=1)
+axes2[2].imshow(inst_amplitude.T, origin="upper", cmap='viridis',
+                extent=[0, inst_amplitude.shape[0], inst_amplitude.shape[1], 0], aspect=20, vmin=0, vmax=0.05)
+
+axes2[3].imshow(regenerated_carrier.T, origin="upper", cmap='seismic',
+                extent=[0, regenerated_carrier.shape[0], regenerated_carrier.shape[1], 0], aspect=20, vmin=-0.06, vmax=0.06)
+
+titles = ['Curvature', 'Instantaneous Frequency', 'Instantaneous Amplitude', 'Extracted carrier / TFS']
+for idx, axis in enumerate(axes2):
+    axis.set_title(titles[idx])
+
 plt.show()
