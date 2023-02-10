@@ -48,7 +48,7 @@ def tutorial_example():
 
 #tutorial_example()
 #load dataframe with body curvature
-def hilbert_curvature_example():
+def hilbert_curvature_example(path, fs=83):
 
     path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm3/2022-11-27_15-59_ZIM2165_worm3_GC7b_Ch0-BH/2022-11-27_15-59_ZIM2165_worm3_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
     df=pd.read_csv(path)
@@ -57,8 +57,7 @@ def hilbert_curvature_example():
     #df = df.iloc[13500+9000:28000,:].rolling(window=25, center=True, min_periods=1).mean()
     print(df.shape)
 
-    fs = 83 #600.0 #sampling frequency
-
+    #fs = 83 #600.0 #sampling frequency
 
     x = df.values
 
@@ -117,4 +116,81 @@ def hilbert_curvature_example():
 
     plt.show()
 
-hilbert_curvature_example()
+def hilbert_transform_on_kymogram(path, fs):
+    """
+
+    :param path:
+    :param fs:
+    :return:
+    """
+
+    df = pd.read_csv(path) #Not sure if I should load the df instead
+    x = df.values
+    z = hilbert(x, axis=0)
+
+    # envelope extraction
+    inst_amplitude = np.abs(z)
+    inst_phase = np.unwrap(np.angle(z), axis=0)
+
+    # inst frequency
+    inst_freq = np.diff(inst_phase, axis=0)/(2*np.pi)*fs
+
+    #Regenerate the carrier from the instantaneous phase
+    regenerated_carrier = np.cos(inst_phase)
+
+    return inst_amplitude, inst_phase, inst_freq, regenerated_carrier
+
+
+def hilbert_transform_on_kymograms_wrapper():
+    return
+
+
+if __name__ == '__main__':
+
+    import argparse
+    import pandas as pd
+    import glob
+    import os
+
+    # specify files
+    # parser = argparse.ArgumentParser(description='Description of your program')
+    # parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
+    # parser.add_argument('-fs', '--fs', help='sampling frequency', required=True)
+    #
+    # args = vars(parser.parse_args())
+    # kymo_filepath = args['kymo_path']
+    # fs = args['fs']
+
+    # or project only
+    # parser = argparse.ArgumentParser(description='Description of your program')
+    # parser.add_argument('-p', '--project_path', help='path to project', required=True)
+    # args = vars(parser.parse_args())
+    # project_path = args['project_path']
+    # kymo_filepath = glob.glob(os.path.join(project_path, "*K*signed.csv"))[0]
+    # fs =  # read from config yaml file? or from parser
+
+    #or both
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-p', '--project_path', help='path to project', required=True)
+    parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
+    parser.add_argument('-fs', '--fs', help='sampling frequency', required=True)
+    args = vars(parser.parse_args())
+    project_path = args['project_path']
+    kymo_path = args['kymo_path']
+    fs = args['fs']
+
+    df = pd.read_csv(kymo_path)
+
+    #inst_amplitude, inst_phase, inst_freq, regenerated_carrier = hilbert_transform_on_kymogram(path, fs)
+    # inst_amplitude_df = pd.DataFrame(inst_amplitude)
+    # inst_phase_df = pd.DataFrame(inst_phase)
+    # inst_freq_df = pd.DataFrame(inst_freq)
+    # regenerated_carrier_df = pd.DataFrame(regenerated_carrier)
+    # inst_amplitude_df.to_csv(os.path.join(path,"inst_amplitude.csv"))
+    #and so on...
+
+    results = hilbert_transform_on_kymogram(kymo_path, fs)
+    results_names = ["inst_amplitude", "inst_phase", "inst_freq", "regenerated_carrier"]
+    for i, result in enumerate(results):
+        result_df = pd.Dataframe(result)
+        result_df.to_csv(os.path.join(project_path, results_names[i]+".csv"))
