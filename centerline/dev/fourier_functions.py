@@ -48,12 +48,13 @@ def fourier_transform_for_kymo(df, fps):
     y_axis = 2.0 / N * np.abs(yf[:N // 2])
 
     # This is what actually displayes the FT
-    fig, ax = plt.subplots(figsize=(7, 2), dpi=150)
+    fig, axes = plt.subplots(nrows=2, figsize=(7, 2), dpi=150)
     # ax.plot(xf, 2.0 / N * np.abs(yf[:N // 2]))
+    axes[0].plot(y)
     print(y_axis)
-    ax.plot(y_axis)
+    axes[1].plot(y_axis)
 
-    return fig, ax
+    return fig, axes
 
 if __name__ == '__main__':
 
@@ -62,8 +63,8 @@ if __name__ == '__main__':
     fps=1
     kymo_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
     df = pd.read_csv(kymo_path)
-    df.rolling(window=83, center=True, min_periods=1).mean()
-    print(df)
+    df = df.rolling(window=83, center=True, min_periods=1).mean()
+    #print(df)
     # segment = df.iloc[21000:28000, 30]
     # print(segment)
     # x_axis, y_axis = fourier_transform(segment, fps)
@@ -72,6 +73,6 @@ if __name__ == '__main__':
     # plt.show()
 
     df = df.iloc[21000:28000, 30]
-    fig , ax = fourier_transform_for_kymo(df, fps)
-    ax.plot()
+    fig, ax = fourier_transform_for_kymo(df, fps)
+    #ax.plot()
     plt.show()
