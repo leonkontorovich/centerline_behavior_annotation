@@ -28,6 +28,33 @@ def fourier_transform(segment, fps):
 
     return x_axis, y_axis
 
+def fourier_transform_for_kymo(df, fps):
+    """
+
+    :param df:
+    :param fps:
+    :return:
+    """
+    N = df.shape[0]
+    # sample spacing
+    T = 1.0 / fps
+    x = np.linspace(0.0, N * T, N)
+
+    # y is your data
+    y = df.values
+    yf = scipy.fftpack.fft(y, axis=-1)
+    # It gives the real and the imaginary values, so we use the (abs) to get the real ones
+    xf = np.linspace(0.0, 1.0 // (2.0 * T), N // 2)
+    y_axis = 2.0 / N * np.abs(yf[:N // 2])
+
+    # This is what actually displayes the FT
+    fig, ax = plt.subplots(figsize=(7, 2), dpi=150)
+    # ax.plot(xf, 2.0 / N * np.abs(yf[:N // 2]))
+    print(y_axis)
+    ax.plot(y_axis)
+
+    return fig, ax
+
 
 def fourier_plot(x_axis, y_axis, start_freq, end_freq, fps, segment, fourier=0):
     """
@@ -90,3 +117,25 @@ def segment_averaging(K, win):
     Kt_avg = Kt_avg.to_numpy()
 
     return Kt_avg
+
+
+if __name__ == '__main__':
+
+    print("Use the notebook to learn how to do it")
+
+    fps=1
+    kymo_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
+    df = pd.read_csv(kymo_path)
+    df.rolling(window=83, center=True, min_periods=1).mean()
+    print(df)
+    # segment = df.iloc[21000:28000, 30]
+    # print(segment)
+    # x_axis, y_axis = fourier_transform(segment, fps)
+    #
+    # plt.plot(x_axis, y_axis)
+    # plt.show()
+
+    df = df.iloc[21000:28000, 30]
+    fig , ax = fourier_transform_for_kymo(df, fps)
+    ax.plot()
+    plt.show()
