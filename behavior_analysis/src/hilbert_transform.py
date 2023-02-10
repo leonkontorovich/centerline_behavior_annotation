@@ -116,7 +116,7 @@ def hilbert_curvature_example(path, fs=83):
 
     plt.show()
 
-def hilbert_transform_on_kymogram(path, fs):
+def hilbert_transform_on_kymogram(df, fs):
     """
 
     :param path:
@@ -124,7 +124,7 @@ def hilbert_transform_on_kymogram(path, fs):
     :return:
     """
 
-    df = pd.read_csv(path) #Not sure if I should load the df instead
+    #df = pd.read_csv(path) #Not sure if I should load the df instead
     x = df.values
     z = hilbert(x, axis=0)
 
@@ -142,6 +142,7 @@ def hilbert_transform_on_kymogram(path, fs):
 
 
 def hilbert_transform_on_kymograms_wrapper():
+    #at the moment nod needed, using the argparse
     return
 
 
@@ -170,27 +171,41 @@ if __name__ == '__main__':
     # fs =  # read from config yaml file? or from parser
 
     #or both
-    parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-p', '--project_path', help='path to project', required=True)
-    parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
-    parser.add_argument('-fs', '--fs', help='sampling frequency', required=True)
-    args = vars(parser.parse_args())
-    project_path = args['project_path']
-    kymo_path = args['kymo_path']
-    fs = args['fs']
+    # parser = argparse.ArgumentParser(description='Description of your program')
+    # parser.add_argument('-p', '--project_path', help='path to project', required=True)
+    # parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
+    # parser.add_argument('-fs', '--fs', help='sampling frequency', required=True)
+    # args = vars(parser.parse_args())
+    # project_path = args['project_path']
+    # kymo_path = args['kymo_path']
+    # fs = args['fs']
+
+    project_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH"
+    kymo_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
+    fs = 83
+
 
     df = pd.read_csv(kymo_path)
+    df = df.rolling(window=83, center=True, min_periods=1).mean()
 
-    #inst_amplitude, inst_phase, inst_freq, regenerated_carrier = hilbert_transform_on_kymogram(path, fs)
+
+
+    # inst_amplitude, inst_phase, inst_freq, regenerated_carrier = hilbert_transform_on_kymogram(df, fs)
+    # print(inst_amplitude)
     # inst_amplitude_df = pd.DataFrame(inst_amplitude)
     # inst_phase_df = pd.DataFrame(inst_phase)
     # inst_freq_df = pd.DataFrame(inst_freq)
     # regenerated_carrier_df = pd.DataFrame(regenerated_carrier)
-    # inst_amplitude_df.to_csv(os.path.join(path,"inst_amplitude.csv"))
+    # inst_amplitude_df.to_csv(os.path.join(project_path,"inst_amplitude.csv"))
     #and so on...
 
-    results = hilbert_transform_on_kymogram(kymo_path, fs)
+    #do the hilbert transform
+    results = hilbert_transform_on_kymogram(df, fs)
+
     results_names = ["inst_amplitude", "inst_phase", "inst_freq", "regenerated_carrier"]
     for i, result in enumerate(results):
-        result_df = pd.Dataframe(result)
-        result_df.to_csv(os.path.join(project_path, results_names[i]+".csv"))
+        result_df = pd.DataFrame(result)
+        result_df.to_csv(os.path.join(project_path, results_names[i]+".csv"), header=False, index=False)
+    #
+
+    print('done. If the files are empty it is probably because the Kymogram contains NaNs')
