@@ -255,7 +255,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     # load DLC head and tail coordinates
     df = pd.read_hdf(hdf5_dlc_path)
 
-    head_coords = load_bodypart_coords_from_DLC(df, 'head')
+    head_coords = load_bodypart_coords_from_DLC(df, 'nose') #TODO: bodyparts should not be hardcoded
     tail_coords = load_bodypart_coords_from_DLC(df, 'tail')
 
     # create csv objects
