@@ -178,11 +178,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--project_path', help='path to project', required=True)
     parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
-    parser.add_argument('-fs', '--fs', help='sampling frequency', required=True)
+    parser.add_argument('-fs', '--fs', type=float, help='sampling frequency', required=True)
     args = vars(parser.parse_args())
     project_path = args['project_path']
     kymo_path = args['kymo_path']
     fs = args['fs']
+
+    print(type(fs))
 
     # project_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH"
     # kymo_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
