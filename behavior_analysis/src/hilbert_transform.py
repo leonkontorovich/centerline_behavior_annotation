@@ -48,9 +48,9 @@ def tutorial_example():
 
 #tutorial_example()
 #load dataframe with body curvature
-def hilbert_curvature_example(path, fs=83):
+def hilbert_curvature_example(fs=83):
 
-    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm3/2022-11-27_15-59_ZIM2165_worm3_GC7b_Ch0-BH/2022-11-27_15-59_ZIM2165_worm3_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
+    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
     df=pd.read_csv(path)
     df = df.rolling(window=83, center=True, min_periods=1).mean()
     #df = df.iloc[]
@@ -108,7 +108,7 @@ def hilbert_curvature_example(path, fs=83):
                     extent=[0, inst_amplitude.shape[0], inst_amplitude.shape[1], 0], aspect=20, vmin=0, vmax=0.05)
 
     axes2[3].imshow(regenerated_carrier.T, origin="upper", cmap='seismic',
-                    extent=[0, regenerated_carrier.shape[0], regenerated_carrier.shape[1], 0], aspect=20, vmin=-0.06, vmax=0.06)
+                    extent=[0, regenerated_carrier.shape[0], regenerated_carrier.shape[1], 0], aspect=20, vmin=-1, vmax=1)
 
     titles = ['Curvature', 'Instantaneous Frequency', 'Instantaneous Amplitude', 'Extracted carrier / TFS']
     for idx, axis in enumerate(axes2):
@@ -146,6 +146,10 @@ def hilbert_transform_on_kymograms_wrapper():
     return
 
 
+# hilbert_curvature_example()
+
+
+
 if __name__ == '__main__':
 
     import argparse
@@ -172,7 +176,7 @@ if __name__ == '__main__':
 
     #or both
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-p', '--project_path', help='path to project', required=True)
+    parser.add_argument('-i', '--project_path', help='path to project', required=True)
     parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
     parser.add_argument('-fs', '--fs', help='sampling frequency', required=True)
     args = vars(parser.parse_args())
