@@ -8,10 +8,13 @@
 
 #background_img : "data/background/2022-10-13_19-29_background_Ch0-BH/AVG_2022-10-13_19-29_background_Ch0-BHbigtiff.tif"
 
-# rule binarize:
-threshold : 25
-new_value : 255
+#rule subtract background
 do_inverse: True
+
+# rule binarize:
+threshold : 140
+new_value : 255
+
 
 # rule tiff2avi:
 fourcc : 0
