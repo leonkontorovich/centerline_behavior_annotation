@@ -99,21 +99,32 @@ def plot_fft(y_axis, xf, axes):
     return axes
 
 if __name__ == '__main__':
-    print("Use the notebook to learn how to do it")
-    print("/Volumes/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/FourierTransform.ipynb")
 
-    sampling_frequency = 83
-    kymo_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
-    df = pd.read_csv(kymo_path)
-    df = df.rolling(window=83, center=True, min_periods=1).mean()
+    import argparse
+    import os
 
-    # fig, ax = fourier_transform_for_kymo_plot(df, sampling_frequency)
-    # ax.plot()
-    # plt.show()
+    # This script should save receive the kymogram (without Nans) and the sampling frequency as input,
+    # and return the y_axis and the xf in a csv file
+
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--project_path', help='path to project', required=True)
+    parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
+    parser.add_argument('-fps', '--sampling_frequency', type=float, help='sampling frequency', required=True)
+    args = vars(parser.parse_args())
+    project_path = args['project_path']
+    kymo_path = args['kymo_path']
+    sampling_frequency = args['fps']
+
+
+    df = pd.read_csv(kymo_path) #should load the averaged kymo already
+    #df = df.rolling(window=83, center=True, min_periods=1).mean()
 
     y_axis, xf = fourier_transform_for_kymo(df, sampling_frequency)
-    print(y_axis.shape)
-    fig, axes = plt.subplots(figsize=(4, 2), dpi=150)
-    axes = plot_fft(y_axis, xf, axes)
-    axes.set_xlim([0, 1])
-    plt.show()
+    pd.DataFrame(y_axis).to_csv(os.path.join(project_path, "fft_y_axis.csv"))
+    pd.DataFrame(xf).to_csv(os.path.join(project_path, "fft_xf.csv"))
+
+    # plotting
+    # fig, axes = plt.subplots()
+    # axes = plot_fft(y_axis, xf, axes)
+    # axes.set_xlim([0, 1])
+    # plt.show()
