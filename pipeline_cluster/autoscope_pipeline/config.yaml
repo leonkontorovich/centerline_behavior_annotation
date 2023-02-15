@@ -12,7 +12,7 @@
 do_inverse: True
 
 # rule binarize with contours:
-threshold : 140
+threshold : 40
 max_value : 255
 blur : 3  #needs to be odd
 contour_size : 80000
