@@ -97,15 +97,6 @@ if __name__ == '__main__':
     kymo_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
     df = pd.read_csv(kymo_path)
     df = df.rolling(window=83, center=True, min_periods=1).mean()
-    # print(df)
-    # segment = df.iloc[21000:28000, 30]
-    # print(segment)
-    # x_axis, y_axis = fourier_transform(segment, fps)
-    #
-    # plt.plot(x_axis, y_axis)
-    # plt.show()
-
-    # df = df.iloc[:, 50]
 
     # fig, ax = fourier_transform_for_kymo_plot(df, sampling_frequency)
     # ax.plot()
@@ -116,10 +107,9 @@ if __name__ == '__main__':
     fig, axes = plt.subplots(dpi=150)
     axes.imshow(y_axis.T, origin="upper", interpolation=None, cmap='viridis',
                 extent=[xf[0], xf[-1], y_axis.shape[1], 0],
-                aspect=0.02, vmin=0, vmax=0.007)
+                aspect=0.02, vmin=0, vmax=0.005) #vmax corresponds to amplitude
+    axes.set_xlim([0, 1])
     axes.set_xlabel('Frequency (Hz)')
     axes.set_ylabel('Body Segment')
-    plt.plot(xf, y_axis)
-    plt.plot(y_axis)  # I do not understand what this variable is, and how I can do imshow with xf
-    # Should check the notebook
+    axes.set_title('Fourier Trasnform')
     plt.show()
