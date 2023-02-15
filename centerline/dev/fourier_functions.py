@@ -28,7 +28,8 @@ def fourier_transform(segment, sampling_frequency):
 
     return x_axis, y_axis
 
-def fourier_transform_for_kymo(df, sampling_frequency):
+
+def fourier_transform_for_kymo_plot(df, sampling_frequency):
     """
 
     :param df:
@@ -42,7 +43,7 @@ def fourier_transform_for_kymo(df, sampling_frequency):
 
     # y is your data
     y = df.values
-    yf = scipy.fftpack.fft(y, axis=-1)
+    yf = scipy.fftpack.fft(y, axis=0)  # not sure which axis should be used. For Hilbert Transform I use 0.
     # It gives the real and the imaginary values, so we use the (abs) to get the real ones
     y_axis = 2.0 / N * np.abs(yf[:N // 2])
 
@@ -54,26 +55,49 @@ def fourier_transform_for_kymo(df, sampling_frequency):
     axes[0].set_ylabel('Amplitude')
     axes[0].set_xlabel('Time (#samples)')
 
-    #axes[1].plot(y_axis)
+    # axes[1].plot(y_axis)
     axes[1].plot(xf, y_axis)
     axes[1].set_ylabel('Amplitude')
     axes[1].set_xlabel('Frequency (Hz)')
 
-    #axes[1].plot(y_axis)
-    axes[2].plot((1/xf), y_axis)
+    # axes[1].plot(y_axis)
+    axes[2].plot((1 / xf), y_axis)
     axes[2].set_ylabel('Amplitude')
     axes[2].set_xlabel('Period (s) (Not frames!)')
     return fig, axes
 
+
+def fourier_transform_for_kymo(df, sampling_frequency):
+    """
+
+    :param df:
+    :param fps:
+    :return:
+    """
+    N = df.shape[0]
+    # sample spacing
+    T = 1.0 / sampling_frequency
+
+    # y is your data
+    y = df.values
+    yf = scipy.fftpack.fft(y, axis=0)  # not sure which axis should be used. For Hilbert Transform I use 0.
+    # It gives the real and the imaginary values, so we use the (abs) to get the real ones
+    y_axis = 2.0 / N * np.abs(yf[:N // 2])
+
+    xf = np.linspace(0.0, 1.0 // (2.0 * T), N // 2)
+
+    return y_axis, xf
+
+
 if __name__ == '__main__':
-
     print("Use the notebook to learn how to do it")
+    print("/Volumes/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/FourierTransform.ipynb")
 
-    sampling_frequency=83
+    sampling_frequency = 83
     kymo_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
     df = pd.read_csv(kymo_path)
     df = df.rolling(window=83, center=True, min_periods=1).mean()
-    #print(df)
+    # print(df)
     # segment = df.iloc[21000:28000, 30]
     # print(segment)
     # x_axis, y_axis = fourier_transform(segment, fps)
@@ -81,7 +105,21 @@ if __name__ == '__main__':
     # plt.plot(x_axis, y_axis)
     # plt.show()
 
-    df = df.iloc[:, 50]
-    fig, ax = fourier_transform_for_kymo(df, sampling_frequency)
-    #ax.plot()
+    # df = df.iloc[:, 50]
+
+    # fig, ax = fourier_transform_for_kymo_plot(df, sampling_frequency)
+    # ax.plot()
+    # plt.show()
+
+    y_axis, xf = fourier_transform_for_kymo(df, sampling_frequency)
+    print(y_axis.shape)
+    fig, axes = plt.subplots(dpi=150)
+    axes.imshow(y_axis.T, origin="upper", interpolation=None, cmap='viridis',
+                extent=[xf[0], xf[-1], y_axis.shape[1], 0],
+                aspect=0.02, vmin=0, vmax=0.007)
+    axes.set_xlabel('Frequency (Hz)')
+    axes.set_ylabel('Body Segment')
+    plt.plot(xf, y_axis)
+    plt.plot(y_axis)  # I do not understand what this variable is, and how I can do imshow with xf
+    # Should check the notebook
     plt.show()
