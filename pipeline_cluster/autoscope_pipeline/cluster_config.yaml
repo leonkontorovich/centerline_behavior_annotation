@@ -22,7 +22,7 @@ dlc_analyze_videos:
     partition: gpu
     gpus_per_node: 1
     mem: 0
-    cpus_per_task: 8
+    cpus_per_task: 24
     output: log/log_%x_%A_%a_%j.out
 
 normalize_img:
