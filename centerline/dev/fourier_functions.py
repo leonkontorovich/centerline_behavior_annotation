@@ -31,7 +31,7 @@ def fourier_transform(segment, sampling_frequency):
 
 def fourier_transform_for_kymo_plot(df, sampling_frequency):
     """
-
+    This function plots fourier transform per segment
     :param df:
     :param fps:
     :return:
@@ -39,7 +39,6 @@ def fourier_transform_for_kymo_plot(df, sampling_frequency):
     N = df.shape[0]
     # sample spacing
     T = 1.0 / sampling_frequency
-    # ??? x = np.linspace(0.0, N * T, N)
 
     # y is your data
     y = df.values
@@ -55,12 +54,10 @@ def fourier_transform_for_kymo_plot(df, sampling_frequency):
     axes[0].set_ylabel('Amplitude')
     axes[0].set_xlabel('Time (#samples)')
 
-    # axes[1].plot(y_axis)
     axes[1].plot(xf, y_axis)
     axes[1].set_ylabel('Amplitude')
     axes[1].set_xlabel('Frequency (Hz)')
 
-    # axes[1].plot(y_axis)
     axes[2].plot((1 / xf), y_axis)
     axes[2].set_ylabel('Amplitude')
     axes[2].set_xlabel('Period (s) (Not frames!)')
@@ -88,6 +85,18 @@ def fourier_transform_for_kymo(df, sampling_frequency):
 
     return y_axis, xf
 
+def plot_fft(y_axis, xf, axes):
+
+
+    axes.imshow(y_axis.T, origin="upper", interpolation=None, cmap='viridis',
+                extent=[xf[0], xf[-1], y_axis.shape[1], 0],
+                aspect=0.02, vmin=0, vmax=0.005) #vmax corresponds to amplitude
+    #axes.set_xlim([0, 1])
+    axes.set_xlabel('Frequency (Hz)')
+    axes.set_ylabel('Body Segment')
+    axes.set_title('Fourier Transsform')
+
+    return axes
 
 if __name__ == '__main__':
     print("Use the notebook to learn how to do it")
@@ -104,12 +113,7 @@ if __name__ == '__main__':
 
     y_axis, xf = fourier_transform_for_kymo(df, sampling_frequency)
     print(y_axis.shape)
-    fig, axes = plt.subplots(dpi=150)
-    axes.imshow(y_axis.T, origin="upper", interpolation=None, cmap='viridis',
-                extent=[xf[0], xf[-1], y_axis.shape[1], 0],
-                aspect=0.02, vmin=0, vmax=0.005) #vmax corresponds to amplitude
+    fig, axes = plt.subplots(figsize=(4, 2), dpi=150)
+    axes = plot_fft(y_axis, xf, axes)
     axes.set_xlim([0, 1])
-    axes.set_xlabel('Frequency (Hz)')
-    axes.set_ylabel('Body Segment')
-    axes.set_title('Fourier Trasnform')
     plt.show()
