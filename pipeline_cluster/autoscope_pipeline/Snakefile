@@ -74,13 +74,16 @@ rule make_contour_based_binary:
     params:
         function = "make_contour_based_binary",
         threshold = config["threshold"],
-        max_value = config["new_value"],
-        blur = 3 #blur must be odd
+        max_value = config["max_value"],
+        blur = config["blur"], #blur must be odd
+        contour_size = config["contour_size"],
+        tolerance = config["tolerance"],
+        inner_contour_to_fill = config["inner_contour_to_fill"]
     output:
         #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
         binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
     shell:
-        "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs 160000 -t 0.5 -ics 8000"
+        "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs {params.contour_size} -t {params.tolerance} -ics {params.inner_contour_to_fill}"
 
 
 
