@@ -11,9 +11,13 @@
 #rule subtract background
 do_inverse: True
 
-# rule binarize:
+# rule binarize with contours:
 threshold : 140
-new_value : 255
+max_value : 255
+blur : 3  #needs to be odd
+contour_size : 80000
+tolerance : 0.5
+inner_contour_to_fill : 8000
 
 
 # rule tiff2avi:
