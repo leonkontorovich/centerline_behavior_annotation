@@ -48,7 +48,9 @@ def calculate_cross_product(pc1_pc2_df):
 
 
 def binarize_cross_product(cross_product_df):
-    """"Binarize cross product dataframe"""
+    """"
+    Binarize cross product dataframe
+    """
     values = [float(value) for value in cross_product_df['Cross_Product'].values]
     values_arr = np.array(values)
     # simple binarization of cross product, output will depend on model (?),
