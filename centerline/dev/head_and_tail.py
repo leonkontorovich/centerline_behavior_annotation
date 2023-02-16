@@ -235,7 +235,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     return skel_head, skel_tail
 
 
-def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, number_of_neighbors=1,
+def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, nose="nose", tail="tail", num_splines=100,  number_of_neighbors=1,
                           fill_with_DLC=True):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
@@ -255,8 +255,8 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     # load DLC head and tail coordinates
     df = pd.read_hdf(hdf5_dlc_path)
 
-    head_coords = load_bodypart_coords_from_DLC(df, 'nose') #TODO: bodyparts should not be hardcoded
-    tail_coords = load_bodypart_coords_from_DLC(df, 'tail')
+    head_coords = load_bodypart_coords_from_DLC(df, nose) #TODO: bodyparts should not be hardcoded
+    tail_coords = load_bodypart_coords_from_DLC(df, tail)
 
     # create csv objects
     csvfile_corrected_head = open(csv_output_path + '_skeleton_corrected_head_coords.csv', 'w', newline='')
@@ -296,7 +296,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
             skel_head, skel_tail = head_and_tail_correction_from_img(img, number_of_neighbors, head_coords_i,
                                                                      tail_coords_i, fill_with_DLC)
 
-            num_splines = 100
+
             if np.isnan(skel_head[0]):  # if the skel_head or skel_tail are nan start
                 K = np.full(num_splines, np.nan)
                 x = np.full(num_splines, np.nan)
@@ -339,6 +339,9 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input_tiff_path', help='input path', required=True)
     parser.add_argument('-h5', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
     parser.add_argument('-csv', '--csv_output_path', help='csv_output_path', required=True)
+    parser.add_argument('-nose', '--nose', help='string for the nose e.g. nose or head', required=True)
+    parser.add_argument('-tail', '--tail', help='string for the tail', required=True)
+    parser.add_argument('-num_splines', '--num_splines', help='number of splines', required=True)
     parser.add_argument('-n', '--number_of_neighbors', help='number_of_neighbors', required=False)
     parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
 
@@ -346,6 +349,9 @@ if __name__ == '__main__':
     tiff_path = args['input_tiff_path']
     hdf5_dlc_path = args['hdf5_dlc_path']
     csv_output_path = args['csv_output_path']
+    nose = args['nose']
+    tail = args['tail']
+    num_splines = args['num_splines']
     number_of_neighbors = int(args['number_of_neighbors'])
     fill_with_DLC = int(args['fill_with_DLC']) #Not sure this will work, parsing True and false statements is not trivial
 
@@ -357,7 +363,7 @@ if __name__ == '__main__':
     # number_of_neighbors = 1
     # fill_with_DLC = True
 
-    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, number_of_neighbors=number_of_neighbors,
+    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, nose, tail, num_splines, number_of_neighbors=number_of_neighbors,
                               fill_with_DLC=fill_with_DLC)
 
 
