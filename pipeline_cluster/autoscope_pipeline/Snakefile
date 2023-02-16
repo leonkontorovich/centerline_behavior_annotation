@@ -37,7 +37,12 @@ rule ometiff2bigtiff:
     output:
         btf_file = "{datasets}raw_stack.btf" #{files}raw_stack.btf"
     shell:
-        "python {input.script} {params.function} -path {wildcards.datasets} -output_filename {output.btf_file}"
+        """
+        DIR=$(dirname {output.btf_file})
+        echo $DIR
+        python {input.script} {params.function} -path $DIR -output_filename {output.btf_file}
+        """
+
 
 
 # TODO: Correct to cluster_jobs file
