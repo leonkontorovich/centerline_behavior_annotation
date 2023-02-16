@@ -12,21 +12,27 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--i_spline_path', help='input path', required=True)
     parser.add_argument('-pca', '--pca_model_path', help='path to the PCA model', required=True)
+    parser.add_argument('-i_s', '--initial_segment', help='initial segment to calculate PCA', required=True)
+    parser.add_argument('-f_s', '--final_segment', help='final segment to calculate PCA', required=True)
+    parser.add_argument('-win', '--average_window', help='average_window', required=True)
     parser.add_argument('-o_bh', '--o_beh', help='path to save the behavioural output', required=True)
     parser.add_argument('-o_pc', '--o_pc', help='path to save the PC components', required=True)
 
     args = vars(parser.parse_args())
     spline_path = args['i_spline_path']
     pca_path = args['pca_model_path']
+    initial_segment = args['initial_segment']
+    final_segment = args['final_segment']
+    average_window = args['average_window']
     beh_annotation_path = args['o_beh']
     pc_components_path = args['o_pc']
 
     # TODO: This should not be hard coded
-    average_window = 167
-    features = np.arange(30, 80)
-    print("average window and features are being hard coded, with the following values")
-    print("average window: ", average_window)
-    print("features for PC: ", features)
+    #average_window = 83
+    features = np.arange(initial_segment, final_segment)
+    #print("average window and features are being hard coded, with the following values")
+    #print("average window: ", average_window)
+    #print("features for PC: ", features)
 
     df = pd.read_csv(spline_path, header=None)
     df.fillna(0, inplace=True)  # alternative change nans to zeros
