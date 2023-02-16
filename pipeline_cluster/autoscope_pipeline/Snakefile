@@ -243,7 +243,7 @@ rule make_behaviour_figure:
         curvature_file = "{sample}_skeleton_spline_K.csv",
         pc_file = "{sample}_principal_components.csv",
         # total_curvature_file = "",
-        beh_annotation_file = "{sample}_beh_annotation.csv",
+        beh_annotation_file = "{sample}beh_annotation.csv",
         # speed_file = "",
         # track_file = ""
     # params:
