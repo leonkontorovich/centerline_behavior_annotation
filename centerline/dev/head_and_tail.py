@@ -235,7 +235,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     return skel_head, skel_tail
 
 
-def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, nose="nose", tail="tail", num_splines=100,  number_of_neighbors=1,
+def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, nose, tail, num_splines=100,  number_of_neighbors=1,
                           fill_with_DLC=True):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
@@ -339,10 +339,10 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--input_tiff_path', help='input path', required=True)
     parser.add_argument('-h5', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
     parser.add_argument('-csv', '--csv_output_path', help='csv_output_path', required=True)
-    parser.add_argument('-nose', '--nose', help='string for the nose e.g. nose or head', required=True)
-    parser.add_argument('-tail', '--tail', help='string for the tail', required=True)
-    parser.add_argument('-num_splines', '--num_splines', help='number of splines', required=True)
-    parser.add_argument('-n', '--number_of_neighbors', help='number_of_neighbors', required=False)
+    parser.add_argument('-nose', '--nose', type=str, help='string for the nose e.g. nose or head', required=True)
+    parser.add_argument('-tail', '--tail', type=str, help='string for the tail', required=True)
+    parser.add_argument('-num_splines', '--num_splines', type=int, help='number of splines', required=True)
+    parser.add_argument('-n', '--number_of_neighbors', type=int, help='number_of_neighbors', required=False)
     parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
 
     args = vars(parser.parse_args())
