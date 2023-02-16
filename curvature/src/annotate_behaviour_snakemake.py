@@ -3,7 +3,7 @@
 
 
 if __name__ == "__main__":
-    import argparse
+    import argparse # comment
     import pandas as pd
     import numpy as np
     from curvature.src.make_PCA import *
@@ -24,6 +24,9 @@ if __name__ == "__main__":
     # TODO: This should not be hard coded
     average_window = 167
     features = np.arange(30, 80)
+    print("average window and features are being hard coded, with the following values")
+    print("average window: ", average_window)
+    print("features for PC: ", features)
 
     df = pd.read_csv(spline_path, header=None)
     df.fillna(0, inplace=True)  # alternative change nans to zeros
@@ -36,6 +39,10 @@ if __name__ == "__main__":
 
     pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=average_window)
     cross_product_df = calculate_cross_product(pc1_pc2_df)
+
+    #Does cross product result in the per convention accepted sign? (cp<0==rev, cp>0==fwd?)
+    # if not, flip the sign
+    cross_product_df = - cross_product_df
 
     values_arr = binarize_cross_product(cross_product_df)
     values_df = pd.DataFrame(values_arr)

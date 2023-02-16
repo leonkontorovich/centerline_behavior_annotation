@@ -51,9 +51,9 @@ def binarize_cross_product(cross_product_df):
     """"Binarize cross product dataframe"""
     values = [float(value) for value in cross_product_df['Cross_Product'].values]
     values_arr = np.array(values)
-    # simple binarization of cross product, output will depend on model,
-    values_arr[values_arr > 0] = -1
-    values_arr[values_arr < 0] = 1
+    # simple binarization of cross product, output will depend on model (?),
+    values_arr[values_arr > 0] = 1
+    values_arr[values_arr < 0] = -1
 
     return values_arr
 
@@ -98,6 +98,11 @@ if __name__ == "__main__":
     parser.add_argument('-pca', '--pca_model_path', help='path tot he PCA model', required=True)
 
     average_window=167
+    features = np.arange(30, 80) # Separating out the features (starting bodypart, ending bodypart)
+    print("average window and features are being hard coded, with the following values")
+    print("average window: ", average_window)
+    print("features for PC: ", features)
+
 
     args = vars(parser.parse_args())
     main_path = args['i_path']
@@ -106,7 +111,6 @@ if __name__ == "__main__":
 
     df = pd.read_csv(os.path.join(main_path, 'skeleton_spline_K.csv'), header=None)
     df.fillna(0, inplace=True)  # alternative change nans to zeros
-    features = np.arange(30, 80)  # Separating out the features (starting bodypart, ending bodypart)
     data = df.loc[:, features].values
     principal_components_df = pca_transform_data(pca_path, data)
     # save PCs?
