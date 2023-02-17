@@ -235,7 +235,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     return skel_head, skel_tail
 
 
-def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: str, nose, tail, num_splines=100,  number_of_neighbors=1,
+def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, nose, tail, num_splines=100, number_of_neighbors=1,
                           fill_with_DLC=True):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
@@ -245,7 +245,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     ------------
     :param tiff_path:
     :param hdf5_dlc_path:
-    :param csv_output_path:
+    :param output_path:
     :param number_of_neighbors:
     :param fill_with_DLC:
     Returns:
@@ -259,25 +259,25 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, csv_output_path: s
     tail_coords = load_bodypart_coords_from_DLC(df, tail)
 
     # create csv objects
-    csvfile_corrected_head = open(csv_output_path + '_skeleton_corrected_head_coords.csv', 'w', newline='')
+    csvfile_corrected_head = open(output_path + 'skeleton_corrected_head_coords.csv', 'w', newline='')
     csv_writer_head = csv.writer(csvfile_corrected_head)
 
-    csvfile_corrected_tail = open(csv_output_path + '_skeleton_corrected_tail_coords.csv', 'w', newline='')
+    csvfile_corrected_tail = open(output_path + 'skeleton_corrected_tail_coords.csv', 'w', newline='')
     csv_writer_tail = csv.writer(csvfile_corrected_tail)
 
-    csvfilePathX = open(csv_output_path + '_skeleton_skeleton_X_coords.csv', 'w', newline='')
+    csvfilePathX = open(output_path + 'skeleton_skeleton_X_coords.csv', 'w', newline='')
     csv_writerPathX = csv.writer(csvfilePathX)
 
-    csvfilePathY = open(csv_output_path + '_skeleton_skeleton_Y_coords.csv', 'w', newline='')
+    csvfilePathY = open(output_path + 'skeleton_skeleton_Y_coords.csv', 'w', newline='')
     csv_writerPathY = csv.writer(csvfilePathY)
 
-    csvfileX = open(csv_output_path + '_skeleton_spline_X_coords.csv', 'w', newline='')
+    csvfileX = open(output_path + 'skeleton_spline_X_coords.csv', 'w', newline='')
     csv_writerX = csv.writer(csvfileX)
 
-    csvfileY = open(csv_output_path + '_skeleton_spline_Y_coords.csv', 'w', newline='')
+    csvfileY = open(output_path + 'skeleton_spline_Y_coords.csv', 'w', newline='')
     csv_writerY = csv.writer(csvfileY)
 
-    csvfileK = open(csv_output_path + '_skeleton_spline_K.csv', 'w', newline='')
+    csvfileK = open(output_path + 'skeleton_spline_K.csv', 'w', newline='')
     csv_writerK = csv.writer(csvfileK)
 
     # iterate over pages of the tiff file
@@ -338,7 +338,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_tiff_path', help='input path', required=True)
     parser.add_argument('-h5', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
-    parser.add_argument('-csv', '--csv_output_path', help='csv_output_path', required=True)
+    parser.add_argument('-o', '--output_path', help='output_path', required=True)
     parser.add_argument('-nose', '--nose', type=str, help='string for the nose e.g. nose or head', required=True)
     parser.add_argument('-tail', '--tail', type=str, help='string for the tail', required=True)
     parser.add_argument('-num_splines', '--num_splines', type=int, help='number of splines', required=True)
@@ -348,7 +348,7 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     tiff_path = args['input_tiff_path']
     hdf5_dlc_path = args['hdf5_dlc_path']
-    csv_output_path = args['csv_output_path']
+    output_path = args['output_path']
     nose = args['nose']
     tail = args['tail']
     num_splines = args['num_splines']
@@ -359,11 +359,11 @@ if __name__ == '__main__':
     ## To run locally
     # tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stack_background_subtracted_mask.btf'
     # hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stackDLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000.h5'
-    # csv_output_path='/Users/ulises.rey/local_data/test_spline/'
+    # output_path='/Users/ulises.rey/local_data/test_spline/'
     # number_of_neighbors = 1
     # fill_with_DLC = True
 
-    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, csv_output_path, nose, tail, num_splines, number_of_neighbors=number_of_neighbors,
+    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, output_path, nose, tail, num_splines, number_of_neighbors=number_of_neighbors,
                               fill_with_DLC=fill_with_DLC)
 
 
