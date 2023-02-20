@@ -98,6 +98,16 @@ def plot_fft(y_axis, xf, axes):
 
     return axes
 
+# To plot locally uncomment below
+# fft_y_axis = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221205/data/ZIM2165_Gcamp7b_worm4/2022-12-05_11-21_ZIM2165_worm4_Ch0-BH/fft_y_axis.csv"
+# fft_xf = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221205/data/ZIM2165_Gcamp7b_worm4/2022-12-05_11-21_ZIM2165_worm4_Ch0-BH/fft_xf.csv"
+#
+# y_axis = pd.read_csv(fft_y_axis, index_col=0).values
+# xf = pd.read_csv(fft_xf, index_col=0).values
+# fig, axes = plt.subplots()
+# axes = plot_fft(y_axis, xf, axes)
+# plt.show()
+
 if __name__ == '__main__':
 
     import argparse
@@ -110,18 +120,23 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--project_path', help='path to project', required=True)
     parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
     parser.add_argument('-fps', '--sampling_frequency', type=float, help='sampling frequency', required=True)
+    parser.add_argument('-w', '--window', type=int, help='averaging window', required=True)
+
     args = vars(parser.parse_args())
     project_path = args['project_path']
     kymo_path = args['kymo_path']
-    sampling_frequency = args['fps']
+    sampling_frequency = args['sampling_frequency']
+    window = args["window"]
 
 
-    df = pd.read_csv(kymo_path) #should load the averaged kymo already
-    #df = df.rolling(window=83, center=True, min_periods=1).mean()
+    df = pd.read_csv(kymo_path, index_col=None, header=None) #should load the averaged kymo already TODO: Does it need header=None?
+
+    df = df.rolling(window=window, center=True, min_periods=1).mean()
+    print("You are using a window to average, in the future you want to avoid this")
 
     y_axis, xf = fourier_transform_for_kymo(df, sampling_frequency)
-    pd.DataFrame(y_axis).to_csv(os.path.join(project_path, "fft_y_axis.csv"))
-    pd.DataFrame(xf).to_csv(os.path.join(project_path, "fft_xf.csv"))
+    pd.DataFrame(y_axis).to_csv(os.path.join(project_path, "fft_y_axis.csv"), header=None, index=None)
+    pd.DataFrame(xf).to_csv(os.path.join(project_path, "fft_xf.csv"), header=None, index=None)
 
     # plotting
     # fig, axes = plt.subplots()
