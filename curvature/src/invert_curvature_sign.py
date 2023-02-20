@@ -72,7 +72,7 @@ if __name__ == "__main__":
     import os
     import glob
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--input_path', help='folder pf wbfm dataset', required=True)
+    parser.add_argument('-i', '--input_path', help='folder of wbfm dataset', required=True)
 
     args = vars(parser.parse_args())
     project = args['input_path']
