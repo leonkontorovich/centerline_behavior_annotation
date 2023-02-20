@@ -29,6 +29,10 @@ dlc_model_configfile_path : "/scratch/neurobiology/zimmer/jalaja/DLC_models/Auto
 network_string : "DLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000" # You might need to run the code to find out how the string looks like
 
 #rule create_centerline:
+# rule create centerline
+nose : "head" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
+tail : "tail" # how was the tail annotated as in DLC model?
+num_splines : 100
 number_of_neighbours : 1
 fill_with_DLC : 1
 

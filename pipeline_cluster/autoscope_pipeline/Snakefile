@@ -2,7 +2,7 @@ import os
 import glob
 
 
-DATASETS=glob.glob("*/w*/*Ch0*/")
+DATASETS=glob.glob("*/*w*/*Ch0*/")
 
 background_img = glob.glob("*/background/*AVG_background*")[0]
 
@@ -21,11 +21,11 @@ rule targets:
         # # Maybe the avi is not needed because itself it is a requirement for final_img
         # avi = expand("{files}_AVG_background_subtracted.avi", files=FILES),
         # spline = expand("{files}_skeleton_spline_K.csv", files=FILES),
-        merged_spline_file = expand("{datasets}_skeleton_merged_spline_data.csv", datasets=DATASETS),
-        behaviour_annotation = expand("{datasets}_beh_annotation.csv", datasets=DATASETS),
+        merged_spline_file = expand("{datasets}skeleton_merged_spline_data.csv", datasets=DATASETS),
+        behaviour_annotation = expand("{datasets}beh_annotation.csv", datasets=DATASETS),
         # #speed_file= expand("{files}_raw_worm_speed.csv", files=FILES),
         # #speed_file = expand("{bh_folder}/raw_worm_speed.csv", bh_folder=BH_FOLDERS) #This is not actually produced!
-        figure = expand("{datasets}behavioral_summary_figure.pdf", datasets=DATASETS),  #This is not actually produced!
+        #figure = expand("{datasets}behavioral_summary_figure.pdf", datasets=DATASETS),  #This is not actually produced!
 
 
 rule ometiff2bigtiff:
@@ -37,6 +37,7 @@ rule ometiff2bigtiff:
     output:
         btf_file = "{datasets}raw_stack.btf" #{files}raw_stack.btf"
     shell:
+        #TODO: Change back to what it was, without the dirname thing
         """
         DIR=$(dirname {output.btf_file})
         echo $DIR
@@ -89,9 +90,6 @@ rule make_contour_based_binary:
         binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
     shell:
         "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs {params.contour_size} -t {params.tolerance} -ics {params.inner_contour_to_fill}"
-
-
-
 
 # rule binarize:
 #     input:
@@ -156,26 +154,30 @@ rule dlc_analyze_videos:
 
 rule create_centerline:
     input:
+        #TODO: Try ancient() to see if I can avoid re-running when the script is modified
         script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/head_and_tail.py",
         input_binary_img = "{datasets}raw_stack_background_subtracted_mask.btf",
         hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
 
     params:
         csv_output_path = "{datasets}",  # This cant go into inputs because it is not a file
-        number_of_neighbours = config["number_of_neighbours"],
-        fill_with_DLC = config["fill_with_DLC"]
-         # TODO: Improve so agparse takes boolean
+        number_of_neighbours = "1",
+        nose = config['nose'],
+        tail = config['tail'],
+        num_splines = config['num_splines'],
+        fill_with_DLC = "1" # TODO: Improve so argparse takes boolean
+
     output :
-        output_skel_X = "{datasets}_skeleton_skeleton_X_coords.csv",
-        output_skel_Y = "{datasets}_skeleton_skeleton_Y_coords.csv",
-        output_spline_K = "{datasets}_skeleton_spline_K.csv",
-        output_spline_X = "{datasets}_skeleton_spline_X_coords.csv",
-        output_spline_Y = "{datasets}_skeleton_spline_Y_coords.csv",
-        corrected_head = "{datasets}_skeleton_corrected_head_coords.csv",
-        corrected_tail = "{datasets}_skeleton_corrected_tail_coords.csv"
+        output_skel_X = "{datasets}skeleton_skeleton_X_coords.csv",
+        output_skel_Y = "{datasets}skeleton_skeleton_Y_coords.csv",
+        output_spline_K = "{datasets}skeleton_spline_K.csv",
+        output_spline_X = "{datasets}skeleton_spline_X_coords.csv",
+        output_spline_Y = "{datasets}skeleton_spline_Y_coords.csv",
+        corrected_head = "{datasets}skeleton_corrected_head_coords.csv",
+        corrected_tail = "{datasets}skeleton_corrected_tail_coords.csv"
 
     shell:
-        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -csv {params.csv_output_path} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
+        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {params.csv_output_path} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
 
 # # This rule has not been functional yet because I need to access its config.yaml file and I do not know how
 # # For the time being there is a cluster_jobs script
@@ -194,13 +196,13 @@ rule create_centerline:
 rule reformat_skeleton_files:
     input:
         script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/reformat_skeleton_files.py",
-        spline_K= "{datasets}_skeleton_spline_K.csv",
-        spline_X= "{datasets}_skeleton_spline_X_coords.csv",
-        spline_Y= "{datasets}_skeleton_spline_Y_coords.csv",
+        spline_K= "{datasets}skeleton_spline_K.csv",
+        spline_X= "{datasets}skeleton_spline_X_coords.csv",
+        spline_Y= "{datasets}skeleton_spline_Y_coords.csv",
         #spline_list = datasetssample}_spline_K.csv", "{sample}_spline_X_coords.csv", "{sample}_spline_Y_coords.csv",]
 
     output:
-        merged_spline_file = "{datasets}_skeleton_merged_spline_data.csv",
+        merged_spline_file = "{datasets}skeleton_merged_spline_data.csv",
 
     shell:
         "python {input.script} -i_K {input.spline_K} -i_X {input.spline_X} -i_Y {input.spline_Y} -o {output.merged_spline_file}"
@@ -209,52 +211,56 @@ rule reformat_skeleton_files:
 rule annotate_behaviour:
     input:
         script = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/src/annotate_behaviour_snakemake.py",
-        curvature_file = "{datasets}_skeleton_spline_K.csv" #Might or might not need to be the signed version
+        curvature_file = "{datasets}skeleton_spline_K.csv" #Might or might not need to be the signed version
 
     params:
         #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
-        pca_model_path = config["pca_model_path"]
+        pca_model_path = config["pca_model_path"],
+        #features should be added here, and maybe rolling mean (or use averaged splineK instead)
+        initial_segment= 30,
+        final_segment= 80,
+        window= 10
     output:
         principal_components = "{datasets}principal_components.csv",
         behaviour_annotation = "{datasets}beh_annotation.csv"
 
     shell :
-        "python {input.script} -i {input.curvature_file} -pca {params.pca_model_path} -o_pc {output.principal_components} -o_bh {output.behaviour_annotation}"
+        "python {input.script} -i {input.curvature_file} -pca {params.pca_model_path} -i_s {params.initial_segment} -f_s {params.final_segment} -win {params.window} -o_pc {output.principal_components} -o_bh {output.behaviour_annotation}"
 
-rule calculate_parameters:
-    #So far it only calculates speed
-    input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/calculate_parameters.py", #stage position should be input
-        curvature_file = "{sample}_skeleton_spline_K.csv" #This is used as a parameter because it is only used to find the main dir
+# rule calculate_parameters:
+#     #So far it only calculates speed
+#     input:
+#         script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/calculate_parameters.py", #stage position should be input
+#         curvature_file = "{sample}_skeleton_spline_K.csv" #This is used as a parameter because it is only used to find the main dir
+#
+#     output:
+#         speed_file = "{sample}_raw_worm_speed.csv" # This is never produced, so this will always run
+#     shell:
+#         """
+#         DIR=$(dirname $(dirname {input.curvature_file}))
+#         echo $DIR
+#         python {input.script} -i $DIR
+#         """
 
-    output:
-        speed_file = "{sample}_raw_worm_speed.csv" # This is never produced, so this will always run
-    shell:
-        """
-        DIR=$(dirname $(dirname {input.curvature_file}))
-        echo $DIR
-        python {input.script} -i $DIR
-        """
-
-
-rule make_behaviour_figure:
-    input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/make_figure.py",
-        curvature_file = "{sample}_skeleton_spline_K.csv",
-        pc_file = "{sample}_principal_components.csv",
-        # total_curvature_file = "",
-        beh_annotation_file = "{sample}beh_annotation.csv",
-        # speed_file = "",
-        # track_file = ""
-    # params:
-    #     curvature_file= "{sample}_skeleton_spline_K.csv",
-    #    smooth = True # Choose smooth or raw Kymogram
-    output:
-        figure = "{sample}behavioral_summary_figure.pdf" #This is  never produced, so it whill always run
-    shell:
-        """
-        DIR=$(dirname $(dirname {input.curvature_file}))
-        echo $DIR
-        python {input.script} -i $DIR
-        """
+#
+# rule make_behaviour_figure:
+#     input:
+#         script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/make_figure.py",
+#         curvature_file = "{sample}_skeleton_spline_K.csv",
+#         pc_file = "{sample}_principal_components.csv",
+#         # total_curvature_file = "",
+#         beh_annotation_file = "{sample}beh_annotation.csv",
+#         # speed_file = "",
+#         # track_file = ""
+#     # params:
+#     #     curvature_file= "{sample}_skeleton_spline_K.csv",
+#     #    smooth = True # Choose smooth or raw Kymogram
+#     output:
+#         figure = "{sample}behavioral_summary_figure.pdf" #This is  never produced, so it whill always run
+#     shell:
+#         """
+#         DIR=$(dirname $(dirname {input.curvature_file}))
+#         echo $DIR
+#         python {input.script} -i $DIR
+#         """
 
