@@ -77,7 +77,9 @@ if __name__ == '__main__':
     #TO RUN LOCALLY (with debugger)
     # main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221210/data/ZIM2165_Gcamp7b_worm3"
 
-    #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
+    #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/test/data/ZIM2165_Gcamp7b_worm1/"
+
+    #ALL
     project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
     print("project folder is: ", project_folder)
 
@@ -89,14 +91,14 @@ if __name__ == '__main__':
 
     # Kymogram
     ax1 = fig.add_subplot(gs[0, :-2])
-    kymo_path = glob.glob(os.path.join(project_folder, "*skeleton_spline_K_signed.csv"))[0]
+    kymo_path = glob.glob(os.path.join(project_folder, "*skeleton_spline_K_signed_avg.csv"))[0]
     print(kymo_path)
     plot_kymogram(kymo_path, axes=ax1)
     ax1.set_ylabel('Body Segment')
 
     #Principal Components
     ax2 = fig.add_subplot(gs[1, :-2], sharex = ax1)
-    pc_path = glob.glob(os.path.join(project_folder, "*_principal_components.csv"))[0]
+    pc_path = glob.glob(os.path.join(project_folder, "*principal_components.csv"))[0]
     print(pc_path)
     pcs = pd.read_csv(pc_path)
     pcs[['PC1', 'PC2', 'PC3']].plot(ax=ax2)
@@ -104,7 +106,7 @@ if __name__ == '__main__':
     #PC 3d
     #beh_annotation =
     ax10 = fig.add_subplot(gs[1, -2:], projection='3d')
-    pcs_avg = pcs.rolling(window=83*5, center=True).mean()
+    pcs_avg = pcs.rolling(window=83, center=True).mean()
     ax10.scatter(pcs_avg[['PC1']], pcs_avg[['PC2']], pcs_avg[['PC3']], s=.25, vmin=-1e-4, vmax=1e-4, cmap='bwr')
     ax10.set_xlabel('PC1')
     ax10.set_ylabel('PC2')
@@ -116,13 +118,13 @@ if __name__ == '__main__':
     ax3=fig.add_subplot(gs[2, :-2], sharex = ax1)
     df_kymo = pd.read_csv(kymo_path, header=None)
     df_kymo2 = df_kymo.abs()
-    df_kymo2.sum(axis=1).rolling(window=83, center=True).mean().plot(ax=ax3)
+    df_kymo2.sum(axis=1).plot(ax=ax3)
     ax3.set_ylabel('Total Absolute Curvature (mm⁻¹)')
     ax3.set_ylim([0, 4])
 
     # signed curvature
     ax4=fig.add_subplot(gs[3, :-2], sharex = ax1)
-    df_kymo.sum(axis=1).rolling(window=83, center=True).mean().plot(ax=ax4)
+    df_kymo.sum(axis=1).plot(ax=ax4)
     ax4.set_ylabel('Signed Curvature (mm⁻¹)')
     ax4.set_ylim([-2, 2])
     ax4.axhline(0, color='r', linestyle='--', alpha=0.5)

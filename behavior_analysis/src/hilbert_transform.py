@@ -51,7 +51,7 @@ def tutorial_example():
 def hilbert_curvature_example(fs=83):
 
     path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
-    df=pd.read_csv(path)
+    df=pd.read_csv(path, index_col=None, header=None)
     df = df.rolling(window=83, center=True, min_periods=1).mean()
     #df = df.iloc[]
     #df = df.iloc[13500+9000:28000,:].rolling(window=25, center=True, min_periods=1).mean()
@@ -179,27 +179,29 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--project_path', help='path to project', required=True)
     parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
     parser.add_argument('-fs', '--fs', type=float, help='sampling frequency', required=True)
+    parser.add_argument('-w', '--window', type=int, help='averaging window', required=True)
     args = vars(parser.parse_args())
     project_path = args['project_path']
     kymo_path = args['kymo_path']
     fs = args['fs']
+    window = args["window"]
 
-    print(type(fs))
 
     # project_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH"
     # kymo_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
     # fs = 83
 
-    df = pd.read_csv(kymo_path)
+    df = pd.read_csv(kymo_path, index_col=None, header=None)
     # This should be done outside this function!
-    #df = df.rolling(window=83, center=True, min_periods=1).mean()
+    df = df.rolling(window=window, center=True, min_periods=1).mean()
+    print("You are using a window to average, in the future you want to avoid this")
 
-    #do the hilbert transform
+    # do the hilbert transform
     results = hilbert_transform_on_kymogram(df, fs)
 
     results_names = ["inst_amplitude", "inst_phase", "inst_freq", "regenerated_carrier"]
     for i, result in enumerate(results):
         result_df = pd.DataFrame(result)
-        result_df.to_csv(os.path.join(project_path, "hilbert_"+results_names[i]+".csv"), float_format='%.5f', header=False, index=False)
+        result_df.to_csv(os.path.join(project_path, "hilbert_"+results_names[i]+".csv"), float_format='%.5f', header=None, index=None)
     #
     print('Script Finished. If the files are empty it is probably because the Kymogram contains NaNs')
