@@ -363,10 +363,7 @@ if __name__ == '__main__':
     # number_of_neighbors = 1
     # fill_with_DLC = True
 
-    head_and_tail_wrapper(tiff_path, hdf5_dlc_path, output_path, nose, tail, num_splines, number_of_neighbors=number_of_neighbors,
-                              fill_with_DLC=fill_with_DLC)
-
-
+    head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose, tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors, fill_with_DLC=fill_with_DLC)
 
 
 # assembling:
