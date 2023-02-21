@@ -217,9 +217,9 @@ rule annotate_behaviour:
         #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
         pca_model_path = config["pca_model_path"],
         #features should be added here, and maybe rolling mean (or use averaged splineK instead)
-        initial_segment= 30,
-        final_segment= 80,
-        window= 10
+        initial_segment = config["initial_segment"],
+        final_segment = config["final_segment"],
+        window = config["window"]
     output:
         principal_components = "{datasets}principal_components.csv",
         behaviour_annotation = "{datasets}beh_annotation.csv"

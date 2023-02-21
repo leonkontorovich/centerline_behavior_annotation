@@ -38,3 +38,6 @@ fill_with_DLC : 1
 
 #rule annotate_behaviour:
 pca_model_path : "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
+initial_segment : 30
+final_segment : 80
+window : 10
