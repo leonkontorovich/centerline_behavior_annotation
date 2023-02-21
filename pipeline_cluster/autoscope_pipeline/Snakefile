@@ -72,6 +72,7 @@ rule subtract_background:
 #         #also works like this "bash {input.script} {wildcards.sample}_AVG_background_subtracted.btf"
 #         "bash {input.script} {input.input_img}"
 
+#TODO: Suggestion Add make binary only to see how the binary looks like
 
 rule make_contour_based_binary:
     input:
