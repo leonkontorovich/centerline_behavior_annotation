@@ -48,7 +48,7 @@ def classifier_example():
 #load data
 spline_path = "/Users/ulises.rey/local_data/test_beh_annotation/skeleton_spline_K_signed_avg.csv"
 spline_df = pd.read_csv(spline_path, header=None)
-curvature = spline_df.iloc[:,30:80].sum(axis=1)
+curvature = spline_df.iloc[:,10:90].sum(axis=1)
 curvature.fillna(0, inplace=True)
 curvature = pd.DataFrame(curvature, columns=['curvature'])
 
@@ -56,17 +56,18 @@ pca_path = "/Users/ulises.rey/local_data/test_beh_annotation/principal_component
 pca_df = pd.read_csv(pca_path)
 pca_df.fillna(0, inplace=True)
 
+#speed
+speed_path = "/Users/ulises.rey/local_data/test_beh_annotation/raw_worm_speed.csv"
+speed_df = pd.read_csv(speed_path)
+
 # concatenate pca_df and curvature, addining header 'curvature' to the curvature column
+data_df = pd.concat([pca_df, curvature, speed_df], axis=1)
 
-data_df = pd.concat([pca_df, curvature], axis=1)
-
-X = data_df[['PC1','PC2','PC3','PC4','PC5','curvature']].values
+X = data_df[['PC1','PC2','PC3', 'PC4', 'PC5', 'curvature', 'Raw Speed (mm/s)']].values
 #load target
-target_path = "/Users/ulises.rey/local_data/test_beh_annotation/turn_annotation_timeseries.csv"
+target_path = "/Users/ulises.rey/local_data/test_beh_annotation/simple_turn_annotation_timeseries.csv"
 y = pd.read_csv(target_path)['Annotation'].values
 
-#print where y is nan
-print(np.where(np.isnan(y)))
 
 print(X.shape, "is the shape of the data")
 print(y.shape, "is the shape of the target")
@@ -92,9 +93,27 @@ print("Accuracy score %.3f" % metrics.accuracy_score(y_test, y_predict))
 print(y_test)
 print(y_predict)
 
-#plot to see the results
+#plot to see the results for the whole dataset (including training data which is not really fair)
 all_predict=svc.predict(sc.transform(X))
 plt.plot(all_predict)
 plt.plot(y, alpha=.5)
+plt.show()
 
+#pre processing
+y = np.expand_dims(y, axis=0)
+all_predict=np.expand_dims(all_predict, axis=0)
+
+#plotting
+# norm = mpl.colors.Normalize(vmin=-0.00005, vmax=0.00005)
+# cmap = cm.get_cmap('tab10')
+# forward_color = cmap(norm(-1))
+# reversal_color = cmap(norm(1))
+# quiescence_color = cmap(norm(0))
+
+fig, axes = plt.subplots(nrows=2, dpi=200)
+
+axes[0].imshow(y.T, origin="upper", cmap='tab10', aspect=20*100)
+
+axes[1].imshow(all_predict, origin="upper", cmap='tab10', aspect=20*100)
+plt.show()
 print('end')
