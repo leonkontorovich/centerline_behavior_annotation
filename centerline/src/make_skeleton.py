@@ -48,6 +48,7 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
     except ValueError:
         print("ValueError detected")
         value_error = True
+        x=0 #added this to avoid error in the next if statement
 
     #if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
     if len(x)<min_worm_len or len(x)<num_splines or value_error == True:
