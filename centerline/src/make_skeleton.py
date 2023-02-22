@@ -39,13 +39,17 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
     #to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
     costs=np.where(costs>254.9, 255*100, costs)
     #actual skeleton based on route through array from skimage
-    path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
+    try:
+        path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
+        x, y = np.asarray(list(zip(*path)), dtype=int)
+        # pts=np.asarray(path, dtype=np.int)
 
-    x,y=np.asarray(list(zip(*path)), dtype=int)
-    #pts=np.asarray(path, dtype=np.int)
+    except ValueError:
+        print("ValueError detected")
+        value_error = True
 
     #if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
-    if len(x)<min_worm_len or len(x)<num_splines:
+    if len(x)<min_worm_len or len(x)<num_splines or value_error == True:
         #print('Knots are Nans in: '+str(i))
         K=np.full(num_splines, np.nan)
         x=np.full(num_splines, np.nan)
