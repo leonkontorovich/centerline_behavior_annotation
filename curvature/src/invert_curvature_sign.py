@@ -79,7 +79,7 @@ if __name__ == "__main__":
 
     print(project)
 
-    input_path = glob.glob(os.path.join(project, "*/*spline_K.csv"))[0]
+    input_path = glob.glob(os.path.join(project, "*/skeleton_spline_K.csv"))[0]
     output_path = os.path.splitext(input_path)[0]+"_signed.csv"
     config_yaml_path = glob.glob(os.path.join(project, "*config.yaml"))[0]
 
