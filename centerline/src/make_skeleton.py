@@ -43,6 +43,7 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
         path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
         x, y = np.asarray(list(zip(*path)), dtype=int)
         # pts=np.asarray(path, dtype=np.int)
+        value_error = False
 
     except ValueError:
         print("ValueError detected")
