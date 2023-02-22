@@ -31,58 +31,75 @@ def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):
     min_worm_len: int, minimun length the worm should have. Default 0.
     """
 
-    #this defines the costs for the shortest path
-    costs=cv2.distanceTransform(img, cv2.DIST_L2,3)
-    cv2.normalize(costs, costs, 0, 255, cv2.NORM_MINMAX)
-    costs=costs.max()-costs
+    # check if image is empty,
+    all_zeros = not np.any(img)
 
-    #to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
-    costs=np.where(costs>254.9, 255*100, costs)
-    #actual skeleton based on route through array from skimage
-    try:
-        path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
-        x, y = np.asarray(list(zip(*path)), dtype=int)
-        # pts=np.asarray(path, dtype=np.int)
-        value_error = False
-
-    except ValueError:
-        print("ValueError detected")
-        value_error = True
-        x=0 #added this to avoid error in the next if statement
-
-    #if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
-    if len(x)<min_worm_len or len(x)<num_splines or value_error == True:
-        #print('Knots are Nans in: '+str(i))
-        K=np.full(num_splines, np.nan)
-        x=np.full(num_splines, np.nan)
-        y=np.full(num_splines, np.nan)
-        x_new=np.full(num_splines, np.nan)
-        y_new=np.full(num_splines, np.nan)
-        u=np.nan
-    #else, the path was good, fit a spline and find curvature
+    if all_zeros == True:
+        print("img is emtpy, no centerline should be calculated")
+        K = np.full(num_splines, np.nan)
+        x = np.full(num_splines, np.nan)
+        y = np.full(num_splines, np.nan)
+        x_new = np.full(num_splines, np.nan)
+        y_new = np.full(num_splines, np.nan)
+        u = np.nan
+    #image is not empty, proceed
     else:
-        ####
-        ##SHOULD THIS PART HERE BE CONVERTED TO A FUNCTION?? (or some of it)
-        #s is the smoothing condition should have around the size of points/2 (keep it low)
-        #k is the degree of freedom for the polynom it fits, 5 is good
-        #splprep calculates automatically the number of knots. One can see how many in tck.shape[1].
-        #everytime splprep is run the number may differ
-        tck, u = splprep([x,y], u=None, s=x.shape[0]/2, per=0, k=5)
-        u_new = np.linspace(u.min(), u.max(), num_splines)#1000)
+        #this defines the costs for the shortest path
+        costs=cv2.distanceTransform(img, cv2.DIST_L2,3)
+        cv2.normalize(costs, costs, 0, 255, cv2.NORM_MINMAX)
+        costs=costs.max()-costs
 
-        x_new, y_new = splev(u_new, tck, der=0)
+        #to increase the value a lot of the pixels outside the worm contour (np.inf will not work! sometimes head and tail outside work contour)
+        costs=np.where(costs>254.9, 255*100, costs)
+        #actual skeleton based on route through array from skimage
+        try:
+            path, cost = skimage.graph.route_through_array(costs, start=start_point, end=end_point, fully_connected=False)
+            x, y = np.asarray(list(zip(*path)), dtype=int)
+            # pts=np.asarray(path, dtype=np.int)
+            value_error = False
+            # if coordinates from route_through_array are smaller than min_worm_len or num_splines, it is not a good centerline
+            if len(x) < min_worm_len or len(x) < num_splines:
+                # print('Knots are Nans in: '+str(i))
+                K = np.full(num_splines, np.nan)
+                x = np.full(num_splines, np.nan)
+                y = np.full(num_splines, np.nan)
+                x_new = np.full(num_splines, np.nan)
+                y_new = np.full(num_splines, np.nan)
+                u = np.nan
+            # else, the path was good, fit a spline and find curvature
+            else:
+                ####
+                ##SHOULD THIS PART HERE BE CONVERTED TO A FUNCTION?? (or some of it)
+                # s is the smoothing condition should have around the size of points/2 (keep it low)
+                # k is the degree of freedom for the polynom it fits, 5 is good
+                # splprep calculates automatically the number of knots. One can see how many in tck.shape[1].
+                # everytime splprep is run the number may differ
+                tck, u = splprep([x, y], u=None, s=x.shape[0] / 2, per=0, k=5)
+                u_new = np.linspace(u.min(), u.max(), num_splines)  # 1000)
 
-        #this returns x'(s), y'(s)
-        x_der, y_der = splev(u_new, tck, der=1)
-        #to have y'(x):
-        der=y_der/x_der
+                x_new, y_new = splev(u_new, tck, der=0)
 
-        #this returns x''(s), y''(s)
-        x_der2, y_der2 = splev(u_new, tck, der=2)
-        #to have y''(x), also called K for Curvature:
-        #we need the following equation:
-        #ref in: https://en.wikipedia.org/wiki/Curvature#In_terms_of_a_general_parametrization (1st equation)
-        K=(x_der*y_der2-y_der*x_der2)/np.sqrt(x_der**2+y_der**2)**3
+                # this returns x'(s), y'(s)
+                x_der, y_der = splev(u_new, tck, der=1)
+                # to have y'(x):
+                der = y_der / x_der
+
+                # this returns x''(s), y''(s)
+                x_der2, y_der2 = splev(u_new, tck, der=2)
+                # to have y''(x), also called K for Curvature:
+                # we need the following equation:
+                # ref in: https://en.wikipedia.org/wiki/Curvature#In_terms_of_a_general_parametrization (1st equation)
+                K = (x_der * y_der2 - y_der * x_der2) / np.sqrt(x_der ** 2 + y_der ** 2) ** 3
+
+        except ValueError:
+            print("ValueError detected, data will be np.nan")
+            value_error = True
+            K=np.full(num_splines, np.nan)
+            x=np.full(num_splines, np.nan)
+            y=np.full(num_splines, np.nan)
+            x_new=np.full(num_splines, np.nan)
+            y_new=np.full(num_splines, np.nan)
+            u=np.nan
 
 
     return u, (x,y), (x_new, y_new), K
