@@ -64,8 +64,9 @@ speed_df = pd.read_csv(speed_path)
 data_df = pd.concat([pca_df, curvature, speed_df], axis=1)
 
 X = data_df[['PC1','PC2','PC3', 'PC4', 'PC5', 'curvature', 'Raw Speed (mm/s)']].values
+#X = data_df[['PC1','PC2','PC3', 'PC4', 'PC5', 'curvature']].values
 #load target
-target_path = "/Users/ulises.rey/local_data/test_beh_annotation/simple_turn_annotation_timeseries.csv"
+target_path = "/Users/ulises.rey/local_data/test_beh_annotation/simplest_turn_annotation_timeseries.csv"
 y = pd.read_csv(target_path)['Annotation'].values
 
 
@@ -80,7 +81,7 @@ X_train_std = sc.transform(X_train)
 X_test_std = sc.transform(X_test)
 
 # Instantiate the Support Vector Classifier (SVC)
-svc = SVC(C=1.0, random_state=1, kernel='poly')
+svc = SVC(C=1.0, random_state=1, kernel='rbf')
 
 # Fit the model
 svc.fit(X_train_std, y_train)
@@ -93,11 +94,13 @@ print("Accuracy score %.3f" % metrics.accuracy_score(y_test, y_predict))
 print(y_test)
 print(y_predict)
 
-#plot to see the results for the whole dataset (including training data which is not really fair)
 all_predict=svc.predict(sc.transform(X))
-plt.plot(all_predict)
-plt.plot(y, alpha=.5)
-plt.show()
+
+
+#plot to see the results for the whole dataset (including training data which is not really fair)
+# plt.plot(all_predict)
+# plt.plot(y, alpha=.5)
+# plt.show()
 
 #pre processing
 y = np.expand_dims(y, axis=0)
@@ -110,10 +113,16 @@ all_predict=np.expand_dims(all_predict, axis=0)
 # reversal_color = cmap(norm(1))
 # quiescence_color = cmap(norm(0))
 
-fig, axes = plt.subplots(nrows=2, dpi=200)
+fig, axes = plt.subplots(nrows=2,  sharex=True, dpi=100)
 
-axes[0].imshow(y.T, origin="upper", cmap='tab10', aspect=20*100)
+axes[0].imshow(y, origin="upper", cmap='tab10', aspect=20*100)
+axes[0].set_title('Ground truth')
 
 axes[1].imshow(all_predict, origin="upper", cmap='tab10', aspect=20*100)
+axes[1].set_xlabel('Time (frames)')
+axes[1].set_title('Predicted')
+
+for ax in axes:
+    ax.set_yticks([])
 plt.show()
 print('end')
