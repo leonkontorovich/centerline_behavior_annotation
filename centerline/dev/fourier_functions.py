@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import scipy.fftpack
 import scipy.fft
 
+import os
+import glob
+
 
 def fourier_transform(segment, sampling_frequency):
     """
@@ -86,11 +89,17 @@ def fourier_transform_for_kymo(df, sampling_frequency):
     return y_axis, xf
 
 def plot_fft(y_axis, xf, axes):
-
+    """
+    To plot the fourier transform
+    :param y_axis:
+    :param xf:
+    :param axes:
+    :return:
+    """
 
     axes.imshow(y_axis.T, origin="upper", interpolation=None, cmap='viridis',
-                extent=[xf[0], xf[-1], y_axis.shape[1], 0],
-                aspect=0.02, vmin=0, vmax=0.005) #vmax corresponds to amplitude
+                extent=[0, xf[-1][0], y_axis.shape[1], 0],
+                aspect=0.02, vmin=0, vmax=0.004)#vmax=0.004) #vmax=0.005) #vmax corresponds to amplitude
     #axes.set_xlim([0, 1])
     axes.set_xlabel('Frequency (Hz)')
     axes.set_ylabel('Body Segment')
@@ -99,47 +108,48 @@ def plot_fft(y_axis, xf, axes):
     return axes
 
 # To plot locally uncomment below
-# fft_y_axis = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221205/data/ZIM2165_Gcamp7b_worm4/2022-12-05_11-21_ZIM2165_worm4_Ch0-BH/fft_y_axis.csv"
-# fft_xf = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221205/data/ZIM2165_Gcamp7b_worm4/2022-12-05_11-21_ZIM2165_worm4_Ch0-BH/fft_xf.csv"
+main_project = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/*worm4/*-BH/"
+fft_y_axis = glob.glob(os.path.join(main_project, "fft_y_axis.csv"))[0]
+fft_xf = glob.glob(os.path.join(main_project, "fft_xf.csv"))[0]
+
+y_axis = pd.read_csv(fft_y_axis).values
+xf = pd.read_csv(fft_xf).values
+fig, axes = plt.subplots()
+axes = plot_fft(y_axis, xf, axes)
+plt.show()
+
+# if __name__ == '__main__':
 #
-# y_axis = pd.read_csv(fft_y_axis, index_col=0).values
-# xf = pd.read_csv(fft_xf, index_col=0).values
-# fig, axes = plt.subplots()
-# axes = plot_fft(y_axis, xf, axes)
-# plt.show()
-
-if __name__ == '__main__':
-
-    import argparse
-    import os
-
-    # This script should save receive the kymogram (without Nans) and the sampling frequency as input,
-    # and return the y_axis and the xf in a csv file
-
-    parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--project_path', help='path to project', required=True)
-    parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
-    parser.add_argument('-fps', '--sampling_frequency', type=float, help='sampling frequency', required=True)
-    parser.add_argument('-w', '--window', type=int, help='averaging window', required=True)
-
-    args = vars(parser.parse_args())
-    project_path = args['project_path']
-    kymo_path = args['kymo_path']
-    sampling_frequency = args['sampling_frequency']
-    window = args["window"]
-
-
-    df = pd.read_csv(kymo_path, index_col=None, header=None) #should load the averaged kymo already TODO: Does it need header=None?
-
-    df = df.rolling(window=window, center=True, min_periods=1).mean()
-    print("You are using a window to average, in the future you want to avoid this")
-
-    y_axis, xf = fourier_transform_for_kymo(df, sampling_frequency)
-    pd.DataFrame(y_axis).to_csv(os.path.join(project_path, "fft_y_axis.csv"), header=None, index=None)
-    pd.DataFrame(xf).to_csv(os.path.join(project_path, "fft_xf.csv"), header=None, index=None)
-
-    # plotting
-    # fig, axes = plt.subplots()
-    # axes = plot_fft(y_axis, xf, axes)
-    # axes.set_xlim([0, 1])
-    # plt.show()
+#     import argparse
+#     import os
+#
+#     # This script should save receive the kymogram (without Nans) and the sampling frequency as input,
+#     # and return the y_axis and the xf in a csv file
+#
+#     parser = argparse.ArgumentParser(description='Description of your program')
+#     parser.add_argument('-i', '--project_path', help='path to project', required=True)
+#     parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
+#     parser.add_argument('-fps', '--sampling_frequency', type=float, help='sampling frequency', required=True)
+#     parser.add_argument('-w', '--window', type=int, help='averaging window', required=True)
+#
+#     args = vars(parser.parse_args())
+#     project_path = args['project_path']
+#     kymo_path = args['kymo_path']
+#     sampling_frequency = args['sampling_frequency']
+#     window = args["window"]
+#
+#
+#     df = pd.read_csv(kymo_path, index_col=None, header=None) #should load the averaged kymo already TODO: Does it need header=None?
+#
+#     df = df.rolling(window=window, center=True, min_periods=1).mean()
+#     print("You are using a window to average, in the future you want to avoid this")
+#
+#     y_axis, xf = fourier_transform_for_kymo(df, sampling_frequency)
+#     pd.DataFrame(y_axis).to_csv(os.path.join(project_path, "fft_y_axis.csv"), header=None, index=None)
+#     pd.DataFrame(xf).to_csv(os.path.join(project_path, "fft_xf.csv"), header=None, index=None)
+#
+#     # plotting
+#     # fig, axes = plt.subplots()
+#     # axes = plot_fft(y_axis, xf, axes)
+#     # axes.set_xlim([0, 1])
+#     # plt.show()
