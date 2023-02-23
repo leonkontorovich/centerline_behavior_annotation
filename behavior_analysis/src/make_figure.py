@@ -91,14 +91,14 @@ if __name__ == '__main__':
 
     # Kymogram
     ax1 = fig.add_subplot(gs[0, :-2])
-    kymo_path = glob.glob(os.path.join(project_folder, "*skeleton_spline_K_signed_avg.csv"))[0]
+    kymo_path = glob.glob(os.path.join(project_folder, "skeleton_spline_K_signed_avg.csv"))[0]
     print(kymo_path)
     plot_kymogram(kymo_path, axes=ax1)
     ax1.set_ylabel('Body Segment')
 
     #Principal Components
     ax2 = fig.add_subplot(gs[1, :-2], sharex = ax1)
-    pc_path = glob.glob(os.path.join(project_folder, "*principal_components.csv"))[0]
+    pc_path = glob.glob(os.path.join(project_folder, "principal_components.csv"))[0]
     print(pc_path)
     pcs = pd.read_csv(pc_path)
     pcs[['PC1', 'PC2', 'PC3']].plot(ax=ax2)
@@ -137,7 +137,7 @@ if __name__ == '__main__':
 
     #Ethogram
     ax6 = fig.add_subplot(gs[4, :-2], sharex = ax1)
-    ethogram_path = glob.glob(os.path.join(project_folder, '*beh_annotation.csv'))[0]
+    ethogram_path = glob.glob(os.path.join(project_folder, 'beh_annotation.csv'))[0]
     print(ethogram_path)
     ethogram_df = pd.read_csv(ethogram_path, index_col=0) #header should not be None!
     ax6.imshow(ethogram_df.values.T, origin="upper", cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100)
