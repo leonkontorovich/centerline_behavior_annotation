@@ -10,13 +10,14 @@ if __name__ == "__main__":
     ## IMPORTANT!##
     ###############
 
-    main_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/2022*/data/'
-    dataframe_path_list = glob.glob(os.path.join(main_path, '*worm*/*BH*/*skeleton_spline_K_signed.csv'))
+    main_path='/scratch/neurobiology/zimmer/ulises/wbfm/2022*/data/'
+    dataframe_path_list = glob.glob(os.path.join(main_path, '*worm*/*BH*/*skeleton_spline_K_signed_avg.csv'))
 
-    print(len(dataframe_path_list))
+    print("There are ", len(dataframe_path_list), "spline_K_files to concatenate")
 
     concatenated_dataframe = concatenate_dataframes(dataframe_path_list)
 
-    output_path = '/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/merged_skeleton_spline_K_signed.csv'
+    output_path = '/scratch/neurobiology/zimmer/ulises/wbfm/merged_skeleton_spline_K_signed_avg_cluster.csv'
     #very important to have index and header to False!
     concatenated_dataframe.to_csv(output_path, index=False, header=False)
+    print("Done!")
