@@ -7,7 +7,7 @@ if __name__ == "__main__":
     import pandas as pd
     import numpy as np
     from curvature.src.make_PCA import *
-    from curvature.src.annotate_behaviour import *
+    from curvature.src.annotate_reversals import *
 
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--i_spline_path', help='input path', required=True)
