@@ -78,22 +78,31 @@ def stack_extract_contours_with_children(binary_input_filepath):
 path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/raw_stack_AVG_background_subtracted_normalised_worm_segmented_mask.btf"
 
 df = pd.DataFrame()
+def stack_self_touch(path, external_cnt_area, internal_contour_area):
+    """
 
-with tiff.TiffFile(path) as tif_binary:
-    for i, page in enumerate(tif_binary.pages):
-        img = page.asarray()
-        contours_with_children = find_specific_contours_with_specific_children(img, [7000, 20000], [100, 2000])
-        if contours_with_children:
-            print('self touch')
-            df = df.append({'self_touch': 1}, ignore_index=True)
-        else:
-            print('no self touch')
-            df = df.append({'self_touch': 0}, ignore_index=True)
-df.to_csv('/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/self_touch.csv')
-print('done')
+    :param path:
+    :param external_cnt_area:
+    :param internal_contour_area:
+    :return:
+    """
+    with tiff.TiffFile(path) as tif_binary:
+        for i, page in enumerate(tif_binary.pages):
+            img = page.asarray()
+            contours_with_children = find_specific_contours_with_specific_children(img, [7000, 20000], [100, 2000])
+            if contours_with_children:
+                print('self touch')
+                df = df.append({'self_touch': 1}, ignore_index=True)
+            else:
+                print('no self touch')
+                df = df.append({'self_touch': 0}, ignore_index=True)
+    return df
 
-# if __name__ == "__main__":
+
+if __name__ == "__main__":
 
 path =
 
-df =
+df = stack_self_touch(path, [7000, 20000], [100, 2000])
+df.to_csv('/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/self_touch.csv')
+print('done')
