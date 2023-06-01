@@ -11,7 +11,7 @@ import glob
 #THE idea is to generate a timeseries with 0 i f the worm is not self touching and 1 if the worm is self touching
 # This should be based on the find contours function in imutils
 
-def find_specific_contours_with_specific_children(img, external_cnt_area, internal_contour_area):
+def find_specific_contours_with_specific_children(img, external_contour_area, internal_contour_area):
     """
     Inspired by imutils.src.imfunctions.extract_contours_with_children()
     :return:
@@ -30,7 +30,7 @@ def find_specific_contours_with_specific_children(img, external_cnt_area, intern
             area = cv2.contourArea(cnt)
 
             # check if the contours with children have an area between the external_cnt_area
-            if external_cnt_area[0] < area < external_cnt_area[1]:
+            if external_contour_area[0] < area < external_contour_area[1]:
                 # find the rows of an array where the 3rd column is equal to cnt_idx
                 new_array = np.where(hierarchy[0][:, 3] == cnt_idx)
                 for child_cnt_idx in new_array:
@@ -41,44 +41,7 @@ def find_specific_contours_with_specific_children(img, external_cnt_area, intern
 
     return specific_contours_with_specific_children
 
-def stack_extract_contours_with_children(binary_input_filepath):
-
-    """
-    Based on imutils.stack_extract_and_save_contours_with_children()
-    :param binary_input_filepath: image from where the contours will be extracted
-    :return: df
-    """
-
-    df = pd.DataFrame()
-
-    with tiff.TiffFile(binary_input_filepath) as tif_binary:
-        for i, page in enumerate(tif_binary.pages):
-            img = page.asarray()
-
-            big_contours_with_children = []
-            # extract contours with children
-            contours_with_children = extract_contours_with_children(img)
-
-            # from contours_with_children list, remove the ones that have an area smaller than 100
-
-
-
-            for cnt in contours_with_children:
-                #find the area of the contour
-                #TODO: Should find the area of inner contour, not of the contour with children!
-                area = cv2.contourArea(cnt)
-                if area < 50:
-                    big_contours_with_children = big_contours_with_children + 1
-            print(len(contours_with_children))
-            #append the length of the contours to the dataframe
-            df = df.append({'contours': big_contours_with_children}, ignore_index=True)
-
-    return df
-
-path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/raw_stack_AVG_background_subtracted_normalised_worm_segmented_mask.btf"
-
-df = pd.DataFrame()
-def stack_self_touch(path, external_cnt_area, internal_contour_area):
+def stack_self_touch(path, external_contour_area, internal_contour_area):
     """
 
     :param path:
@@ -89,7 +52,7 @@ def stack_self_touch(path, external_cnt_area, internal_contour_area):
     with tiff.TiffFile(path) as tif_binary:
         for i, page in enumerate(tif_binary.pages):
             img = page.asarray()
-            contours_with_children = find_specific_contours_with_specific_children(img, [7000, 20000], [100, 2000])
+            contours_with_children = find_specific_contours_with_specific_children(img, external_contour_area, internal_contour_area)
             if contours_with_children:
                 print('self touch')
                 df = df.append({'self_touch': 1}, ignore_index=True)
