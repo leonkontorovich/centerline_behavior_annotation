@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="curvature",
-    version="0.0.1",
+    version="0.0.2",
     author="Ulises Rey and Itamar Lev",
     author_email="ulises.rey@univie.ac.at",
     description="A small package to analyze worm curvature",
