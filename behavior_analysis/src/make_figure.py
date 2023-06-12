@@ -12,7 +12,7 @@ from imutils.src.plotting import *
 
 
 
-def plot_main_figure(project_folder, nrows, ncols):
+def plot_main_figure(nrows, ncols):
     """Function to plot the main behavioural features of a single worm behavioral recording
     input:
     project_folder
@@ -63,6 +63,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_path', help='folder with the tracker position', required=True)
 
+    args = vars(parser.parse_args())
+    main_folder = args['input_path']
+
+    #main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1"
+
+    #OLD PARSER
     # parser.add_argument('-i', '--input_path', help='', required=True)
     # parser.add_argument('-k', '--kymo_path', help='', required=True)
     # parser.add_argument('-pcs', '--pcs_path', help='', required=True)
@@ -71,20 +77,17 @@ if __name__ == '__main__':
     # parser.add_argument('-speed', '--raw_worm_speed_path', help='', required=True)
 
 
-    args = vars(parser.parse_args())
-    main_folder = args['input_path']
-
     #TO RUN LOCALLY (with debugger)
     # main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221210/data/ZIM2165_Gcamp7b_worm3"
 
-    #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/test/data/ZIM2165_Gcamp7b_worm1/"
+    #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/"
 
     #ALL
     project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
     print("project folder is: ", project_folder)
 
     #Start Figure
-    fig, gs = plot_main_figure(project_folder, nrows=6, ncols=10)
+    fig, gs = plot_main_figure(nrows=6, ncols=10)
 
     #Set size
     fig.set_size_inches(11.69, 8.27)
