@@ -30,10 +30,19 @@ if __name__ == "__main__":
     features = np.arange(initial_segment, final_segment)  # Separating out the features (starting bodypart, ending bodypart),a dd to config yaml
     data = df.loc[:, features].values
 
-    signed_curvature = data.sum(axis=1)
+    #Trying to split dat into ventral and dorsal to see if this improves
+    ventral_data = np.where(data > 0, data, 0) #where data is positive, keep it, otherwise set it to 0
+    ventral_curvature = ventral_data.sum(axis=1)
+
+    dorsal_data = np.where(data < 0, data, 0) #where data is negative, keep it, otherwise set it to 0
+    dorsal_curvature = dorsal_data.sum(axis=1)
+
+    # OLD WAY
+    #signed_curvature = data.sum(axis=1)
+
     # add a column in the dataframe which contains 1 if another column is higher than 0.05, -1 if lower than -0.05, and 0 if in between -0.5 and 0.5
     new_df = pd.DataFrame()
-    new_df['turn'] = np.where(signed_curvature > threshold, 1, np.where(signed_curvature < -threshold, -1, 0))
+    new_df['turn'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0))
 
     turns_df = pd.DataFrame(new_df['turn'])
     turns_df.to_csv(turns_annotation_path)
