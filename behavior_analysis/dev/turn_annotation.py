@@ -4,8 +4,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+#
+from curvature.src.make_PCA import *
+from curvature.src.annotate_reversals import *
+
 #README
 # Much of this code is based on PCA_Figure PCA_slider from imutils/dev/sliders or imutils/dev/PCA_Figure.py
+# For Snakemake integration check /curvature/curvature/src/annotate_turns_snakemake.py
 
 #read file
 main_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221210/data/ZIM2165_Gcamp7b_worm1/2022-12-10_16-36_ZIM2165_worm1_Ch0-BH"
@@ -22,6 +27,13 @@ z=df.loc[:,'PC3'].rolling(window=avg_win, center=True).mean()
 
 # add a column in the dataframe which contains 1 if another column is higher than 0.05, -1 if lower than -0.05, and 0 if in between -0.5 and 0.5
 df['turn'] = np.where(df['PC3'] > 0.05, 1, np.where(df['PC3'] < -0.05, -1, 0))
+
+# add forward and reverse
+# pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=average_window)
+# cross_product_df = calculate_cross_product(pc1_pc2_df)
+# cross_product_df = - cross_product_df
+#
+# values_arr = binarize_cross_product(cross_product_df)
 
 #color dictionary
 color_dict = {-1: u'yellow',
