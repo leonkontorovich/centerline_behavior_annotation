@@ -30,7 +30,7 @@ def tutorial_example():
     # Regenerate the carrier from the instantaneous phase
     regenerated_carrier = np.cos(inst_phase)
 
-    plt.plot(inst_amplitude, 'r');  # overlay the extracted envelope
+    #plt.plot(inst_amplitude, 'r');  # overlay the extracted envelope
     plt.title('Modulated signal and extracted envelope')
     plt.xlabel('n')
     plt.ylabel('x(t) and |z(t)|')
@@ -47,12 +47,55 @@ def tutorial_example():
     return
 
 #tutorial_example()
+
+def hilbert_curvature_one_segment_example(segment, fs=83):
+    """
+
+    :param segment:
+    :param fs:
+    :return:
+    """
+    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed_avg.csv"
+    df = pd.read_csv(path, index_col=None, header=None)
+    print(df.shape)
+
+    x = df.values
+
+    z = hilbert(x, axis=0)  # , axis=)#, axis=0)#form the analytical signal
+    print(z.shape)
+    inst_amplitude = np.abs(z)  # envelope extraction
+    inst_phase = np.unwrap(np.angle(z), axis=0)  # inst phase
+    # inst_freq = np.diff(inst_phase, axis=0)/(2*np.pi)*fs #inst frequency
+    inst_freq = np.diff(inst_phase, axis=0) / (2 * np.pi) * fs  # inst frequency
+    print(inst_freq.shape)
+
+    # Regenerate the carrier from the instantaneous phase
+    regenerated_carrier = np.cos(inst_phase)
+
+    fig, axes = plt.subplots(4, sharex=True)
+    axes[0].plot(x[:,segment])
+    axes[0].plot(inst_amplitude[:, segment], 'r')  # overlay the extracted envelope
+    axes[0].axhline(y=0, color='k', linestyle='--')
+
+    axes[1].plot(inst_freq[:,segment])
+    axes[1].axhline(y=0, color='r', linestyle='--')
+
+    axes[2].plot(inst_amplitude[:,segment])
+
+    axes[3].plot(regenerated_carrier[:,segment])
+
+    titles = ['Curvature', 'Instantaneous Frequency', 'Instantaneous Amplitude', 'Extracted carrier / TFS']
+    for idx, axis in enumerate(axes):
+        axis.set_title(titles[idx])
+
+    return fig, axes
+
 #load dataframe with body curvature
 def hilbert_curvature_example(fs=83):
 
-    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
+    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed_avg.csv"
     df=pd.read_csv(path, index_col=None, header=None)
-    df = df.rolling(window=83, center=True, min_periods=1).mean()
+    #df = df.rolling(window=83, center=True, min_periods=1).mean()
     #df = df.iloc[]
     #df = df.iloc[13500+9000:28000,:].rolling(window=25, center=True, min_periods=1).mean()
     print(df.shape)
@@ -98,6 +141,7 @@ def hilbert_curvature_example(fs=83):
     plt.show(block=False)
 
 
+
     fig2, axes2 = plt.subplots(4, sharex=True, sharey=True)
     axes2[0].imshow(x.T, origin="upper", cmap='seismic', extent=[0, x.shape[0], x.shape[1], 0],
                         aspect=20, vmin=-0.06, vmax=0.06)
@@ -109,12 +153,16 @@ def hilbert_curvature_example(fs=83):
 
     axes2[3].imshow(regenerated_carrier.T, origin="upper", cmap='seismic',
                     extent=[0, regenerated_carrier.shape[0], regenerated_carrier.shape[1], 0], aspect=20, vmin=-1, vmax=1)
+    axes2[3].set_xlabel('Time (frames)')
 
     titles = ['Curvature', 'Instantaneous Frequency', 'Instantaneous Amplitude', 'Extracted carrier / TFS']
     for idx, axis in enumerate(axes2):
         axis.set_title(titles[idx])
+        axis.set_ylabel('Segment')
 
     plt.show()
+
+    return inst_amplitude, inst_phase, inst_freq, regenerated_carrier
 
 def hilbert_transform_on_kymogram(df, fs):
     """
@@ -142,12 +190,18 @@ def hilbert_transform_on_kymogram(df, fs):
 
 
 def hilbert_transform_on_kymograms_wrapper():
-    #at the moment nod needed, using the argparse
+    #at the moment not needed, using the argparse
     return
 
-
-# hilbert_curvature_example()
-
+# tutorial_example()
+# #inst_amplitude, inst_phase, inst_freq, regenerated_carrier = hilbert_curvature_example(fs=83)
+# # fig1, axes1 = hilbert_curvature_one_segment_example(10,1)
+# # plt.show(block=False)
+# # fig2, axes2 = hilbert_curvature_one_segment_example(50,1)
+# # plt.show(block=False)
+# #hilbert_curvature_example(fs=83)
+#
+# print('debug')
 
 
 if __name__ == '__main__':
