@@ -8,3 +8,4 @@ curvature.egg*
 .idea/modules.xml
 .idea/curvature_test.iml
 .idea/inspectionProfiles/Project_Default.xml
+*/._*.py
