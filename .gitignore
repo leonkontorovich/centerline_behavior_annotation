@@ -2,3 +2,6 @@
 .idea/*
 */*/._*
 */._*
+build/*
+curvature.egg*
+.idea/*
