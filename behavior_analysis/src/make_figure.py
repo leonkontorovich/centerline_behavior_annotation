@@ -2,6 +2,7 @@ import matplotlib.cm as cm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib import colors
 import pandas as pd
 import numpy as np
 import os
@@ -87,7 +88,7 @@ if __name__ == '__main__':
     print("project folder is: ", project_folder)
 
     #Start Figure
-    fig, gs = plot_main_figure(nrows=6, ncols=10)
+    fig, gs = plot_main_figure(nrows=7, ncols=10)
 
     #Set size
     fig.set_size_inches(11.69, 8.27)
@@ -114,6 +115,7 @@ if __name__ == '__main__':
     ax10.set_xlabel('PC1')
     ax10.set_ylabel('PC2')
     ax10.set_zlabel('PC3')
+    ax10.set_ylabel('Smoothed Principal Components')
     #ax9.tick_params(labelsize=7)
     #ax9.set_axis_off()
 
@@ -141,13 +143,13 @@ if __name__ == '__main__':
     #Ethogram
     ax6 = fig.add_subplot(gs[4, :-2], sharex = ax1)
     ethogram_path = glob.glob(os.path.join(project_folder, 'beh_annotation.csv'))[0]
-    print(ethogram_path)
+    print("Rev-Fwd ethogram is :" , ethogram_path)
     ethogram_df = pd.read_csv(ethogram_path, index_col=0) #header should not be None!
     ax6.imshow(ethogram_df.values.T, origin="upper", cmap='seismic',  vmin=-0.00005, vmax=0.00005, aspect=20*100)
     ax6.get_yaxis().set_visible(False)
 
     # pie chart
-    ax7 = fig.add_subplot(gs[4, -2:])
+    ax6_2 = fig.add_subplot(gs[4, -2:])
 
     norm = mpl.colors.Normalize(vmin=-0.00005, vmax=0.00005)
     cmap = cm.get_cmap('seismic')
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     #This is to account for the kymogram to have only fwd and reverse (and no quiescence)
     if len(ethogram_df['0'].value_counts()) ==2:
         explode = (0, 0.1)
-        ax7.pie(ethogram_df['0'].value_counts(), explode=explode,
+        ax6_2.pie(ethogram_df['0'].value_counts(), explode=explode,
                 colors=[forward_color, reversal_color],
                 labels=['Forward', 'Reverse'],
                 wedgeprops={"edgecolor": "k", 'linewidth': 2})
@@ -167,14 +169,34 @@ if __name__ == '__main__':
     if len(ethogram_df['0'].value_counts()) ==3:
         explode = (0, 0.1, 0.1)
 
-        ax7.pie(ethogram_df['0'].value_counts(), explode=explode,
+        ax6_2.pie(ethogram_df['0'].value_counts(), explode=explode,
                 colors = [forward_color, reversal_color, quiescence_color],
                 labels = ['Forward', 'Reverse', 'Quiesence'],
                 wedgeprops={"edgecolor":"k",'linewidth': 2})
 
 
+    # Turns ethogram
+    # make a color map of fixed colors
+    cmap = colors.ListedColormap(['purple', 'white', 'green'])
+    bounds = [-1, -0.5, 0.5, 1]
+    norm = colors.BoundaryNorm(bounds, cmap.N)
+
+    ax7 = fig.add_subplot(gs[5, :-2], sharex = ax1)
+    turns_ethogram_path = glob.glob(os.path.join(project_folder, 'turns_annotation.csv'))[0]
+    print(turns_ethogram_path)
+    turns_ethogram_df = pd.read_csv(turns_ethogram_path, index_col=0) #header should not be None!
+    ax7.imshow(turns_ethogram_df.values.T, origin="upper", cmap=cmap, norm=norm, aspect=20*100)#  vmin=-0.00005, vmax=0.00005, aspect=20*100)
+    ax7.get_yaxis().set_visible(False)
+
+    #Turns pie chart
+    ax7_2 = fig.add_subplot(gs[5, -2:])
+    turns_explode = (0, 0.1, 0.1)
+    ax7_2.pie(turns_ethogram_df['turn'].value_counts(), explode=turns_explode,
+              colors=['white', 'green', 'purple'],
+              labels=['No-Turn', 'Ventral', 'Dorsal'],
+              wedgeprops={"edgecolor": "k", 'linewidth': 2})
     #Speed
-    ax8 = fig.add_subplot(gs[5, :-2], sharex = ax1)
+    ax8 = fig.add_subplot(gs[6, :-2], sharex = ax1)
     speed_df_path=os.path.join(project_folder, 'raw_worm_speed.csv')
     speed_df = pd.read_csv(speed_df_path)
     #speed_df['Raw Speed (mm/s)'].rolling(window=83).mean().plot(ax=ax3)
@@ -187,7 +209,7 @@ if __name__ == '__main__':
     ax8.set_xticks(range(0, len(speed_df), 5000))
     #ax3.set_xlabel(speed_df.index[range(0, len(speed_df), 5000)].values)#,
     #ax3.set_xlabel(np.arange(0, len(speed_df), 5000))                                                                              #xticklabels=range(0, len(speed_df), 5000))
-    ax8.set_ylabel('Speed (mm/s)')
+    ax8.set_ylabel('Smoothed Speed (mm/s)')
     ax8.set_ylim([-.25, .25])
     ax8.axhline(0, color='r', linestyle='--', alpha=0.5)
 
@@ -200,7 +222,7 @@ if __name__ == '__main__':
     # plot_stimuli(ax=ax3, stimulus_start=start_indexes, stimulus_length=counts, color='red', alpha=0.5)
 
     # Speed histogram
-    ax9 = fig.add_subplot(gs[5, -2:])
+    ax9 = fig.add_subplot(gs[6, -2:])
     speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot.hist(bins=50, ax=ax9)
     ax9.axvline(0, color='r', linestyle='--', alpha=0.5)
     ax9.set_xlim([-.25, .25])
