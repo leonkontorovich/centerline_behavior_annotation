@@ -203,8 +203,7 @@ if __name__ == '__main__':
 
     # print(len(speed_df))
     # print(len(ethogram_df.values))
-    speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed (mm/s)']*ethogram_df['0']
-    speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed Signed (mm/s)'] * -1 # to invert because fwd is -1 in the ethogram
+    speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed (mm/s)']*ethogram_df['0']* -1 # to invert because fwd is -1 in the ethogram
     speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot(ax=ax8)
     ax8.set_xticks(range(0, len(speed_df), 5000))
     #ax3.set_xlabel(speed_df.index[range(0, len(speed_df), 5000)].values)#,
