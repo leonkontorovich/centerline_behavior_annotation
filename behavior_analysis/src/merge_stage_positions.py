@@ -5,7 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 def worm_speed(df):
-    """Calculates the speed in mm/s of a dataframe which has timestamps in ms as index
+    """
+    Copy of the copied function.
+    Original file in behaviour analysis.calculate_parameters.py
+    Calculates the speed in mm/s of a dataframe which has timestamps in ms as index
     Copy of Charlie function in https://github.com/Zimmer-lab/wbfm/blob/a34c976cf73edea837ce1e2326b974ef36390962/wbfm/utils/general/postures/centerline_classes.py#L239
     """
     #TODO: This speed is not by default in mm/s, it is only in mm/s based on the current timestamp
@@ -19,19 +22,16 @@ def worm_speed(df):
 
     return speed_mm_per_s
 
-main_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/figure_2_data/stage_positions/Gcamp7b"
+main_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/figure_2_data/speeds"
 
-stage_positions_paths = glob.glob(os.path.join(main_path, "*Table*"))
+speeds_path = glob.glob(os.path.join(main_path, "*speed*.csv"))
 
 merged_speed_df= pd.DataFrame()
 
-for stage_positions_path in stage_positions_paths:
-    df = pd.read_csv(stage_positions_path, index_col='time')
-    df.index = pd.DatetimeIndex(df.index)
-    speed_mm_per_s = worm_speed(df)
-    speed_mm_per_s_df = pd.DataFrame()
-    speed_mm_per_s_df['Raw Speed (mm/s)'] = speed_mm_per_s
-    merged_speed_df = pd.concat([merged_speed_df, speed_mm_per_s_df], axis=0)
+for speed_path in speeds_path:
+    df = pd.read_csv(speed_path, index_col=0)
 
-merged_speed_df.plot.hist()
+    merged_speed_df = pd.concat([merged_speed_df, df], axis=0)
+
+merged_speed_df.plot.hist(bins=200)
 plt.show()
