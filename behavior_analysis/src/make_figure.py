@@ -197,13 +197,9 @@ if __name__ == '__main__':
               wedgeprops={"edgecolor": "k", 'linewidth': 2})
     #Speed
     ax8 = fig.add_subplot(gs[6, :-2], sharex = ax1)
-    speed_df_path=os.path.join(project_folder, 'raw_worm_speed.csv')
+    speed_df_path=os.path.join(project_folder, 'signed_worm_speed.csv')
     speed_df = pd.read_csv(speed_df_path)
-    #speed_df['Raw Speed (mm/s)'].rolling(window=83).mean().plot(ax=ax3)
 
-    # print(len(speed_df))
-    # print(len(ethogram_df.values))
-    speed_df['Raw Speed Signed (mm/s)'] = speed_df['Raw Speed (mm/s)']*ethogram_df['0']* -1 # to invert because fwd is -1 in the ethogram
     speed_df['Raw Speed Signed (mm/s)'].rolling(window=83, center=True).mean().plot(ax=ax8)
     ax8.set_xticks(range(0, len(speed_df), 5000))
     #ax3.set_xlabel(speed_df.index[range(0, len(speed_df), 5000)].values)#,
