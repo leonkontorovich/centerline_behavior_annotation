@@ -11,6 +11,7 @@ from curvature.src.annotate_reversals import *
 #README
 # Much of this code is based on PCA_Figure PCA_slider from imutils/dev/sliders or imutils/dev/PCA_Figure.py
 # For Snakemake integration check /curvature/curvature/src/annotate_turns_snakemake.py
+print("Snakemake integration check Curvature package in /curvature/curvature/src/annotate_turns_snakemake.py")
 
 #read file
 main_path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221210/data/ZIM2165_Gcamp7b_worm1/2022-12-10_16-36_ZIM2165_worm1_Ch0-BH"
