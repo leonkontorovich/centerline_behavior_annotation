@@ -6,11 +6,7 @@ DATASETS=glob.glob("*/*w*/*Ch0*/")
 
 background_img = glob.glob("*/background/*AVG_background*")[0]
 
-# FILES = ["2022-09-13_14-50_IL40_worm1_Ch0-BHbigtiff", "2022-09-13_15-25_IL40_worm2_Ch0-BHbigtiff"]
-#FILES = glob_wildcards("{fname}.btf").fname
-# OR FILES, = glob_wildcards("{fname}.btf")
 print(DATASETS)
-
 
 rule targets:
     input:
@@ -45,8 +41,6 @@ rule ometiff2bigtiff:
         """
 
 
-
-# TODO: Correct to cluster_jobs file
 rule subtract_background:
     input:
         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
@@ -61,7 +55,6 @@ rule subtract_background:
         "python {input.script} {params.function} -i {input.raw_img} -o {output.background_subtracted_img} -bg {input.background_img} -invert {params.do_inverse}"
 
 ## You might need extra steps to
-# # TODO: Correct to cluster_jobs file
 # rule normalize_img:
 #     input:
 #         script = "/scratch/neurobiology/zimmer/ulises/code/snakemake/stack_normalize.sh",
@@ -72,7 +65,22 @@ rule subtract_background:
 #         #also works like this "bash {input.script} {wildcards.sample}_AVG_background_subtracted.btf"
 #         "bash {input.script} {input.input_img}"
 
-#TODO: Suggestion Add make binary only to see how the binary looks like
+
+#TRY make binary only to see how the binary looks like
+# rule binarize:
+#     input:
+#         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+#         input_img ="{datasets}raw_stack_background_subtracted.btf"
+#     params:
+#         function = "stack_make_binary",
+#         threshold = config["threshold"],
+#         max_value = config["new_value"]
+#     output:
+#         #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
+#         binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
+#     shell:
+#         "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -th {params.threshold} -max_val {params.max_value}"
+
 
 rule make_contour_based_binary:
     input:
@@ -91,20 +99,6 @@ rule make_contour_based_binary:
         binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
     shell:
         "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs {params.contour_size} -t {params.tolerance} -ics {params.inner_contour_to_fill}"
-
-# rule binarize:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
-#         input_img ="{datasets}raw_stack_background_subtracted.btf"
-#     params:
-#         function = "stack_make_binary",
-#         threshold = config["threshold"],
-#         max_value = config["new_value"]
-#     output:
-#         #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
-#         binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
-#     shell:
-#         "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -th {params.threshold} -max_val {params.max_value}"
 
 
 rule tiff2avi:
@@ -227,41 +221,3 @@ rule annotate_behaviour:
 
     shell :
         "python {input.script} -i {input.curvature_file} -pca {params.pca_model_path} -i_s {params.initial_segment} -f_s {params.final_segment} -win {params.window} -o_pc {output.principal_components} -o_bh {output.behaviour_annotation}"
-
-# rule calculate_parameters:
-#     #So far it only calculates speed
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/calculate_parameters.py", #stage position should be input
-#         curvature_file = "{sample}_skeleton_spline_K.csv" #This is used as a parameter because it is only used to find the main dir
-#
-#     output:
-#         speed_file = "{sample}_raw_worm_speed.csv" # This is never produced, so this will always run
-#     shell:
-#         """
-#         DIR=$(dirname $(dirname {input.curvature_file}))
-#         echo $DIR
-#         python {input.script} -i $DIR
-#         """
-
-#
-# rule make_behaviour_figure:
-#     input:
-#         script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/make_figure.py",
-#         curvature_file = "{sample}_skeleton_spline_K.csv",
-#         pc_file = "{sample}_principal_components.csv",
-#         # total_curvature_file = "",
-#         beh_annotation_file = "{sample}beh_annotation.csv",
-#         # speed_file = "",
-#         # track_file = ""
-#     # params:
-#     #     curvature_file= "{sample}_skeleton_spline_K.csv",
-#     #    smooth = True # Choose smooth or raw Kymogram
-#     output:
-#         figure = "{sample}behavioral_summary_figure.pdf" #This is  never produced, so it whill always run
-#     shell:
-#         """
-#         DIR=$(dirname $(dirname {input.curvature_file}))
-#         echo $DIR
-#         python {input.script} -i $DIR
-#         """
-
