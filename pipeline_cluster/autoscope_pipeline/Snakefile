@@ -211,7 +211,7 @@ rule reformat_skeleton_files:
 
 rule annotate_behaviour:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/src/annotate_behaviour_snakemake.py",
+        script = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/src/annotate_reversals_snakemake.py",
         curvature_file = "{datasets}skeleton_spline_K.csv" #Might or might not need to be the signed version
 
     params:
