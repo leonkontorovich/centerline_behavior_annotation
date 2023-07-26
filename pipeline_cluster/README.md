@@ -13,7 +13,7 @@ Important: Works with opencv version 3.4.2
 (If you need help with this, check our protocols in https://github.com/Zimmer-lab/protocols/tree/master/computational/zimmer_lab_code_pipeline)
 
 * Option 1:
-Install the environment with the provided openCV.yaml file which contains the necessary packages to run the pipeline.
+Install the environment with the provided oa_behavior_analysis_pipeline.yaml file which contains the necessary packages to run the pipeline.
 
 Private packages need to be installed manually. To do that clone them and install them with pip. For example:
 ```bash
