@@ -57,6 +57,12 @@ if __name__ == "__main__":
 
     output_path = args['o_path']
 
+    # spline_K = "/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm1/2022-11-27_12-31_w1_Ch0/skeleton_spline_K.csv"
+    # spline_X = "/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm1/2022-11-27_12-31_w1_Ch0/skeleton_spline_X_coords.csv"
+    # spline_Y = "/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm1/2022-11-27_12-31_w1_Ch0/skeleton_spline_Y_coords.csv"
+    # output_path = "/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm1/2022-11-27_12-31_w1_Ch0/skeleton_merged_spline_data.csv"
+
+
     df_splineK = pd.read_csv(spline_K, header=None)
     df_splineX = pd.read_csv(spline_X, header=None)
     df_splineY = pd.read_csv(spline_Y, header=None)
