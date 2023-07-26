@@ -362,9 +362,10 @@ if __name__ == '__main__':
     # output_path='/Users/ulises.rey/local_data/test_spline/'
     # number_of_neighbors = 1
     # fill_with_DLC = True
-
+    print('Parser worked fine, entering function now')
+    print("These are the arguments", args)
     head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose, tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors, fill_with_DLC=fill_with_DLC)
-
+    print("head_and_tail_wrapper worked fine")
 
 # assembling:
 #
