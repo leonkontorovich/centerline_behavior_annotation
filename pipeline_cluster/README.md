@@ -1,10 +1,34 @@
 # Autoscope Pipeline
 Pipeline to extract behavioural parameters from Autoscope recordings.
 
+
+
+## Tutorial
 On 25th of July 2023 Ulises gave a presentation about the pipeline, the slides are not self-explanatory but they can be checked under:
 ```bash
 /project/neurobiology/zimmer/lab_stuff/Lab Meetings/ulises/20230724_beh_analysis_pipeline_tutorial_UR.key
 ```
+
+## Introduction 
+To run this package you need to be to some extent familiar with:
+1. Python code
+2. Snakemake Pipelines
+3. Bash scripting
+4. Slurm and cluster job management
+5. Tmux
+
+If you are not, familiarize yourself with it before using this.
+
+## Motivation
+The motivation of this repository was to run the code written to extract behavioural features from whole brain freely moving recordings, in a pipeline.
+Therefore, it assumes the file structure of the whole brain freely moving recordings obtained with the Spinning disk confocal microscope.
+
+### Sister projects
+There is another snakemake pipeline sister to this which was created for whole brain freely moving recordings. You might want to check it.
+
+See:
+
+https://github.com/Zimmer-lab/autoscope_pipeline
 
 ### Environment
 
