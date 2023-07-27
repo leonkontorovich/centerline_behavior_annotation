@@ -31,10 +31,11 @@ See:
 https://github.com/Zimmer-lab/autoscope_pipeline
 
 ### Environment
+(If you need help with this, check our protocols in https://github.com/Zimmer-lab/protocols/tree/master/computational/zimmer_lab_code_pipeline)
 
 Important: Works with opencv version 3.4.2
 
-(If you need help with this, check our protocols in https://github.com/Zimmer-lab/protocols/tree/master/computational/zimmer_lab_code_pipeline)
+Important: Regardless of which option you use, you need to install snakemake with mamba. Follow Option 1 or 2 and **after** follow: https://github.com/Zimmer-lab/autoscope_pipeline/issues/5
 
 * Option 1:
 Install the environment with the provided oa_behavior_analysis_pipeline.yaml file which contains the necessary packages to run the pipeline.
@@ -48,7 +49,7 @@ pip install /scratch/neurobiology/zimmer/ulises/code/behavior_analysis
 ```
 
 * Option 2:
-You can also use the shared environmen (but you should know if it is maintained).
+You can also use the shared environment (but you should know if it is maintained).
 ```bash
 conda activate /scratch/neurobiology/zimmer/.conda/envs/oa_behavior_analysis_pipeline
 ```
