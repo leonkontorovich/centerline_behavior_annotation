@@ -21,33 +21,35 @@ If you are not, familiarize yourself with it before using this.
 
 ## Motivation
 The motivation of this repository was to run the code written to extract behavioural features from OA recordings, in a pipeline.
-It assumes the following file structure.
+It assumes the following file structure:
 
 
-.
- * [cluster_config.yaml](./cluster_config.yaml)
- * [config.yaml](./config.yaml)
- * [data](./data)
-   * [background](./data/background)
-     * [AVG_background.tif](./data/background/AVG_background.tif)
-   * [worm1](./data/worm1)
-     * [2022-11-27_12-31_w1_Ch0](./data/worm1/2022-11-27_12-31_w1_Ch0)
-       * [2022-11-27_12-31_w1_Ch0_MMStack_1.ome.tif](./data/worm1/2022-11-27_12-31_w1_Ch0/2022-11-27_12-31_w1_Ch0_MMStack_1.ome.tif)
-       * [2022-11-27_12-31_w1_Ch0_MMStack_metadata.txt](./data/worm1/2022-11-27_12-31_w1_Ch0/2022-11-27_12-31_w1_Ch0_MMStack_metadata.txt)
-       * [2022-11-27_12-31_w1_Ch0_MMStack.ome.tif](./data/worm1/2022-11-27_12-31_w1_Ch0/2022-11-27_12-31_w1_Ch0_MMStack.ome.tif)
-       * [comments.txt](./data/worm1/2022-11-27_12-31_w1_Ch0/comments.txt)
-       * [DisplaySettings.json](./data/worm1/2022-11-27_12-31_w1_Ch0/DisplaySettings.json)
-     * [2022-11-27_12-31_w1-TablePosRecord.txt](./data/worm1/2022-11-27_12-31_w1-TablePosRecord.txt)
-   * [worm2](./data/worm2)
-   * [2022-11-27_13-19_w2_Ch0](./data/worm2/2022-11-27_13-19_w2_Ch0)
-     * [2022-11-27_13-19_w2_Ch0_MMStack_1.ome.tif](./data/worm2/2022-11-27_13-19_w2_Ch0/2022-11-27_13-19_w2_Ch0_MMStack_1.ome.tif)
-     * [2022-11-27_13-19_w2_Ch0_MMStack_metadata.txt](./data/worm2/2022-11-27_13-19_w2_Ch0/2022-11-27_13-19_w2_Ch0_MMStack_metadata.txt)
-     * [2022-11-27_13-19_w2_Ch0_MMStack.ome.tif](./data/worm2/2022-11-27_13-19_w2_Ch0/2022-11-27_13-19_w2_Ch0_MMStack.ome.tif)
-     * [comments.txt](./data/worm2/2022-11-27_13-19_w2_Ch0/comments.txt)
-     * [DisplaySettings.json](./data/worm2/2022-11-27_13-19_w2_Ch0/DisplaySettings.json)
-   * [2022-11-27_13-19_w2-TablePosRecord.txt](./data/worm2/2022-11-27_13-19_w2-TablePosRecord.txt)
- * [log](./log)
- * [RUNME_cluster.sh](./RUNME_cluster.sh)
+
+ * cluster_config.yaml
+ * config.yaml
+ * data
+   * background
+     * AVG_background.tif
+   * worm1
+     * 2022-11-27_12-31_w1_Ch0
+       * 2022-11-27_12-31_w1_Ch0_MMStack_1.ome.tif
+       * 2022-11-27_12-31_w1_Ch0_MMStack_metadata.txt
+       * 2022-11-27_12-31_w1_Ch0_MMStack.ome.tif
+       * comments.txt
+       * DisplaySettings.json
+     * 2022-11-27_12-31_w1-TablePosRecord.txt
+   * worm2
+   * 2022-11-27_13-19_w2_Ch0
+     * 2022-11-27_13-19_w2_Ch0_MMStack_1.ome.tif
+     * 2022-11-27_13-19_w2_Ch0_MMStack_metadata.txt
+     * 2022-11-27_13-19_w2_Ch0_MMStack.ome.tif
+     * comments.txt
+     * DisplaySettings.json
+   * 2022-11-27_13-19_w2-TablePosRecord.txt
+ * log
+ * RUNME_cluster.sh
+
+
 
 
 ### Environment
