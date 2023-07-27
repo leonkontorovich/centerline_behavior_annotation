@@ -1,5 +1,5 @@
 # Autoscope Pipeline
-Pipeline to extract behavioural parameters from Autoscope recordings.
+Pipeline to extract behavioural parameters from Open Autoscope (OA) recordings.
 
 
 
@@ -20,8 +20,61 @@ To run this package you need to be to some extent familiar with:
 If you are not, familiarize yourself with it before using this.
 
 ## Motivation
-The motivation of this repository was to run the code written to extract behavioural features from whole brain freely moving recordings, in a pipeline.
-Therefore, it assumes the file structure of the whole brain freely moving recordings obtained with the Spinning disk confocal microscope.
+The motivation of this repository was to run the code written to extract behavioural features from OA recordings, in a pipeline.
+It assumes the following file structure.
+
+
+.
+ * [cluster_config.yaml](./cluster_config.yaml)
+ * [config.yaml](./config.yaml)
+ * [data](./data)
+   * [background](./data/background)
+     * [AVG_background.tif](./data/background/AVG_background.tif)
+   * [worm1](./data/worm1)
+     * [2022-11-27_12-31_w1_Ch0](./data/worm1/2022-11-27_12-31_w1_Ch0)
+       * [2022-11-27_12-31_w1_Ch0_MMStack_1.ome.tif](./data/worm1/2022-11-27_12-31_w1_Ch0/2022-11-27_12-31_w1_Ch0_MMStack_1.ome.tif)
+       * [2022-11-27_12-31_w1_Ch0_MMStack_metadata.txt](./data/worm1/2022-11-27_12-31_w1_Ch0/2022-11-27_12-31_w1_Ch0_MMStack_metadata.txt)
+       * [2022-11-27_12-31_w1_Ch0_MMStack.ome.tif](./data/worm1/2022-11-27_12-31_w1_Ch0/2022-11-27_12-31_w1_Ch0_MMStack.ome.tif)
+       * [comments.txt](./data/worm1/2022-11-27_12-31_w1_Ch0/comments.txt)
+       * [DisplaySettings.json](./data/worm1/2022-11-27_12-31_w1_Ch0/DisplaySettings.json)
+     * [2022-11-27_12-31_w1-TablePosRecord.txt](./data/worm1/2022-11-27_12-31_w1-TablePosRecord.txt)
+   * [worm2](./data/worm2)
+   * [2022-11-27_13-19_w2_Ch0](./data/worm2/2022-11-27_13-19_w2_Ch0)
+     * [2022-11-27_13-19_w2_Ch0_MMStack_1.ome.tif](./data/worm2/2022-11-27_13-19_w2_Ch0/2022-11-27_13-19_w2_Ch0_MMStack_1.ome.tif)
+     * [2022-11-27_13-19_w2_Ch0_MMStack_metadata.txt](./data/worm2/2022-11-27_13-19_w2_Ch0/2022-11-27_13-19_w2_Ch0_MMStack_metadata.txt)
+     * [2022-11-27_13-19_w2_Ch0_MMStack.ome.tif](./data/worm2/2022-11-27_13-19_w2_Ch0/2022-11-27_13-19_w2_Ch0_MMStack.ome.tif)
+     * [comments.txt](./data/worm2/2022-11-27_13-19_w2_Ch0/comments.txt)
+     * [DisplaySettings.json](./data/worm2/2022-11-27_13-19_w2_Ch0/DisplaySettings.json)
+   * [2022-11-27_13-19_w2-TablePosRecord.txt](./data/worm2/2022-11-27_13-19_w2-TablePosRecord.txt)
+ * [log](./log)
+ * [RUNME_cluster.sh](./RUNME_cluster.sh)
+
+
+### Environment
+(If you need help with this, check our protocols in https://github.com/Zimmer-lab/protocols/tree/master/computational/zimmer_lab_code_pipeline)
+
+Important: Works with opencv version 3.4.2
+
+####  Option 1:
+Install the environment with the provided oa_behavior_analysis_pipeline.yaml file which contains the necessary packages to run the pipeline.
+
+Private packages need to be installed manually. To do that clone them and install them with pip. For example:
+```commandline
+pip install /scratch/neurobiology/zimmer/ulises/code/imutils
+pip install /scratch/neurobiology/zimmer/ulises/code/centerline
+pip install /scratch/neurobiology/zimmer/ulises/code/curvature
+pip install /scratch/neurobiology/zimmer/ulises/code/behavior_analysis
+```
+
+Snakemake needs to be installed via mamba (See https://github.com/Zimmer-lab/autoscope_pipeline/issues/5):
+```commandline
+ mamba install -c conda-forge -c bioconda snakemake
+```
+#### Option 2:
+You can also use the shared environment (but you should know if it is maintained).
+```commandline
+conda activate /scratch/neurobiology/zimmer/.conda/envs/oa_behavior_analysis_pipeline
+```
 
 ### Sister projects
 There is another snakemake pipeline sister to this which was created for whole brain freely moving recordings. You might want to check it.
@@ -29,30 +82,6 @@ There is another snakemake pipeline sister to this which was created for whole b
 See:
 
 https://github.com/Zimmer-lab/autoscope_pipeline
-
-### Environment
-(If you need help with this, check our protocols in https://github.com/Zimmer-lab/protocols/tree/master/computational/zimmer_lab_code_pipeline)
-
-Important: Works with opencv version 3.4.2
-
-Important: Regardless of which option you use, you need to install snakemake with mamba. Follow Option 1 or 2 and **after** follow: https://github.com/Zimmer-lab/autoscope_pipeline/issues/5
-
-* Option 1:
-Install the environment with the provided oa_behavior_analysis_pipeline.yaml file which contains the necessary packages to run the pipeline.
-
-Private packages need to be installed manually. To do that clone them and install them with pip. For example:
-```bash
-pip install /scratch/neurobiology/zimmer/ulises/code/imutils
-pip install /scratch/neurobiology/zimmer/ulises/code/centerline
-pip install /scratch/neurobiology/zimmer/ulises/code/curvature
-pip install /scratch/neurobiology/zimmer/ulises/code/behavior_analysis
-```
-
-* Option 2:
-You can also use the shared environment (but you should know if it is maintained).
-```bash
-conda activate /scratch/neurobiology/zimmer/.conda/envs/oa_behavior_analysis_pipeline
-```
 
 
 
