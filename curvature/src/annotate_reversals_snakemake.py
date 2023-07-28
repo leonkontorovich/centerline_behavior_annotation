@@ -27,8 +27,6 @@ if __name__ == "__main__":
     beh_annotation_path = args['o_beh']
     pc_components_path = args['o_pc']
 
-    # TODO: This should not be hard coded
-    #average_window = 83
     features = np.arange(initial_segment, final_segment)
     #print("average window and features are being hard coded, with the following values")
     #print("average window: ", average_window)
