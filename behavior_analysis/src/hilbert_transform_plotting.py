@@ -3,16 +3,9 @@ import numpy as np
 from scipy.signal import hilbert, chirp
 import matplotlib.pyplot as plt
 
-def hilbert_curvature_example(fs=83):
+def hilbert_curvature_example(df , fs=83):
 
-    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed_avg.csv"
-    df=pd.read_csv(path, index_col=None, header=None)
-    #df = df.rolling(window=83, center=True, min_periods=1).mean()
-    #df = df.iloc[]
-    #df = df.iloc[13500+9000:28000,:].rolling(window=25, center=True, min_periods=1).mean()
     print(df.shape)
-
-    #fs = 83 #600.0 #sampling frequency
 
     x = df.values
 
@@ -76,15 +69,13 @@ def hilbert_curvature_example(fs=83):
 
     return inst_amplitude, inst_phase, inst_freq, regenerated_carrier
 
-def hilbert_curvature_one_segment_example(segment, fs=83):
+def hilbert_curvature_one_segment_example(df, segment, fs=83):
     """
 
     :param segment:
     :param fs:
     :return:
     """
-    path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed_avg.csv"
-    df = pd.read_csv(path, index_col=None, header=None)
     print(df.shape)
 
     x = df.values
@@ -116,4 +107,16 @@ def hilbert_curvature_one_segment_example(segment, fs=83):
     for idx, axis in enumerate(axes):
         axis.set_title(titles[idx])
 
+    #set figure title
+    fig.suptitle('Segment {}'.format(segment))
+
     return fig, axes
+
+
+# path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed_avg.csv"
+# df = pd.read_csv(path, index_col=None, header=None)
+path = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/skeleton_spline_K_signed_avg.csv"
+df = pd.read_csv(path, index_col=None, header=None)
+segment = 10
+hilbert_curvature_one_segment_example(df, segment, fs=83)
+plt.show()
