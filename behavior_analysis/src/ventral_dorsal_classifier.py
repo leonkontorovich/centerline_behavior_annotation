@@ -5,6 +5,9 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
+
+import pickle
 
 # Sklearn modules & classes
 from sklearn.linear_model import Perceptron, LogisticRegression
@@ -43,30 +46,32 @@ def classifier_example():
 
     return None
 
-# Load the data set; In this example, the breast cancer dataset is loaded.
 
 #load data
-spline_path = "/Users/ulises.rey/local_data/test_beh_annotation/skeleton_spline_K_signed_avg.csv"
+
+main_path = "/Users/ulises.rey/local_data/test_beh_annotation/1130_w1"
+
+spline_path = os.path.join(main_path,"skeleton_spline_K_signed_avg.csv")
 spline_df = pd.read_csv(spline_path, header=None)
 curvature = spline_df.iloc[:,10:90].sum(axis=1)
 curvature.fillna(0, inplace=True)
 curvature = pd.DataFrame(curvature, columns=['curvature'])
 
-pca_path = "/Users/ulises.rey/local_data/test_beh_annotation/principal_components.csv"
+pca_path = os.path.join(main_path,"principal_components.csv")
 pca_df = pd.read_csv(pca_path)
 pca_df.fillna(0, inplace=True)
 
 #speed
-speed_path = "/Users/ulises.rey/local_data/test_beh_annotation/raw_worm_speed.csv"
+speed_path = os.path.join(main_path,"raw_worm_speed.csv")
 speed_df = pd.read_csv(speed_path)
 
 # concatenate pca_df and curvature, addining header 'curvature' to the curvature column
 data_df = pd.concat([pca_df, curvature, speed_df], axis=1)
 
-X = data_df[['PC1','PC2','PC3', 'PC4', 'PC5', 'curvature', 'Raw Speed (mm/s)']].values
+X = data_df[['PC1','PC2','PC3', 'PC4', 'PC5', 'curvature']].values
 #X = data_df[['PC1','PC2','PC3', 'PC4', 'PC5', 'curvature']].values
 #load target
-target_path = "/Users/ulises.rey/local_data/test_beh_annotation/simplest_turn_annotation_timeseries.csv"
+target_path = os.path.join(main_path,"simplest_turn_annotation_timeseries.csv")
 y = pd.read_csv(target_path)['Annotation'].values
 
 
@@ -85,6 +90,10 @@ svc = SVC(C=1.0, random_state=1, kernel='rbf')
 
 # Fit the model
 svc.fit(X_train_std, y_train)
+
+#save the model
+filename = '../models/ventral_dorsal_svc_model.sav'
+pickle.dump(svc, open(filename, 'wb'))
 
 # Make the predictions
 y_predict = svc.predict(X_test_std)
