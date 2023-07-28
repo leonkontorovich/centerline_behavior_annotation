@@ -158,7 +158,7 @@ if __name__ == '__main__':
     quiescence_color = cmap(norm(0))
 
     #This is to account for the kymogram to have only fwd and reverse (and no quiescence)
-    if len(ethogram_df['0'].value_counts()) ==2:
+    if len(ethogram_df['0'].value_counts()) == 2:
         explode = (0, 0.1)
         ax6_2.pie(ethogram_df['0'].value_counts(), explode=explode,
                 colors=[forward_color, reversal_color],
@@ -166,7 +166,7 @@ if __name__ == '__main__':
                 wedgeprops={"edgecolor": "k", 'linewidth': 2})
 
     # this is if there are three behavioural states in the ethogram_df
-    if len(ethogram_df['0'].value_counts()) ==3:
+    if len(ethogram_df['0'].value_counts()) == 3:
         explode = (0, 0.1, 0.1)
 
         ax6_2.pie(ethogram_df['0'].value_counts(), explode=explode,
@@ -190,11 +190,24 @@ if __name__ == '__main__':
 
     #Turns pie chart
     ax7_2 = fig.add_subplot(gs[5, -2:])
-    turns_explode = (0, 0.1, 0.1)
-    ax7_2.pie(turns_ethogram_df['turn'].value_counts(), explode=turns_explode,
-              colors=['white', 'green', 'purple'],
-              labels=['No-Turn', 'Ventral', 'Dorsal'],
-              wedgeprops={"edgecolor": "k", 'linewidth': 2})
+    print("The turn ethogram is: ", len(ethogram_df['0'].value_counts()), "counts")
+    #This is to account for the kymogram to have only no turn and ventral (and no dorsal)
+    if len(turns_ethogram_df['turn'].value_counts()) == 2:
+        turns_explode = (0, 0.1)
+        ax7_2.pie(turns_ethogram_df['turn'].value_counts(), explode=turns_explode,
+                  colors=['white', 'green'],
+                  labels=['No-Turn', 'Ventral'],
+                  wedgeprops={"edgecolor": "k", 'linewidth': 2})
+
+    if len(turns_ethogram_df['turn'].value_counts()) == 3:
+        turns_explode = (0, 0.1, 0.1)
+        colors = ['white', 'green', 'purple']
+        labels = ['No-Turn', 'Ventral', 'Dorsal']
+        print("colors size is, ", len(colors), "labels size is, ", len(labels), "turns ethogram size is, ", len(turns_ethogram_df['turn'].value_counts()))
+        ax7_2.pie(turns_ethogram_df['turn'].value_counts(), explode=turns_explode,
+                  colors=colors,
+                  labels=labels,
+                  wedgeprops={"edgecolor": "k", 'linewidth': 2})
     #Speed
     ax8 = fig.add_subplot(gs[6, :-2], sharex = ax1)
     speed_df_path=os.path.join(project_folder, 'signed_worm_speed.csv')
