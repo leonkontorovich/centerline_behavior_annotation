@@ -11,7 +11,7 @@ import os
 exp_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH"
 project = "/Volumes" + exp_path
 
-df_kymo = pd.read_csv(os.path.join(project, "skeleton_spline_K_signed_avg.csv"), header=None)
+df_kymo = pd.read_csv(os.path.join(project, "skeleton_spline_K_signed.csv"), header=None)
 
 principal_components_df = pd.read_csv(os.path.join(project, "principal_components.csv"))
 average_window = 1
@@ -27,10 +27,13 @@ cross_product_df = - cross_product_df
 fig, axes = plt.subplots(nrows= 2, dpi=100, sharex=True)
 
 axes[0].imshow(df_kymo.T, origin="upper", cmap='seismic', extent=[0, df_kymo.shape[0], df_kymo.shape[1], 0],
-            aspect=20, vmin=-0.06, vmax=0.06)
+             vmin=-0.06, vmax=0.06) #aspect=20,
 axes[1].plot(cross_product_df['Cross_Product'])
 # add a re doted line at y=0 to see if the sign is correct
 axes[1].axhline(y=0, color='r', linestyle='--')
+#axes[1].set_title('Cross Product')
+axes[1].set_xlabel('Time (frames)')
+axes[1].set_ylabel('Cross Product')
 plt.show()
 
 # binarize
