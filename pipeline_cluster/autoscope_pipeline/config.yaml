@@ -11,9 +11,15 @@
 #rule subtract background
 do_inverse: True
 
-# rule binarize with contours:
+#Choose here if you want to do the contour based binarization. If you want default binarization with a simple threshold, set this to False
+contour_based_binarization: True
+
+# rule binarize and rule binarize with contours parameters:
 threshold : 40
 max_value : 255
+
+# rule binarize with contours parameters:
+#IMPORTANT!: threshold and max_value above are also parameters for this rule!!
 blur : 3  #needs to be odd
 contour_size : 80000
 tolerance : 0.5
