@@ -91,7 +91,7 @@ if config['contour_based_binarization'] == False:
         params:
             function = "stack_make_binary",
             threshold = config["threshold"],
-            max_value = config["new_value"]
+            max_value = config["max_value"]
         output:
             binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
         shell:
