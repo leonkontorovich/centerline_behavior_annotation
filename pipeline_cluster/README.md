@@ -83,7 +83,7 @@ There is another snakemake pipeline sister to this which was created for whole b
 
 See:
 
-https://github.com/Zimmer-lab/autoscope_pipeline
+[https://github.com/Zimmer-lab/autoscope_pipeline](https://github.com/Zimmer-lab/wbfm_behavior_analysis_pipeline)https://github.com/Zimmer-lab/wbfm_behavior_analysis_pipeline
 
 
 
