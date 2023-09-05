@@ -1,6 +1,6 @@
 #!/bin/bash
 # Example from: https://hackmd.io/@bluegenes/BJPrrj7WB
-OPT="sbatch -p {cluster.partition} --cpus-per-task {cluster.cpus_per_task} --mem {cluster.mem} --output {cluster.output}"
+OPT="sbatch --time {cluster.time} -p {cluster.partition} --cpus-per-task {cluster.cpus_per_task} --mem {cluster.mem} --output {cluster.output}"
 #NUM_JOBS_TO_SUBMIT=2
 # Untested : Modify if necessary
 NUM_JOBS_TO_SUBMIT=$(find $PWD -mindepth 3 -maxdepth 3 -type d -wholename "*/*/*w*/*Ch0" | wc -l)
