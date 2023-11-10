@@ -4,7 +4,7 @@ import glob
 
 DATASETS=glob.glob("*/*w*/*Ch0*/")
 
-background_img = glob.glob("*/background/*AVG_background*")[0]
+background_img = glob.glob("*/background/*background*")[0]
 
 print(DATASETS)
 
@@ -26,7 +26,7 @@ rule targets:
 
 rule ometiff2bigtiff:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/imutils/imutils/src/imutils_parser.py",
         #list_of_ometiff_files ="{datasets}/{group}.ome.tif" I don't know how to do this
     params:
         function = "ometiff2bigtiff"
@@ -43,7 +43,7 @@ rule ometiff2bigtiff:
 
 rule subtract_background:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/imutils/imutils/src/imutils_parser.py",
         raw_img ="{datasets}raw_stack.btf",
         background_img = background_img
     params:
@@ -65,42 +65,45 @@ rule subtract_background:
 #         #also works like this "bash {input.script} {wildcards.sample}_AVG_background_subtracted.btf"
 #         "bash {input.script} {input.input_img}"
 
-if config['contour_based_binarization'] == True:
-    rule make_contour_based_binary:
-        input:
-            script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
-            input_img ="{datasets}raw_stack_background_subtracted.btf"
-        params:
-            function = "make_contour_based_binary",
-            threshold = config["threshold"],
-            max_value = config["max_value"],
-            blur = config["blur"], #blur must be odd
-            contour_size = config["contour_size"],
-            tolerance = config["tolerance"],
-            inner_contour_to_fill = config["inner_contour_to_fill"]
-        output:
-            binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
-        shell:
-            "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs {params.contour_size} -t {params.tolerance} -ics {params.inner_contour_to_fill}"
 
-if config['contour_based_binarization'] == False:
-    rule binarize:
-        input:
-            script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
-            input_img ="{datasets}raw_stack_background_subtracted.btf"
-        params:
-            function = "stack_make_binary",
-            threshold = config["threshold"],
-            max_value = config["max_value"]
-        output:
-            binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
-        shell:
-            "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -th {params.threshold} -max_val {params.max_value}"
+#TRY make binary only to see how the binary looks like
+# rule binarize:
+#     input:
+#         script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+#         input_img ="{datasets}raw_stack_background_subtracted.btf"
+#     params:
+#         function = "stack_make_binary",
+#         threshold = config["threshold"],
+#         max_value = config["new_value"]
+#     output:
+#         #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
+#         binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
+#     shell:
+#         "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -th {params.threshold} -max_val {params.max_value}"
+
+
+rule make_contour_based_binary:
+    input:
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/imutils/imutils/src/imutils_parser.py",
+        input_img ="{datasets}raw_stack_background_subtracted.btf"
+    params:
+        function = "make_contour_based_binary",
+        threshold = config["threshold"],
+        max_value = config["max_value"],
+        blur = config["blur"], #blur must be odd
+        contour_size = config["contour_size"],
+        tolerance = config["tolerance"],
+        inner_contour_to_fill = config["inner_contour_to_fill"]
+    output:
+        #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
+        binary_img = "{datasets}raw_stack_background_subtracted_mask.btf"
+    shell:
+        "python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs {params.contour_size} -t {params.tolerance} -ics {params.inner_contour_to_fill}"
 
 
 rule tiff2avi:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/imutils/imutils/src/imutils_parser.py",
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/imutils/imutils/src/imutils_parser.py",
         input_img = "{datasets}raw_stack.btf"
     params:
         function = "tiff2avi",
@@ -113,10 +116,27 @@ rule tiff2avi:
         "python {input.script} {params.function} -i {input.input_img} -o {output.avi} -fourcc {params.fourcc} -fps {params.fps}" #!
 
 
+rule downsample_for_DLC:
+    input:
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/other/downsample_script.py",
+        avi = "{datasets}raw_stack.avi"
+    params:
+        downsample_factor = config["downsample_factor"],
+        fps = config["fps"]
+    output:
+        downsampled_avi = "{datasets}raw_stack_downsampled.avi"
+    run:
+        if config["downsample_for_DLC"] == 1:
+            shell("python {input.script} --video {input.avi} --output {output.downsampled_avi} --fps {params.fps} --downsample_factor {params.downsample_factor}")
+        else:
+            touch("{output.downsampled_avi}")  # Create an empty file to continue with pipeline
+            print("Empty downsampled_avi file created to continue pipeline.")
+
+
 rule dlc_analyze_videos:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/dlc_utils_code/cluster_analyze_videos.py", #python code would be better?
-        input_avi = "{datasets}raw_stack.avi" #TODO: change it to background subtracted avi, or normalized, etc.
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/other/cluster_analyze_videos.py", #python code would be better?
+        downsampled_avi = "{datasets}raw_stack_downsampled.avi" 
     params:
         #dlc_model_configfile_path = "/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_noise_tail-Ulises-2022-06-13/config.yaml", #TODO: path should not be hardcoded
         #network_string = "DLC_resnet50_wbfm_noise_tailJun13shuffle1_175000"
@@ -124,11 +144,12 @@ rule dlc_analyze_videos:
         network_string = config["network_string"]
     #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
     output:
-        hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5"
+        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5"
+        hdf5_file = "{datasets}raw_stack_downsampled"+config["network_string"]+".h5"
     shell:
         """
         source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
-        python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {input.input_avi}
+        python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {input.downsampled_avi}
         """
 
 
@@ -147,9 +168,10 @@ rule dlc_analyze_videos:
 rule create_centerline:
     input:
         #TODO: Try ancient() to see if I can avoid re-running when the script is modified
-        script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/head_and_tail.py",
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/centerline/centerline/dev/head_and_tail.py",
         input_binary_img = "{datasets}raw_stack_background_subtracted_mask.btf",
-        hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
+        hdf5_file = "{datasets}raw_stack_downsampled"+config["network_string"]+".h5"
+        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
 
     params:
         csv_output_path = "{datasets}",  # This cant go into inputs because it is not a file
@@ -157,6 +179,7 @@ rule create_centerline:
         nose = config['nose'],
         tail = config['tail'],
         num_splines = config['num_splines'],
+        downdownsample_for_DLC= config["downdownsample_for_DLC"],
         fill_with_DLC = "1" # TODO: Improve so argparse takes boolean
 
     output :
@@ -169,7 +192,7 @@ rule create_centerline:
         corrected_tail = "{datasets}skeleton_corrected_tail_coords.csv"
 
     shell:
-        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {params.csv_output_path} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
+        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {params.csv_output_path} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC} -ds {params.downdownsample_for_DLC}"
 
 # # This rule has not been functional yet because I need to access its config.yaml file and I do not know how
 # # For the time being there is a cluster_jobs script
@@ -187,7 +210,7 @@ rule create_centerline:
 
 rule reformat_skeleton_files:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/reformat_skeleton_files.py",
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/centerline/centerline/dev/reformat_skeleton_files.py",
         spline_K= "{datasets}skeleton_spline_K.csv",
         spline_X= "{datasets}skeleton_spline_X_coords.csv",
         spline_Y= "{datasets}skeleton_spline_Y_coords.csv",
@@ -202,7 +225,7 @@ rule reformat_skeleton_files:
 
 rule annotate_behaviour:
     input:
-        script = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/src/annotate_reversals_snakemake.py",
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/curvature/curvature/src/annotate_reversals_snakemake.py",
         curvature_file = "{datasets}skeleton_spline_K.csv" #Might or might not need to be the signed version
 
     params:
