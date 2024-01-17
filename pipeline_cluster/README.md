@@ -1,7 +1,12 @@
-# Autoscope Pipeline
-Pipeline to extract behavioural parameters from Open Autoscope (OA) recordings.
+# Video to Centerline Pipeline
 
+There are two subfolders, for the two main starting points:
+1. Autoscope (pure behavior)
+2. WBFM (behavior + traces)
 
+High-level pipeline to extract behavioural parameters from Open Autoscope (OA) and wbfm recordings.
+Important: this repository only contains organizational scripts (using snakemake) for running the pipeline, not the actual pipeline code itself.
+See [[## Code repos]] for more details.
 
 ## Tutorial
 On 25th of July 2023 Ulises gave a presentation about the pipeline, the slides are not self-explanatory but they can be checked under:
@@ -78,13 +83,9 @@ You can also use the shared environment (but you should know if it is maintained
 conda activate /scratch/neurobiology/zimmer/.conda/envs/oa_behavior_analysis_pipeline
 ```
 
-### Sister projects
-There is another snakemake pipeline sister to this which was created for whole brain freely moving recordings. You might want to check it.
+## Code repos
 
-See:
-
-[https://github.com/Zimmer-lab/autoscope_pipeline](https://github.com/Zimmer-lab/wbfm_behavior_analysis_pipeline)https://github.com/Zimmer-lab/wbfm_behavior_analysis_pipeline
-
+There are 3 required repositories to run this code: centerline, curvature, and imutils.
 
 
 
