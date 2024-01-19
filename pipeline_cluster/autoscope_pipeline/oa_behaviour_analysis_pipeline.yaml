@@ -1,4 +1,4 @@
-name: oa_behavior_analysis_pipeline
+name: autoscope_ulises
 channels:
   - anaconda
   - defaults
