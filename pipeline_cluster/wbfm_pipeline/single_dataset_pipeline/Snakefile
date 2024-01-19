@@ -191,7 +191,7 @@ rule create_centerline:
         hdf5_file = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised"+config["dlc_network_string"]+".h5"
 
     params:
-        #output_path = "{output_data_dir}/", #This is kind of cheating, but works. This might also work directly on the shell {wildcards.datasets}
+        output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
         number_of_neighbours = "1",
         nose = config['nose'],
         tail = config['tail'],
@@ -207,7 +207,7 @@ rule create_centerline:
         corrected_tail = "{output_data_dir}/skeleton_corrected_tail_coords.csv"
     shell:
         # TODO: I need to remove the direct reference to the wildcards to make the code run on one dataset
-        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {output_data_dir} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
+        "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {output_path} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
         # "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {wildcards.datasets} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
 # # This rule has not been functional yet because I need to access its config.yaml file and I do not know how
 # # For the time being there is a cluster_jobs script
@@ -265,7 +265,8 @@ rule average_xy_coords:
 rule hilbert_transform_on_kymogram:
     input:
         script = "/scratch/neurobiology/zimmer/ulises/code/behavior_analysis/src/hilbert_transform.py",
-        spline_K = "{output_data_dir}/skeleton_spline_K_signed_avg.csv"
+        spline_K = "{output_data_dir}/skeleton_spline_K_signed_avg.csv",
+        output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
     params:
         fs = config["sampling_frequency"],
         window = config["hilbert_averaging_window"]
@@ -280,13 +281,14 @@ rule hilbert_transform_on_kymogram:
     shell:
         # TODO: I need to remove the direct reference to the wildcards to make the code run on one dataset
         """
-        python {input.script} -i {output_data_dir} -kp {input.spline_K} -fs {params.fs} -w {params.window}
+        python {input.script} -i {output_path} -kp {input.spline_K} -fs {params.fs} -w {params.window}
         """
 
 rule fast_fourier_transform:
     input:
         script="/scratch/neurobiology/zimmer/ulises/code/centerline/centerline/dev/fourier_functions.py",
         spline_K="{output_data_dir}/skeleton_spline_K_signed_avg.csv"
+        output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
     params:
         # project_folder
         sampling_frequency=config["sampling_frequency"],
@@ -297,7 +299,7 @@ rule fast_fourier_transform:
     #This $DIR only goes one time up
     shell:
         # TODO: I need to remove the direct reference to the wildcards to make the code run on one dataset
-        "python {input.script} -i {output_data_dir} -kp {input.spline_K} -fps {params.sampling_frequency} -w {params.window}"
+        "python {input.script} -i {output_path} -kp {input.spline_K} -fps {params.sampling_frequency} -w {params.window}"
 
 rule reformat_skeleton_files:
     input:
