@@ -1,14 +1,13 @@
 # This script was written so that it matches the current snakemake pipeline with files as inputs an ouputs
 # If you want to run it per folder there is the annotate_behaviour.py file
+import argparse # comment
+import pandas as pd
+import numpy as np
+from curvature.src.make_PCA import *
+from curvature.src.annotate_reversals import *
+import sys
 
-
-if __name__ == "__main__":
-    import argparse # comment
-    import pandas as pd
-    import numpy as np
-    from curvature.src.make_PCA import *
-    from curvature.src.annotate_reversals import *
-
+def main(arg_list=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', '--i_spline_path', help='input path', required=True)
     parser.add_argument('-pca', '--pca_model_path', help='path to the PCA model', required=True)
@@ -18,7 +17,8 @@ if __name__ == "__main__":
     parser.add_argument('-o_bh', '--o_beh', help='path to save the behavioural output', required=True)
     parser.add_argument('-o_pc', '--o_pc', help='path to save the PC components', required=True)
 
-    args = vars(parser.parse_args())
+    #args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     spline_path = args['i_spline_path']
     pca_path = args['pca_model_path']
     initial_segment = args['initial_segment']
@@ -28,9 +28,9 @@ if __name__ == "__main__":
     pc_components_path = args['o_pc']
 
     features = np.arange(initial_segment, final_segment)
-    #print("average window and features are being hard coded, with the following values")
-    #print("average window: ", average_window)
-    #print("features for PC: ", features)
+    # print("average window and features are being hard coded, with the following values")
+    # print("average window: ", average_window)
+    # print("features for PC: ", features)
 
     df = pd.read_csv(spline_path, header=None)
     df.fillna(0, inplace=True)  # alternative change nans to zeros
@@ -44,10 +44,14 @@ if __name__ == "__main__":
     pc1_pc2_df = extract_vectors_from_PC_df(principal_components_df, avg_win=average_window)
     cross_product_df = calculate_cross_product(pc1_pc2_df)
 
-    #Does cross product result in the per convention accepted sign? (cp<0==rev, cp>0==fwd?)
+    # Does cross product result in the per convention accepted sign? (cp<0==rev, cp>0==fwd?)
     # if not, flip the sign
     cross_product_df = - cross_product_df
 
     values_arr = binarize_cross_product(cross_product_df)
     values_df = pd.DataFrame(values_arr)
     values_df.to_csv(beh_annotation_path)
+
+
+if __name__ == "__main__":
+    main(sys.argv[1:])
