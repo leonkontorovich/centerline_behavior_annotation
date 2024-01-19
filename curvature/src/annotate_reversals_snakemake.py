@@ -17,7 +17,8 @@ def main(arg_list=None):
     parser.add_argument('-o_bh', '--o_beh', help='path to save the behavioural output', required=True)
     parser.add_argument('-o_pc', '--o_pc', help='path to save the PC components', required=True)
 
-    args = vars(parser.parse_args())
+    #args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     spline_path = args['i_spline_path']
     pca_path = args['pca_model_path']
     initial_segment = args['initial_segment']
