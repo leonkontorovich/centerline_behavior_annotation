@@ -1,42 +1,28 @@
-#files: [""]
-  #["data/IL40_worm1/worm_Ch0-BH/2022-09-13_14-50_IL40_worm1_Ch0-BHbigtiff",
-        #"data/IL40_worm2/worm_Ch0-BH/2022-09-13_15-25_IL40_worm2_Ch0-BHbigtiff",
-        #"data/ZIM2156_worm2/worm_Ch0-BH/2022-09-13_15-08_ZIm2156_worm2_Ch0-BHbigtiff"]#, "2022-09-13_15-08_ZIm2156_worm2_long_Ch0-BHbigtiff"]
-
-#In the future it would be better either files or folder.
-#Even files is not file atm, but file.basename
-
-#background_img : "data/background/2022-10-13_19-29_background_Ch0-BH/AVG_2022-10-13_19-29_background_Ch0-BHbigtiff.tif"
 
 #rule subtract background
 do_inverse: True
 
-#Choose here if you want to do the contour based binarization. If you want default binarization with a simple threshold, set this to False
-contour_based_binarization: True
-
-# rule binarize and rule binarize with contours parameters:
+# rule binarize with contours: threshold : 40 (standart)
 threshold : 40
 max_value : 255
-
-# rule binarize with contours parameters:
-#IMPORTANT!: threshold and max_value above are also parameters for this rule!!
 blur : 3  #needs to be odd
 contour_size : 80000
 tolerance : 0.5
-inner_contour_to_fill : 8000
+inner_contour_to_fill : 20000
 
 
 # rule tiff2avi:
 fourcc : 0
-fps : 167
+fps : 30
+downdownsample_for_DLC : 1  #downdownsample_for_DLC 1 = yes 0 = no -> will downsample video to 512 for DLC to track head and tail properly
 
 #rule dlc_analyze_videos:
-dlc_model_configfile_path : "/scratch/neurobiology/zimmer/jalaja/DLC_models/Autoscope_recordings-jalaja-2023-02-01/config.yaml"
-network_string : "DLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000" # You might need to run the code to find out how the string looks like
+dlc_model_configfile_path : "/scratch/neurobiology/zimmer/schaar/code/DLC/nose_tail_vulva-Ben-2023-10-11/config.yaml"
+network_string : "DLC_mobnet_35_nose_tail_vulvaOct11shuffle1_500000" # You might need to run the code to find out how the string looks like
 
 #rule create_centerline:
 # rule create centerline
-nose : "head" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
+nose : "nose" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
 tail : "tail" # how was the tail annotated as in DLC model?
 num_splines : 100
 number_of_neighbours : 1
