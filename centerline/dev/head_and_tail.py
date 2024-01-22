@@ -331,8 +331,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
     return
 
 
-#run code locally
-if __name__ == '__main__':
+def main(arg_list):
     import argparse
 
     parser = argparse.ArgumentParser(description='Description of your program')
@@ -366,6 +365,11 @@ if __name__ == '__main__':
     print("These are the arguments", args)
     head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose, tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors, fill_with_DLC=fill_with_DLC)
     print("head_and_tail_wrapper worked fine")
+
+#run code locally
+if __name__ == '__main__':
+    main(sys.argv[1:])
+
 
 # assembling:
 #
