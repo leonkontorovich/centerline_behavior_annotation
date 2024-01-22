@@ -1,0 +1,12 @@
+core.4069
+.ipynb_checkpoints
+*.ipynb_checkpoints/*
+.idea/*
+__pycache__/*
+*/__pycache
+*checkpoint*
+*.png
+*.pyc
+*-checkpoint.ipynb
+centerline/dev/.ipynb_checkpoints/extract_centerlines-checkpoint.ipynb
+centerline/dev/.ipynb_checkpoints/skeleton_utils-checkpoint.ipynb
