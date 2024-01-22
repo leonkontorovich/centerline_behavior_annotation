@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 core.4069
 .ipynb_checkpoints
 *.ipynb_checkpoints/*
@@ -10,3 +11,16 @@ __pycache__/*
 *-checkpoint.ipynb
 centerline/dev/.ipynb_checkpoints/extract_centerlines-checkpoint.ipynb
 centerline/dev/.ipynb_checkpoints/skeleton_utils-checkpoint.ipynb
+=======
+
+.idea/*
+*/*/._*
+*/._*
+build/*
+curvature.egg*
+.idea/*
+.idea/modules.xml
+.idea/curvature_test.iml
+.idea/inspectionProfiles/Project_Default.xml
+*/._*.py
+>>>>>>> curvature/master
