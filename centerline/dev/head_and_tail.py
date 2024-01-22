@@ -344,7 +344,7 @@ def main(arg_list):
     parser.add_argument('-n', '--number_of_neighbors', type=int, help='number_of_neighbors', required=False)
     parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     tiff_path = args['input_tiff_path']
     hdf5_dlc_path = args['hdf5_dlc_path']
     output_path = args['output_path']
