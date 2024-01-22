@@ -2,6 +2,10 @@ import pandas as pd
 import numpy as np
 from scipy.signal import hilbert, chirp
 import matplotlib.pyplot as plt
+import argparse
+import pandas as pd
+import glob
+import os
 
 
 # based on https://www.gaussianwaves.com/2017/04/extract-envelope-instantaneous-phase-frequency-hilbert-transform/
@@ -85,13 +89,8 @@ def hilbert_transform_on_kymograms_wrapper():
 #
 # print('debug')
 
-
-if __name__ == '__main__':
-
-    import argparse
-    import pandas as pd
-    import glob
-    import os
+def main(arg_list):
+    print("arg_list:", arg_list)
 
     # specify files
     # parser = argparse.ArgumentParser(description='Description of your program')
@@ -116,7 +115,7 @@ if __name__ == '__main__':
     parser.add_argument('-kp', '--kymo_path', help='filepath to kymogram', required=True)
     parser.add_argument('-fs', '--fs', type=float, help='sampling frequency', required=True)
     parser.add_argument('-w', '--window', type=int, help='averaging window', required=True)
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     project_path = args['project_path']
     kymo_path = args['kymo_path']
     fs = args['fs']
@@ -141,3 +140,9 @@ if __name__ == '__main__':
         result_df.to_csv(os.path.join(project_path, "hilbert_"+results_names[i]+".csv"), float_format='%.5f', header=None, index=None)
     #
     print('Script Finished. If the files are empty it is probably because the Kymogram contains NaNs')
+
+
+if __name__ == '__main__':
+
+    print("Shell commands passed:", sys.argv)
+    main(sys.argv[1:])  # exclude the script name from the args when called from shell
