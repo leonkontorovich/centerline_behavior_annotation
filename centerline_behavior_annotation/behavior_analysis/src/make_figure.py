@@ -53,9 +53,8 @@ def plot_kymogram(kymo_path, axes):
     return axes
 
 
-if __name__ == '__main__':
+def main(arg_list):
     import argparse
-
 
     # TODO: add beh annotation in speed plot
     # add head speed, total curvature, PC1, PC2, PC3, etc. See notebook wbfm_analysis
@@ -240,3 +239,8 @@ if __name__ == '__main__':
     #plt.show()
 
     print('end of script')
+
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv[1:])
