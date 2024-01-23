@@ -56,7 +56,7 @@ def main(arg_list):
     input_path = args['input_path']
     raw_data_path = args['raw_data_path']
 
-    read_and_save_speed(input_path, raw_data_path)
+    read_and_save_speed(raw_data_path, input_path)
 
 
 if __name__ == "__main__":
