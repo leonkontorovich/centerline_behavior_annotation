@@ -1,4 +1,12 @@
 
+# Input and output directories
+# Directory of raw data, including fluorescence, behavior, and stage position
+# LARGE dataset
+# raw_data_dir : "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1"
+# SMALL dataset... but not the right format :/
+raw_data_dir: "/scratch/neurobiology/zimmer/wbfm/example_data/ZIM2165_Gcamp7b_worm1"
+
+output_data_dir : "/scratch/neurobiology/zimmer/fieseler/wbfm_projects/project_pytest/behavior"
 
 # rule subtract background
 do_inverse: True
@@ -8,14 +16,14 @@ alpha: 0
 beta: 255
 
 #worm unet weights
-worm_unet_weights : "/scratch/neurobiology/zimmer/ulises/code/unet-master/data/2022_08_12_worm_segmentation_all_worms_good_background_normalized/training_results/5358068_1_w_validation_1batchsize_500steps_100epochs_5patience/unet_master.hdf5"
+worm_unet_weights : "/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm.hdf5"
 
 #rule stack_make_binary
 threshold : 30
 max_value : 255
 
 #rule coil unet
-coil_unet_weights : "/scratch/neurobiology/zimmer/ulises/code/unet-master/data/2023_worm_coiled_segmentation/training_results/5910044_0_w_validation_2batchsize_500steps_100epochs_5patience/unet_master.hdf5"
+coil_unet_weights : "/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm_coil.hdf5"
 
 # rule binarize_coil
 coil_threshold : 240
@@ -26,7 +34,7 @@ fourcc : 0 #codec
 fps : 83
 
 # rule dlc_analyze_videos
-dlc_model_configfile_path : "/scratch/neurobiology/zimmer/ulises/code/deeplabcut_projects/wbfm_nose_tail-ulises-2023-01-04/config.yaml"
+dlc_model_configfile_path : "/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/deeplabcut_projects/wbfm_nose_tail-ulises-2023-01-04/config.yaml"
 dlc_network_string : "DLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000"
 
 # rule create centerline
@@ -38,7 +46,7 @@ num_splines : 100
 averaging_window : 83
 
 # rule annotate behaviour
-pca_model : "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1738_20230403_eigenworm_PCA_bodypart_30_to_80.pkl"
+pca_model : "/scratch/neurobiology/zimmer/centerline_pipeline/code/curvature/curvature/models/1738_20230403_eigenworm_PCA_bodypart_30_to_80.pkl"
 initial_segment : 30
 final_segment : 80
 window : 100

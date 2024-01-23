@@ -9,6 +9,7 @@ __default__:
     disk_mb: 8000
     mem_mb: 8000
     output: log/log_%x_%A_%a_%j.out
+    gres: # Should be empty
 
 subtract_background:
     time: 0-08:00:00
@@ -20,10 +21,10 @@ subtract_background:
 dlc_analyze_videos:
     time: 0-08:00:00
     partition: gpu
-    gpus_per_node: 1
     mem: 0
     cpus_per_task: 24
     output: log/log_%x_%A_%a_%j.out
+    gres: shard:32
 
 create_centerline:
     time: 0-08:00:00
@@ -43,18 +44,18 @@ normalize_img:
 worm_unet:
     time: 0-08:00:00
     partition: gpu
-    gpus_per_node: 1
     mem: 0
     cpus_per_task: 24
     output: log/log_%x_%A_%a_%j.out
+    gres: shard:32
 
 coil_unet:
     time: 0-08:00:00
     partition: gpu
-    gpus_per_node: 1
     mem: 0
     cpus_per_task: 24
     output: log/log_%x_%A_%a_%j.out
+    gres: shard:32
 
 binarize:
     time: 0-08:00:00
