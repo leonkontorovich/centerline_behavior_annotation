@@ -205,7 +205,6 @@ dependencies:
     - datrie==0.8.2
     - docutils==0.19
     - dpath==2.0.6
-    - epifluorescence-calcium-imaging==0.0.1
     - ffmpeg==1.4
     - ffmpeg-python==0.2.0
     - flatbuffers==22.11.23
