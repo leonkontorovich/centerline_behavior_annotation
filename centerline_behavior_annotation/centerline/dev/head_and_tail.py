@@ -366,8 +366,9 @@ def main(arg_list):
     head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose, tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors, fill_with_DLC=fill_with_DLC)
     print("head_and_tail_wrapper worked fine")
 
-#run code locally
+
 if __name__ == '__main__':
+    import sys
     main(sys.argv[1:])
 
 

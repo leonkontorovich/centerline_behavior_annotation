@@ -5,6 +5,7 @@ import sys
 os.environ["DLClight"]="True"
 import deeplabcut
 
+
 def main(arg_list):
     ap = argparse.ArgumentParser()
     ap.add_argument("-path_config_file", "--path_config_file", required=True, help="path to config file")
