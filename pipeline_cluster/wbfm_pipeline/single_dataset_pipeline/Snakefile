@@ -210,19 +210,28 @@ rule dlc_analyze_videos:
         dlc_network_string = config["dlc_network_string"] # Is this used?
     output:
         hdf5_file = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised"+config["dlc_network_string"]+".h5"
-    conda:
-        # Needed because deeplabcut is a pain to install with other packages
-        "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
-    run:
-        # TODO: does this run in the original conda environment?
-        #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
-
-        from centerline_behavior_annotation.dlc_utils import cluster_analyze_videos
-
-        cluster_analyze_videos.main([
-            '-path_config_file', str(params.dlc_model_configfile_path),
-            '-videofile_path', str(input.input_avi),
+    # conda:
+    #     # Needed because deeplabcut is a pain to install with other packages
+    #     "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+    shell:
+        """
+        source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
+        python -c "\ 
+        from centerline_behavior_annotation.dlc_utils import cluster_analyze_videos\
+        cluster_analyze_videos.main([\
+            '-path_config_file', str({params.dlc_model_configfile_path}),\
+            '-videofile_path', str({input.input_avi}),\
         ])
+        """
+    # run:
+        #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+        #
+        # from centerline_behavior_annotation.dlc_utils import cluster_analyze_videos
+        #
+        # cluster_analyze_videos.main([
+        #     '-path_config_file', str(params.dlc_model_configfile_path),
+        #     '-videofile_path', str(input.input_avi),
+        # ])
 
         # """
         # source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
