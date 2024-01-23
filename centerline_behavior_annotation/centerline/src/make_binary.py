@@ -23,7 +23,7 @@ def make_binary(input_filename, bg_img_filename, output_filename):
     bg_img= tiff.imread(bg_img_filename)
 
     with tiff.TiffWriter(output_filename, bigtiff=True) as tif_writer:
-        with tiff.TiffFile(input_filename, multifile=False) as tif:
+        with tiff.TiffFile(input_filename) as tif:
             #inside_areas=[]
             for i, page in enumerate(tif.pages):
                 #loads the first frame and inverts it

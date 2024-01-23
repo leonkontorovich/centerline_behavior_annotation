@@ -99,7 +99,7 @@ def extract_frames(input_image, output_folder, frames_list, file_format):
         extension of the output file, for example 'png' or 'tiff' (not sure this works)
     """
     print('This function is not maintained anymore in here, check imutils package!')
-    with tiff.TiffFile(input_image, multifile=False) as tif:
+    with tiff.TiffFile(input_image) as tif:
         for i, page in enumerate(tif.pages):
             #if the image is not on the frames_list then skip
             if i in frames_list:

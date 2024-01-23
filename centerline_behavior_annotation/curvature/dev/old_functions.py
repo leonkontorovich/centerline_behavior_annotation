@@ -360,7 +360,7 @@ def make_reversal_anotated_movie(input_movie_path: str, reversal_df: pd.DataFram
         output_path = folder_path + recording_name
 
     with tiff.TiffWriter(output_path + "_wRevrsal_anotations.tiff", bigtiff=True) as tif_writer:
-        with tiff.TiffFile(input_movie_path, multifile=False) as tif:
+        with tiff.TiffFile(input_movie_path) as tif:
             for i, page in tdqm(enumerate(tif.pages)):
                 img = page.asarray()
 

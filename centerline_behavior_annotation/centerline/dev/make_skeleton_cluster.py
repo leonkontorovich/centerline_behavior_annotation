@@ -74,7 +74,7 @@ csv_writerK=csv.writer(csvfileK)
 
 
 
-with tiff.TiffFile(input_filename, multifile=False) as tif:
+with tiff.TiffFile(input_filename) as tif:
     for i, page in enumerate(tif.pages):
         img=page.asarray()
         

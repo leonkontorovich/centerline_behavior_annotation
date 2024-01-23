@@ -42,7 +42,7 @@ def draw_centerline_wrapper(input_filename, skel_folder, output_filename, min_va
 
     # loop
     with tiff.TiffWriter(output_filename, bigtiff=True) as tif_writer:
-        with tiff.TiffFile(input_filename, multifile=False) as tif:
+        with tiff.TiffFile(input_filename) as tif:
             for i, page in enumerate(tif.pages):  # [105600:114000]):
                 # if i < 105600: continue  # print(i)
                 img = page.asarray()
