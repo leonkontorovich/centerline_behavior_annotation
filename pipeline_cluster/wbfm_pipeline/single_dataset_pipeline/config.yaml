@@ -5,7 +5,7 @@
 # raw_data_dir : "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1"
 # SMALL dataset
 raw_data_dir: "/scratch/neurobiology/zimmer/wbfm/example_data/ZIM2165_Gcamp7b_worm1"
-output_data_dir : "/scratch/neurobiology/zimmer/fieseler/wbfm_projects/project_pytest/behavior"
+project_dir : "/scratch/neurobiology/zimmer/fieseler/wbfm_projects/project_pytest"
 
 # rule subtract background
 do_inverse: True

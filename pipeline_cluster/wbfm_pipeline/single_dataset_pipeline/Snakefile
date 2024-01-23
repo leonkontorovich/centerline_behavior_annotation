@@ -5,7 +5,7 @@ configfile: "config.yaml"
 
 # Directory of raw data, including fluorescence, behavior, and stage position
 raw_data_dir = config["raw_data_dir"]
-output_data_dir = config["output_data_dir"]
+output_behavior_dir = os.path.join(config["output_data_dir"],'behavior')
 
 # Find the specific folders to use
 raw_data_subfolder = glob.glob(f"{raw_data_dir}/*Ch0-BH/")
@@ -39,15 +39,15 @@ rule targets:
         # spline_K_signed = "{output_data_dir}/skeleton_spline_K_signed.csv",
         # spline_K_signed_avg = "{output_data_dir}/skeleton_spline_K_signed_avg.csv",
         # spline_X_avg = "{output_data_dir}/skeleton_spline_X_coords_avg.csv",
-        hilbert = f"{output_data_dir}/hilbert_inst_amplitude.csv",
-        fft_xf = f"{output_data_dir}/fft_xf.csv",
-        merged_spline_data = f"{output_data_dir}/skeleton_merged_spline_data_avg.csv",
-        beh_annotation = f"{output_data_dir}/beh_annotation.csv",
-        turn_annotation = f"{output_data_dir}/turns_annotation.csv",
+        # hilbert = f"{output_behavior_dir}/hilbert_inst_amplitude.csv",
+        # fft_xf = f"{output_behavior_dir}/fft_xf.csv",
+        # merged_spline_data = f"{output_behavior_dir}/skeleton_merged_spline_data_avg.csv",
+        # beh_annotation = f"{output_behavior_dir}/beh_annotation.csv",
+        # turn_annotation = f"{output_behavior_dir}/turns_annotation.csv",
         # self_touch = "{output_data_dir}/self_touch.csv",  # NOT USING
         # speed = "{output_data_dir}/raw_worm_speed.csv",
         # signed_speed = "{output_data_dir}/signed_worm_speed.csv",
-        beh_figure= f"{output_data_dir}/behavioral_summary_figure.pdf"
+        beh_figure= f"{output_behavior_dir}/behavioral_summary_figure.pdf"
 
 # rule ometiff2bigtiff:
 #     input:
