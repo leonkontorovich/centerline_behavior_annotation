@@ -200,10 +200,8 @@ dependencies:
     - appdirs==1.4.4
     - astunparse==1.6.3
     - babel==2.9.1
-    - centerline==0.0.4
     - configargparse==1.5.3
     - connection-pool==0.0.3
-    - curvature==0.0.1
     - datrie==0.8.2
     - docutils==0.19
     - dpath==2.0.6
@@ -215,7 +213,6 @@ dependencies:
     - gitdb==4.0.9
     - gitpython==3.1.29
     - h5py==3.7.0
-    - imutils==0.0.1.2
     - ipympl==0.7.0
     - ipywidgets==7.6.3
     - jinja2==3.1.2
