@@ -280,6 +280,7 @@ rule create_centerline:
         # "python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {wildcards.datasets} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC}"
 # # This rule has not been functional yet because I need to access its config.yaml file and I do not know how
 # # For the time being there is a cluster_jobs script
+
 rule invert_curvature_sign:
     input:
         spline_K = "{output_data_dir}/skeleton_spline_K.csv",
@@ -296,6 +297,7 @@ rule invert_curvature_sign:
 
         invert_curvature_sign.main([
             '-i', str(params.output_path),
+            '-r', str(raw_data_dir),
         ])
 
 rule average_kymogram:
