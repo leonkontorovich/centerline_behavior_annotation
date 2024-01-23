@@ -1,4 +1,3 @@
-import os
 import glob
 
 DATASETS=glob.glob("*/*w*/*Ch0*/")
@@ -272,7 +271,6 @@ rule erode_binary_mask:
     output:
         erode_img = "{datasets}raw_stack_background_subtracted_mask_eroded.btf"
     run:
-        import pandas as pd
         import numpy as np
         import tifffile as tiff
         from scipy import ndimage
@@ -312,7 +310,7 @@ rule create_centerline:
         corrected_head = "{datasets}skeleton_corrected_head_coords.csv",
         corrected_tail = "{datasets}skeleton_corrected_tail_coords.csv"
     run:
-        from centerline.dev import head_and_tail
+        from centerline_behavior_annotation.centerline.dev import head_and_tail
 
         head_and_tail.main([
             '-i', str(input.input_binary_img),
@@ -336,8 +334,6 @@ rule reformat_skeleton_files:
     output:
         merged_spline_file = "{datasets}skeleton_merged_spline_data.csv",
     run:
-        from centerline.dev import reformat_skeleton_files
-
         reformat_skeleton_files.main([
             '-i_K', str(input.spline_K),
             'i_X', str(input.spline_X),
@@ -365,7 +361,7 @@ rule annotate_behaviour:
         behaviour_annotation = "{datasets}beh_annotation.csv"
 
     run:
-        from curvature.src import annotate_reversals_snakemake
+        from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
 
         annotate_reversals_snakemake.main([
             '-i', str(input.curvature_file),
