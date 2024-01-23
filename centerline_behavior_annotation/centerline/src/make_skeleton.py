@@ -1,21 +1,14 @@
-import cv2
-import tifffile as tiff
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas as pd
 import csv
-
 import os
-from natsort import natsorted
 import re
-import argparse
 
-from scipy.interpolate import splprep, splev
-
-from skimage.morphology import medial_axis, skeletonize
-from skimage import data
-from skimage.util import invert
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 import skimage.graph
+import tifffile as tiff
+from scipy.interpolate import splprep, splev
 
 
 def make_skeleton(start_point, end_point, num_splines, img, min_worm_len=0):

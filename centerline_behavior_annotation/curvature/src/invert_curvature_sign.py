@@ -20,6 +20,7 @@ def invert_df(input_path, output_path):
 
     return df
 
+
 def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
     """
     Flip the sign of the spline_K file if vetral is on the left side
@@ -49,24 +50,7 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
     return None
 
 
-
-if __name__ == "__main__":
-
-
-    # # INVERT SIGN with all inputs
-    # import argparse
-    # parser = argparse.ArgumentParser(description='Description of your program')
-    # parser.add_argument('-i', '--i_path', type=str, help='input path', required=True)
-    # parser.add_argument('-o', '--o_path', type=str, help='output path', required=True)
-    # parser.add_argument('-c', '--config_yaml', type=str, help='path to the config yaml file', required=True)
-    #
-    # args = vars(parser.parse_args())
-    # input_path = args['i_path']
-    # output_path = args['o_path']
-    # config_yaml_path = args['config_yaml']
-    #
-    # invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
-
+def main(arg_list):
     # Invert sign with folder name PREFERABLY with DATASET FOLDER (NOT BH folder)
     import argparse
     import os
@@ -74,7 +58,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_path', help='folder of wbfm dataset', required=True)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     project = args['input_path']
 
     print(project)
@@ -84,3 +68,9 @@ if __name__ == "__main__":
     config_yaml_path = glob.glob(os.path.join(project, "*config.yaml"))[0]
 
     invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
+
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
