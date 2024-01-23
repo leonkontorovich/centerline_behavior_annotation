@@ -107,7 +107,7 @@ rule worm_unet:
         input_img = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised.btf"
     params:
         function  = "unet_segmentation_stack",
-        weights_path = config["worm_unet_weights"],#"/scratch/neurobiology/zimmer/ulises/code/unet-master/data/2022_08_12_worm_segmentation_all_worms_good_background_normalized/training_results/5358068_1_w_validation_1batchsize_500steps_100epochs_5patience/unet_master.hdf5",
+        weights_path = config["worm_unet_weights"],
         #network_name = config["worm_unet_network_name"]# '5358068_1'
     output:
         worm_unet_prediction = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised_worm_segmented.btf"
@@ -147,7 +147,7 @@ rule coil_unet:
         raw_input_img = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised.btf"
     params:
         function = "unet_segmentation_contours_with_children",
-        weights_path= config["coil_unet_weights"]#"/scratch/neurobiology/zimmer/ulises/code/unet-master/data/2023_worm_coiled_segmentation/training_results/5910044_0_w_validation_2batchsize_500steps_100epochs_5patience/unet_master.hdf5",
+        weights_path= config["coil_unet_weights"]
         #network_name="5910044_0"
     output:
         coil_unet_prediction = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised_worm_segmented_mask_coil_segmented.btf"
@@ -210,12 +210,9 @@ rule dlc_analyze_videos:
         dlc_network_string = config["dlc_network_string"] # Is this used?
     output:
         hdf5_file = "{output_data_dir}/raw_stack_AVG_background_subtracted_normalised"+config["dlc_network_string"]+".h5"
-    # conda:
-    #     # Needed because deeplabcut is a pain to install with other packages
-    #     "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
     shell:
         """
-        source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
+        source /apps/conda/miniconda3/bin/activate {config["dlc_conda_env"]}
         python -c "from centerline_behavior_annotation.dlc_utils import cluster_analyze_videos; cluster_analyze_videos.main(['-path_config_file', '{params.dlc_model_configfile_path}', '-videofile_path', '{input.input_avi}'])"
         """
     # run:
@@ -412,8 +409,7 @@ rule annotate_behaviour:
         curvature_file = "{output_data_dir}/skeleton_spline_K_signed_avg.csv"
 
     params:
-        #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
-        pca_model_path = config["pca_model"], #"/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl",
+        pca_model_path = config["pca_model"],
         initial_segment = config["initial_segment"],
         final_segment = config["final_segment"],
         window = config["window"]

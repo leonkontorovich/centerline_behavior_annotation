@@ -3,9 +3,8 @@
 # Directory of raw data, including fluorescence, behavior, and stage position
 # LARGE dataset
 # raw_data_dir : "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1"
-# SMALL dataset... but not the right format :/
+# SMALL dataset
 raw_data_dir: "/scratch/neurobiology/zimmer/wbfm/example_data/ZIM2165_Gcamp7b_worm1"
-
 output_data_dir : "/scratch/neurobiology/zimmer/fieseler/wbfm_projects/project_pytest/behavior"
 
 # rule subtract background
@@ -36,6 +35,7 @@ fps : 83
 # rule dlc_analyze_videos
 dlc_model_configfile_path : "/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/deeplabcut_projects/wbfm_nose_tail-ulises-2023-01-04/config.yaml"
 dlc_network_string : "DLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000"
+dlc_conda_env: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
 
 # rule create centerline
 nose : "nose" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
