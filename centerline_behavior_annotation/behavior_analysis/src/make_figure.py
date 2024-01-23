@@ -2,7 +2,6 @@ import matplotlib.cm as cm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
-from matplotlib import colors
 import pandas as pd
 import numpy as np
 import os
@@ -10,7 +9,6 @@ import glob
 
 from centerline_behavior_annotation.centerline.dev.track_plotting_functions import plot_tracks
 from imutils.src.plotting import *
-
 
 
 def plot_main_figure(nrows, ncols):
@@ -27,8 +25,8 @@ def plot_main_figure(nrows, ncols):
     #
     # ax2 = fig.add_subplot(gs[1, :5])
 
-
     return fig, gs
+
 
 def plot_kymogram(kymo_path, axes):
     """
@@ -180,9 +178,9 @@ def main(arg_list):
 
     # Turns ethogram
     # make a color map of fixed colors
-    cmap = colors.ListedColormap(['purple', 'white', 'green'])
+    cmap = mpl.colors.ListedColormap(['purple', 'white', 'green'])
     bounds = [-1, -0.5, 0.5, 1]
-    norm = colors.BoundaryNorm(bounds, cmap.N)
+    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
     ax7 = fig.add_subplot(gs[5, :-2], sharex = ax1)
     turns_ethogram_path = glob.glob(os.path.join(project_folder, 'turns_annotation.csv'))[0]
