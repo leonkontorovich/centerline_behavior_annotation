@@ -118,7 +118,8 @@ def plot_fft(y_axis, xf, axes):
 # axes = plot_fft(y_axis, xf, axes)
 # plt.show()
 
-if __name__ == '__main__':
+def main(arg_list):
+
 
     import argparse
     import os
@@ -132,12 +133,11 @@ if __name__ == '__main__':
     parser.add_argument('-fps', '--sampling_frequency', type=float, help='sampling frequency', required=True)
     parser.add_argument('-w', '--window', type=int, help='averaging window', required=True)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     project_path = args['project_path']
     kymo_path = args['kymo_path']
     sampling_frequency = args['sampling_frequency']
     window = args["window"]
-
 
     df = pd.read_csv(kymo_path, index_col=None, header=None) #should load the averaged kymo already TODO: Does it need header=None?
 
@@ -153,3 +153,7 @@ if __name__ == '__main__':
     # axes = plot_fft(y_axis, xf, axes)
     # axes.set_xlim([0, 1])
     # plt.show()
+
+if __name__ == '__main__':
+    import sys
+    main(sys.argv[1:])

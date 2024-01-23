@@ -1,10 +1,13 @@
 # This script was written so that it matches the current snakemake pipeline with files as inputs an ouputs
 # If you want to run it per folder there is the annotate_behaviour.py file
 import argparse
-
-from centerline_behavior_annotation.curvature.src.annotate_reversals import pca_transform_data, \
-    extract_vectors_from_PC_df, calculate_cross_product, binarize_cross_product
+import numpy as np
+import pandas as pd
 import sys
+
+from centerline_behavior_annotation.curvature.src.annotate_reversals import \
+    extract_vectors_from_PC_df, calculate_cross_product, binarize_cross_product
+from centerline_behavior_annotation.curvature.src.make_PCA import pca_transform_data
 
 
 def main(arg_list=None):

@@ -41,7 +41,7 @@ def reformat_skeleton_files(df_splineX, df_splineY, df_splineK):
     return new_df
 
 
-if __name__ == "__main__":
+def main(arg_list):
     #run it with cluster_jobs/array_job_directories.sh
     import argparse
     parser = argparse.ArgumentParser(description='Description of your program')
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     parser.add_argument('-i_Y', '--input_spline_Y', help='csv file with the spline Y coords', required=True)
     parser.add_argument('-o', '--o_path', help='output path, has t be .csv file', required=True)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     spline_K = args['input_spline_K']
     spline_X = args['input_spline_X']
     spline_Y = args['input_spline_Y']
@@ -62,18 +62,20 @@ if __name__ == "__main__":
     # spline_Y = "/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm1/2022-11-27_12-31_w1_Ch0/skeleton_spline_Y_coords.csv"
     # output_path = "/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm1/2022-11-27_12-31_w1_Ch0/skeleton_merged_spline_data.csv"
 
-
     df_splineK = pd.read_csv(spline_K, header=None)
     df_splineX = pd.read_csv(spline_X, header=None)
     df_splineY = pd.read_csv(spline_Y, header=None)
-
 
     # TODO: improve this in a loop
     df_splineK = df_splineK.round(decimals=6)
     df_splineX = df_splineX.round(decimals=2)
     df_splineY = df_splineY.round(decimals=2)
 
-
     new_df = reformat_skeleton_files(df_splineX, df_splineY, df_splineK)
     new_df.to_csv(output_path)
     print('python complete')
+
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])

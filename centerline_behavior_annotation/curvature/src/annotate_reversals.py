@@ -7,7 +7,7 @@ from sklearn.preprocessing import StandardScaler
 
 #make PCA from skeleton spline file
 
-#extract vectors from PC space
+
 def extract_vectors_from_PC_df(df, avg_win):
     """
     extracts PC1 and PC2 from PC dataframe (principalDf), averages them, and writes them in a new dataframe
@@ -20,7 +20,7 @@ def extract_vectors_from_PC_df(df, avg_win):
 
     return pc1_pc2_df
 
-#calculate cross product
+
 def calculate_cross_product(pc1_pc2_df):
     """
     calcualte the cross product from the vectors in X and Y in the pc1_pc2_df
@@ -75,6 +75,7 @@ def ethogram_figure(kymogram_df, ethogram_df):
     
     return fig
 
+
 def rename_beh_annotation(df, rename_dict):
     """
     rename from -1,1 to 'reversal, 'forward' with a dictionary
@@ -105,11 +106,9 @@ if __name__ == "__main__":
     print("average window: ", average_window)
     print("features for PC: ", features)
 
-
     args = vars(parser.parse_args())
     main_path = args['i_path']
     pca_path = args['pca_model_path']
-
 
     df = pd.read_csv(os.path.join(main_path, 'skeleton_spline_K.csv'), header=None)
     df.fillna(0, inplace=True)  # alternative change nans to zeros

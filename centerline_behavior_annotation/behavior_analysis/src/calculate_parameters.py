@@ -47,15 +47,18 @@ def read_and_save_speed(project):
 # project = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/ZIM2165_Gcamp7b_worm6"
 # read_and_save_speed(project)
 
-
-if __name__ == "__main__":
+def main(arg_list):
     import argparse
 
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_path', help='folder with the tracker position', required=True)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     project = args['input_path']
 
     read_and_save_speed(project)
 
+
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])
