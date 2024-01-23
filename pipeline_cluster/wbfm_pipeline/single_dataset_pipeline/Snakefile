@@ -216,7 +216,7 @@ rule dlc_analyze_videos:
     shell:
         """
         source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
-        python -c "from centerline_behavior_annotation.dlc_utils import cluster_analyze_videos; cluster_analyze_videos.main(['-path_config_file', str({params.dlc_model_configfile_path}), '-videofile_path', str({input.input_avi})])"
+        python -c "from centerline_behavior_annotation.dlc_utils import cluster_analyze_videos; cluster_analyze_videos.main(['-path_config_file', {params.dlc_model_configfile_path}, '-videofile_path', {input.input_avi}])"
         """
     # run:
         #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
