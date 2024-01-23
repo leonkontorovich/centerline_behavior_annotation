@@ -484,6 +484,7 @@ rule calculate_parameters:
 
         calculate_parameters.main([
             '-i', str(params.output_path),
+            '-r', str(raw_data_dir),
         ])
 
 rule save_signed_speed:

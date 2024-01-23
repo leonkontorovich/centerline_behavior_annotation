@@ -19,15 +19,16 @@ def worm_speed(df):
 
     return speed_mm_per_s
 
-def read_and_save_speed(project):
+
+def read_and_save_speed(raw_data_path, output_path):
     """
     wrapper
-    :param project:
+    :param raw_data_path:
     :return:
     """
     #print(project)
 
-    df_path = glob.glob(os.path.join(project,"*TablePosRecord.txt"))[0]
+    df_path = glob.glob(os.path.join(raw_data_path, "*TablePosRecord.txt"))[0]
     df = pd.read_csv(df_path, index_col='time')
 
     df.index = pd.DatetimeIndex(df.index)
@@ -37,10 +38,7 @@ def read_and_save_speed(project):
     #print(speed_mm_per_s)
     speed_mm_per_s_df = pd.DataFrame()
     speed_mm_per_s_df['Raw Speed (mm/s)']=speed_mm_per_s
-    behaviour_directory = glob.glob(os.path.join(project+"/*BH"))[0]
-    #print(behaviour_directory)
-    speed_mm_per_s_df.to_csv(os.path.join(behaviour_directory, 'raw_worm_speed.csv'))
-    #print('saved to csv')
+    speed_mm_per_s_df.to_csv(os.path.join(output_path, 'raw_worm_speed.csv'))
 
 
 # Run single project
@@ -51,12 +49,14 @@ def main(arg_list):
     import argparse
 
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--input_path', help='folder with the tracker position', required=True)
+    parser.add_argument('-r', '--raw_data_path', help='folder with the tracker position', required=True)
+    parser.add_argument('-i', '--input_path', help='folder with the outputs', required=True)
 
     args = vars(parser.parse_args(arg_list))
-    project = args['input_path']
+    input_path = args['input_path']
+    raw_data_path = args['raw_data_path']
 
-    read_and_save_speed(project)
+    read_and_save_speed(input_path, raw_data_path)
 
 
 if __name__ == "__main__":
