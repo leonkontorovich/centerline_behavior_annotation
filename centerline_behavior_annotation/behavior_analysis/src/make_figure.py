@@ -61,10 +61,13 @@ def main(arg_list):
     # TODO: make it for every worm
 
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--input_path', help='folder with the tracker position', required=True)
+    parser.add_argument('-r', '--raw_data_path', help='folder with the tracker position', required=True)
+    parser.add_argument('-i', '--input_path', help='folder with the outputs', required=True)
 
-    args = vars(parser.parse_args())
-    main_folder = args['input_path']
+
+    args = vars(parser.parse_args(arg_list))
+    input_path = args['input_path']
+    raw_data_path = args['raw_data_path']
 
     #main_folder = "/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1"
 
@@ -83,7 +86,8 @@ def main(arg_list):
     #main_folder="/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/"
 
     #ALL
-    project_folder = glob.glob(os.path.join(main_folder, "*worm*Ch0-BH*"))[0]
+    # project_folder = glob.glob(os.path.join(input_path, "*worm*Ch0-BH*"))[0]
+    project_folder = input_path
     print("project folder is: ", project_folder)
 
     #Start Figure
@@ -136,7 +140,7 @@ def main(arg_list):
 
     # track
     ax5 = fig.add_subplot(gs[0, -2:])
-    track_df = pd.read_csv(glob.glob(os.path.join(main_folder, "*-TablePosRecord.txt"))[0])
+    track_df = pd.read_csv(glob.glob(os.path.join(raw_data_path, "*-TablePosRecord.txt"))[0])
     plot_tracks(df=track_df, ax=ax5)
 
     #Ethogram
