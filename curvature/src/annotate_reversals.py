@@ -93,7 +93,7 @@ if __name__ == "__main__":
     import os
     import pandas as pd
     import numpy as np
-    from curvature.src.make_PCA import *
+    from centerline_behavior_annotation.curvature.src.make_PCA import *
 
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--i_path', help='input path', required=True)

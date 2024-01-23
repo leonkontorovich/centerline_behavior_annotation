@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 import os
 import glob
-from curvature.src.annotate_behaviour import ethogram_figure
+from centerline_behavior_annotation.curvature.src.annotate_behaviour import ethogram_figure
 
 
 main_path='/Volumes/scratch/neurobiology/zimmer/ulises/wbfm/20221013/data/'

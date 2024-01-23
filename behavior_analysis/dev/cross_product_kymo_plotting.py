@@ -4,8 +4,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import glob
-from curvature.src.make_PCA import *
-from curvature.src.annotate_reversals import *
+from centerline_behavior_annotation.curvature.src.make_PCA import *
+from centerline_behavior_annotation.curvature.src.annotate_reversals import *
 import os
 
 exp_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH"

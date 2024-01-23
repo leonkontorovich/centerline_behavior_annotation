@@ -8,7 +8,7 @@ import numpy as np
 import os
 import glob
 
-from centerline.dev.track_plotting_functions import plot_tracks
+from centerline_behavior_annotation.centerline.dev.track_plotting_functions import plot_tracks
 from imutils.src.plotting import *
 
 

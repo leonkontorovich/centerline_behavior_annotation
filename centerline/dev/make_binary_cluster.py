@@ -4,7 +4,7 @@ import tifffile as tiff
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
-from centerline.src.make_binary import make_binary
+from centerline_behavior_annotation.centerline.src.make_binary import make_binary
 
 
 ap = argparse.ArgumentParser()

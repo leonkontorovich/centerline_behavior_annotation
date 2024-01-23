@@ -3,8 +3,8 @@
 import argparse # comment
 import pandas as pd
 import numpy as np
-from curvature.src.make_PCA import *
-from curvature.src.annotate_reversals import *
+from centerline_behavior_annotation.curvature.src.make_PCA import *
+from centerline_behavior_annotation.curvature.src.annotate_reversals import *
 import sys
 
 def main(arg_list=None):

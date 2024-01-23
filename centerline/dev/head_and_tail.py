@@ -8,7 +8,7 @@ import tifffile as tiff
 import skan
 from skan import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
-from centerline.src.make_skeleton import make_skeleton
+from centerline_behavior_annotation.centerline.src.make_skeleton import make_skeleton
 
 import matplotlib.pyplot as plt
 if skan.__version__ != '0.9':

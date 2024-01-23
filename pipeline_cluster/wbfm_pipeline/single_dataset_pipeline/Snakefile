@@ -258,7 +258,7 @@ rule create_centerline:
         corrected_head = "{output_data_dir}/skeleton_corrected_head_coords.csv",
         corrected_tail = "{output_data_dir}/skeleton_corrected_tail_coords.csv"
     run:
-        from centerline.dev import main
+        from centerline_behavior_annotation.centerline.dev import head_and_tail
 
         head_and_tail.main([
             '-i', str(input.input_binary_img),
@@ -285,7 +285,7 @@ rule invert_curvature_sign:
     params:
         output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
     run:
-        from curvature.src import invert_curvature_sign
+        from centerline_behavior_annotation.curvature.src import invert_curvature_sign
 
         invert_curvature_sign.main([
             '-i', str(params.output_path),
@@ -343,7 +343,7 @@ rule hilbert_transform_on_kymogram:
 
     #This $DIR only goes one time up
     run:
-        from behavior_analysis.src import hilbert_transform
+        from centerline_behavior_annotation.behavior_analysis.src import hilbert_transform
 
         hilbert_transform.main([
             '-i', str(params.output_path),
@@ -366,7 +366,7 @@ rule fast_fourier_transform:
         xf_file = "{output_data_dir}/fft_xf.csv"
     #This $DIR only goes one time up
     run:
-        from centerline.dev import fourier_functions
+        from centerline_behavior_annotation.centerline.dev import fourier_functions
 
         fourier_functions.main([
             '-i', str(params.output_path),
@@ -388,7 +388,7 @@ rule reformat_skeleton_files:
         merged_spline_file = "{output_data_dir}/skeleton_merged_spline_data_avg.csv",
 
     run:
-        from centerline.dev import reformat_skeleton_files
+        from centerline_behavior_annotation.centerline.dev import reformat_skeleton_files
 
         reformat_skeleton_files.main([
             '-i_K', str(input.spline_K),
@@ -411,7 +411,7 @@ rule annotate_behaviour:
         principal_components = "{output_data_dir}/principal_components.csv",
         behaviour_annotation = "{output_data_dir}/beh_annotation.csv"
     run:
-        from curvature.src import annotate_reversals_snakemake
+        from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
 
         annotate_reversals_snakemake.main([
             '-i', str(input.curvature_file),
@@ -437,7 +437,7 @@ rule annotate_turns:
         turns_annotation = "{output_data_dir}/turns_annotation.csv"
 
     run:
-        from curvature.src import annotate_turns_snakemake
+        from centerline_behavior_annotation.curvature.src import annotate_turns_snakemake
 
         annotate_turns_snakemake.main([
             '-input', str(input.spline_K),
@@ -470,7 +470,7 @@ rule calculate_parameters:
     params:
         output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
     run:
-        from behavior_analysis.src import calculate_parameters
+        from centerline_behavior_annotation.behavior_analysis.src import calculate_parameters
 
         calculate_parameters.main([
             '-i', str(params.output_path),
@@ -507,7 +507,7 @@ rule make_behaviour_figure:
     params:
         output_path="{output_data_dir}/",# Ulises' functions expect the final slash
     run:
-        from behavior_analysis.src import make_figure
+        from centerline_behavior_annotation.behavior_analysis.src import make_figure
 
         make_figure.main([
             '-i', str(params.output_path),

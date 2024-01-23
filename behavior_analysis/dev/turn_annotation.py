@@ -5,8 +5,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #
-from curvature.src.make_PCA import *
-from curvature.src.annotate_reversals import *
+from centerline_behavior_annotation.curvature.src.make_PCA import *
+from centerline_behavior_annotation.curvature.src.annotate_reversals import *
 
 #README
 # Much of this code is based on PCA_Figure PCA_slider from imutils/dev/sliders or imutils/dev/PCA_Figure.py

@@ -17,7 +17,7 @@ from skimage import data
 from skimage.util import invert
 import skimage.graph
 
-from centerline.src.make_skeleton import make_skeleton
+from centerline_behavior_annotation.centerline.src.make_skeleton import make_skeleton
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-i", "--input_filename", required=True, help="path to input image")

@@ -2,7 +2,7 @@ if __name__ == "__main__":
     import argparse
     import glob
     import os
-    from curvature.src.make_PCA import *
+    from centerline_behavior_annotation.curvature.src.make_PCA import *
 
     ###############
     ## IMPORTANT!##
