@@ -522,4 +522,5 @@ rule make_behaviour_figure:
 
         make_figure.main([
             '-i', str(params.output_path),
+            '-r', str(raw_data_dir),
         ])
