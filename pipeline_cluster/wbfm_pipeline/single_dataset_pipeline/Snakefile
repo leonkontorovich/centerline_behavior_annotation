@@ -341,6 +341,7 @@ rule hilbert_transform_on_kymogram:
         spline_K = "{output_data_dir}/skeleton_spline_K_signed_avg.csv",
         output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
     params:
+        output_path = "{output_data_dir}/", # Ulises' functions expect the final slash
         fs = config["sampling_frequency"],
         window = config["hilbert_averaging_window"]
     output:
@@ -401,7 +402,7 @@ rule reformat_skeleton_files:
 
         reformat_skeleton_files.main([
             '-i_K', str(input.spline_K),
-            'i_X', str(input.spline_X),
+            '-i_X', str(input.spline_X),
             '-i_Y', str(input.spline_Y),
             '-o', str(output.merged_spline_file),
         ])
@@ -424,7 +425,7 @@ rule annotate_behaviour:
 
         annotate_reversals_snakemake.main([
             '-i', str(input.curvature_file),
-            'pca', str(params.pca_model_path),
+            '-pca', str(params.pca_model_path),
             '-i_s', str(params.initial_segment),
             '-f_s', str(params.final_segment),
             '-win', str(params.window),

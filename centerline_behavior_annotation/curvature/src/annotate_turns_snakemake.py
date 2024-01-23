@@ -2,7 +2,7 @@
 # If you want to run it per folder there is the annotate_behaviour.py file
 
 
-if __name__ == "__main__":
+def main(arg_list):
     import argparse # comment
     import pandas as pd
     import numpy as np
@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument('-avg_window', '--averaging_window', help='', type=int, required=True)
     parser.add_argument('-bh', '--beh', help='path to the behavioural output', required=True)
 
-    args = vars(parser.parse_args())
+    args = vars(parser.parse_args(arg_list))
     input_path = args['input']
     threshold = args['threshold']
     initial_segment, final_segment = args['initial_segment'], args['final_segment']
@@ -66,4 +66,6 @@ if __name__ == "__main__":
     # ax.axhline(y=threshold, color='Red', linestyle='--')
 
 
-
+if __name__ == "__main__":
+    import sys
+    main(sys.argv[1:])

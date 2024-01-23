@@ -1,3 +1,5 @@
+import sys
+
 import pandas as pd
 import numpy as np
 from scipy.signal import hilbert, chirp
@@ -89,6 +91,7 @@ def hilbert_transform_on_kymograms_wrapper():
 #
 # print('debug')
 
+
 def main(arg_list):
     print("arg_list:", arg_list)
 
@@ -120,7 +123,6 @@ def main(arg_list):
     kymo_path = args['kymo_path']
     fs = args['fs']
     window = args["window"]
-
 
     # project_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH"
     # kymo_path = "/scratch/neurobiology/zimmer/ulises/wbfm/20221127/data/ZIM2165_Gcamp7b_worm1/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BH/2022-11-27_15-14_ZIM2165_worm1_GC7b_Ch0-BHbigtiff_skeleton_spline_K_signed.csv"
