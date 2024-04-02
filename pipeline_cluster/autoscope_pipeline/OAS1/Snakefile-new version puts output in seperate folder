@@ -186,18 +186,44 @@ rule tiff2avi:
 
 rule downsample_for_DLC:
     input:
-        script = "/scratch/neurobiology/zimmer/schaar/code/github/imutils/imutils/imutils/src/downsample_script_512.py",
         avi = "{datasets_output}raw_stack.avi"
     params:
         fps = config["fps"]
     output:
         downsampled_avi = "{datasets_output}raw_stack_downsampled.avi"
     run:
+        from imutils.src import downsample_script_512
         if config["downsample_for_DLC"] == 1:
-            shell("python {input.script} --video {input.avi} --output {output.downsampled_avi} --fps {params.fps} ")
+
+            downsample_script_512.main([
+                '--video', str(input.avi),
+                '--output', str(output.downsampled_avi),
+                '--fps', str(params.fps)
+            ])
+
         else:
             touch("{output.downsampled_avi}")  # Create an empty file to continue with pipeline
-            print("Empty downsampled_avi file created to continue pipeline.")
+            print("Empty downsampled_avi file created to continue pipeline.")
+
+'''
+-> doesnt work yet because deeplabcut cant be installed in environment for pipeline
+rule dlc_analyze_videos:
+    input:
+        downsampled_avi = "{datasets_output}raw_stack_downsampled.avi",
+        avi = "{datasets_output}raw_stack.avi"
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        network_string = config["network_string"],
+        avi_used= "{datasets_output}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets:output}raw_stack.avi"
+    #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+    output:
+        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".h5"
+    shell:
+        """
+        source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker 
+        python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['-path_config_file', '{params.dlc_model_configfile_path}', '-videofile_path', '{params.avi_used}'])"
+        """
+'''
 
 rule dlc_analyze_videos:
     input:
@@ -217,6 +243,7 @@ rule dlc_analyze_videos:
         source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
         python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {params.avi_used}
         """
+
 
 # This rule erodes the binary mask from the background-subtracted image for a specified number of iterations and saves the eroded image.
 rule erode_binary_mask:

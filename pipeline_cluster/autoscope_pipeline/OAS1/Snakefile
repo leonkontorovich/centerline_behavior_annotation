@@ -228,6 +228,25 @@ rule dlc_analyze_videos:
         python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {params.avi_used}
         """
 
+rule dlc_analyze_videos:
+    input:
+        script = "/scratch/neurobiology/zimmer/schaar/code/autoscope_ulises/packages/other/cluster_analyze_videos.py", #put this in environment package
+        downsampled_avi = "{datasets_output}raw_stack_downsampled.avi",
+        avi = "{datasets_output}raw_stack.avi"
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        network_string = config["network_string"],
+        avi_used= "{datasets_output}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack.avi"
+    #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+    output:
+        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5"
+        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".h5"
+    shell:
+        """
+        source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker
+        python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {params.avi_used}
+        """
+
 '''
 #ToDO - create conda environment with deeplabcut and imutils to run via environment
 rule dlc_analyze_videos:
