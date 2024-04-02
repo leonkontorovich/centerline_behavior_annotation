@@ -272,7 +272,7 @@ rule create_centerline:
         corrected_head = "{datasets_output}skeleton_corrected_head_coords.csv",
         corrected_tail = "{datasets_output}skeleton_corrected_tail_coords.csv"
     run:
-        from centerline.dev import head_and_tail
+        from centerline_behavior_annotation.centerline.dev import head_and_tail
 
         head_and_tail.main([
             '-i', str(input.input_binary_img),
@@ -295,7 +295,7 @@ rule reformat_skeleton_files:
     output:
         merged_spline_file = "{datasets_output}skeleton_merged_spline_data.csv",
     run:
-        from centerline.dev import reformat_skeleton_files
+        from centerline_behavior_annotation.centerline.dev import reformat_skeleton_files
 
         reformat_skeleton_files.main([
             '-i_K', str(input.spline_K),
@@ -319,7 +319,7 @@ rule annotate_behaviour:
         behaviour_annotation = "{datasets_output}beh_annotation.csv"
 
     run:
-        from curvature.src import annotate_reversals_snakemake
+        from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
 
         annotate_reversals_snakemake.main([
             '-i', str(input.curvature_file),
@@ -330,22 +330,6 @@ rule annotate_behaviour:
             '-o_bh', str(output.behaviour_annotation),
             '-o_pc', str(output.principal_components),
         ])
-'''
-rule create_plots:
-    input:
-        script="/scratch/neurobiology/zimmer/schaar/code/github/autoscope_analysis_extras/DLC_track_pharynx_egg/scripts/plot_autoscope/plot_autoscope_data.py",
-        behaviour_annotation="{datasets}beh_annotation.csv",
-        spline_K= "{datasets}skeleton_spline_K.csv",
-        worm_pos= "{datasets}worm_pos.txt",
-        stage_pos= "{datasets}stage_pos.yaml"
-    output:
-        kymogram= "{datasets}kymogram.png",
-        ehtogram= "{datasets}ehtogram.png",
-        ED_plot= "{datasets}distance_plot.png"
-    shell:
-        "python {input.script} --beh_annotation {input.behaviour_annotation} --skeleton_spline {input.spline_K} --worm_pos {input.worm_pos} --stage_pos {input.stage_pos}"
-
-'''
 
 rule create_plots2:
     input:

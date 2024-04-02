@@ -11,6 +11,7 @@ from centerline_behavior_annotation.centerline.src.make_skeleton import make_ske
 import pickle
 import argparse
 import sys
+import os
 
 import matplotlib.pyplot as plt
 
