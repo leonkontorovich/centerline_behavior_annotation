@@ -1,24 +1,33 @@
 
 #rule subtract background
-do_inverse: True
+do_inverse : True
+
+#rule normalise
+alpha: 0
+beta: 255
 
 # rule binarize with contours: threshold : 40 (standart)
-threshold : 40
+threshold : 28
 max_value : 255
-blur : 3  #needs to be odd
+
+blur_gaussian: 49 #needs to be odd
+blur : 1 #needs to be odd
+
 contour_size : 80000
 tolerance : 0.5
 inner_contour_to_fill : 20000
 
+#rule erode_binary_mask:
+iterations : 10
 
 # rule tiff2avi:
 fourcc : 0
 fps : 30
-downdownsample_for_DLC : 1  #downdownsample_for_DLC 1 = yes 0 = no -> will downsample video to 512 for DLC to track head and tail properly
+downsample_for_DLC : 1  #downdownsample_for_DLC 1 = yes 0 = no -> will downsample video to 512 for DLC to track head and tail properly
 
 #rule dlc_analyze_videos:
-dlc_model_configfile_path : "/scratch/neurobiology/zimmer/schaar/code/DLC/nose_tail_vulva-Ben-2023-10-11/config.yaml"
-network_string : "DLC_mobnet_35_nose_tail_vulvaOct11shuffle1_500000" # You might need to run the code to find out how the string looks like
+dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/autoscope_track_nose_tail/autoscope_track_nose_tail-Ben-2024-01-03/config.yaml"
+network_string : "DLC_mobnet_35_autoscope_track_nose_tailJan3shuffle1_500000" # You might need to run the code to find out how the string looks like
 
 #rule create_centerline:
 # rule create centerline
@@ -29,7 +38,7 @@ number_of_neighbours : 1
 fill_with_DLC : 1
 
 #rule annotate_behaviour:
-pca_model_path : "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
 initial_segment : 30
 final_segment : 80
 window : 10

@@ -1,7 +1,5 @@
 # snakemake
-
-NOTE: copied from the wbfm pipeline
-
+my first snakemake repository
 
 #To run:
 Copy following files into your directory containing /data/ with the recordings inside data.
