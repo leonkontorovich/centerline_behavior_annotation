@@ -17,7 +17,8 @@ def main(arg_list=None):
     parser.add_argument('-win', '--average_window', type=int, help='average_window', required=True)
     parser.add_argument('-o_bh', '--o_beh', help='path to save the behavioural output', required=True)
     parser.add_argument('-o_pc', '--o_pc', help='path to save the PC components', required=True)
-    parser.add_argument('-t', '--thresholds', type=float, nargs=2, help='Input two thresholds separated by space, e.g., -t 20.0 21.0', required=False)
+    parser.add_argument('--upper_threshold', type=float, help='upper threshold', required=False, default=0.0)
+    parser.add_argument('--lower_threshold', type=float, help='lower threshold', required=False, default=0.0)
 
     #args = vars(parser.parse_args())
     args = vars(parser.parse_args(arg_list))
@@ -28,9 +29,10 @@ def main(arg_list=None):
     average_window = args['average_window']
     beh_annotation_path = args['o_beh']
     pc_components_path = args['o_pc']
+    upper_threshold = args['upper_threshold']
+    lower_threshold = args['lower_threshold']
 
-    # threshhold for binarisation of reverse and forward
-    thresholds = tuple(args.thresholds) if args.thresholds else (0.0, 0.0)
+    thresholds = (upper_threshold, lower_threshold)
 
 
     features = np.arange(initial_segment, final_segment)
