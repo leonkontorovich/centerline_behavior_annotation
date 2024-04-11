@@ -51,7 +51,7 @@ def main(arg_list):
     turns_df = pd.DataFrame()
     turns_df['turn'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0))
 
-    turns_df.to_csv(turns_annotation_path)
+    turns_df.to_csv(turns_annotation_path, encoding='utf-8')
 
 if __name__ == "__main__":
     import sys
