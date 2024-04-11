@@ -48,7 +48,7 @@ def main(arg_list):
     dorsal_curvature = dorsal_data.sum(axis=1)
 
     # add a column in the dataframe which contains 1 if another column is higher than 0.05, -1 if lower than -0.05, and 0 if in between -0.5 and 0.5
-    turns_df = pd.DataFrame()
+    turns_df = pd.DataFrame({'turns': pd.Series(dtype='int')})
     turns_df['turn'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0))
 
     turns_df.to_csv(turns_annotation_path, encoding='utf-8')
