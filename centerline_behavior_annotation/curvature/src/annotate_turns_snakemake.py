@@ -49,9 +49,10 @@ def main(arg_list):
 
     # add a column in the dataframe which contains 1 if another column is higher than 0.05, -1 if lower than -0.05, and 0 if in between -0.5 and 0.5
     turns_df = pd.DataFrame({'turns': pd.Series(dtype='int')})
-    turns_df['turns'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0))
+    # Compute the conditional values and force the type to int
+    turns_df['turns'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0)).astype(int)
 
-    turns_df.to_excel(turns_annotation_path)
+    turns_df.to_csv(turns_annotation_path)
 
 if __name__ == "__main__":
     import sys
