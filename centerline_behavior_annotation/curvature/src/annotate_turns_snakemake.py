@@ -34,7 +34,9 @@ def main(arg_list):
     print(type(threshold))
     print(threshold)
 
-    df = pd.read_csv(input_path, header=None)
+    # Reading the CSV file with UTF-8 encoding
+    df = pd.read_csv(input_path, header=None, encoding='utf-8')
+
     df.fillna(0, inplace=True)
     df = df.rolling(avg_window, center=True).mean()# alternative change nans to zeros
     features = np.arange(initial_segment, final_segment)  # Separating out the features (starting bodypart, ending bodypart),a dd to config yaml
@@ -52,7 +54,8 @@ def main(arg_list):
     # Compute the conditional values and force the type to int
     turns_df['turns'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0)).astype(int)
 
-    turns_df.to_csv(turns_annotation_path)
+    # Writing the DataFrame to a CSV file with UTF-8 encoding
+    turns_df.to_csv(turns_annotation_path, encoding='utf-8')
 
 if __name__ == "__main__":
     import sys
