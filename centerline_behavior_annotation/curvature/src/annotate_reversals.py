@@ -53,11 +53,15 @@ def binarize_cross_product(cross_product_df, thresholds):
     """
     values = [float(value) for value in cross_product_df['Cross_Product'].values]
     values_arr = np.array(values)
-    # simple binarization of cross product, output will depend on model (?),
-    values_arr[values_arr > thresholds[0]] = 1
-    values_arr[values_arr < thresholds[1]] = -1
 
-    return values_arr
+    #previously the binary float array contained small numbers above 0
+    binary_values = np.zeros_like(values_arr, dtype=int)
+
+    # simple binarization of cross product, output will depend on model (?),
+    binary_values[values_arr > thresholds[0]] = 1
+    binary_values[values_arr < thresholds[1]] = -1
+
+    return binary_values
 
 
 def ethogram_figure(kymogram_df, ethogram_df):
