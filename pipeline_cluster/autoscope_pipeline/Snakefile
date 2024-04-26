@@ -1,3 +1,4 @@
+import os
 import glob
 
 DATASETS=glob.glob("*/*w*/*Ch0*/")
@@ -7,6 +8,10 @@ background_img = glob.glob("*/background/*background*")[0]
 print(DATASETS)
 
 rule targets:
+    '''
+    This rule should include all final workflow out puts!
+    ...depending on the used rules you need to adapt them
+    '''
     input:
         #worm_mask = expand("{datasets}raw_stack.btf",datasets=DATASETS),
         #erode_img=expand("{datasets}raw_stack_background_subtracted_mask_eroded.btf",datasets=DATASETS),
@@ -32,21 +37,25 @@ rule targets:
 
 
 rule ometiff2bigtiff:
-    input:
-        #list_of_ometiff_files ="{datasets}/{group}.ome.tif" I don't know how to do this
-        script = "/scratch/neurobiology/zimmer/schaar/code/github/imutils/imutils/imutils/src/imutils_parser.py",
     params:
         function = "ometiff2bigtiff"
     output:
         btf_file = "{datasets}raw_stack.btf" #{files}raw_stack.btf"
-    shell:
-        #TODO: Change back to what it was, without the dirname thing
-        """
-        DIR=$(dirname {output.btf_file})
-        echo $DIR
-        python {input.script} {params.function} -path $DIR -output_filename {output.btf_file}
-        """
+    run:
+        import os
+        from imutils.src import imutils_parser_main
+        # Example path to a big tiff file
+        output_btf_file = str(output.btf_file)
+        # Get the directory part of the path
+        dir_path = os.path.dirname(output_btf_file)
+        # Print the directory path
+        print(dir_path)
 
+        imutils_parser_main.main([
+            params.function,
+            '-path', dir_path,
+            '-output_filename', str(output.btf_file),
+        ])
 
 rule subtract_background:
     input:
@@ -68,9 +77,6 @@ rule subtract_background:
             '-invert', str(params.do_inverse),
         ])
 
-        #"python {input.script} {params.function} -i {input.raw_img} -o {output.background_subtracted_img} -bg {input.background_img} -invert {params.do_inverse}"
-
-
 rule normalize_img:
     input:
         input_img = "{datasets}raw_stack_background_subtracted.btf"
@@ -90,9 +96,6 @@ rule normalize_img:
             '-a', str(params.alpha),
             '-b', str(params.beta),
         ])
-
-        #"python {input.script} {params.function} -i {input.input_img} -o {output.normalised_img} -a {params.alpha} -b {params.beta}"
-
 
 rule make_contour_based_binary:
     input:
@@ -123,8 +126,6 @@ rule make_contour_based_binary:
             '-ics', str(params.inner_contour_to_fill),
         ])
 
-        #"python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -blur {params.blur} -th {params.threshold} -max_val {params.max_value} -cs {params.contour_size} -t {params.tolerance} -ics {params.inner_contour_to_fill}"
-
 
 rule coil_unet:
     input:
@@ -132,8 +133,7 @@ rule coil_unet:
         raw_input_img="{datasets}raw_stack_AVG_background_subtracted_normalised.btf"
     params:
         function = "unet_segmentation_contours_with_children",
-        weights_path= config["coil_unet_weights"]#"/scratch/neurobiology/zimmer/ulises/code/unet-master/data/2023_worm_coiled_segmentation/training_results/5910044_0_w_validation_2batchsize_500steps_100epochs_5patience/unet_master.hdf5",
-        #network_name="5910044_0"
+        weights_path= config["coil_unet_weights"]
     output:
         coil_unet_prediction = "{datasets}raw_stack_background_subtracted_mask_coilnet.btf"
     run:
@@ -146,7 +146,7 @@ rule coil_unet:
             '-o', str(output.coil_unet_prediction),
             '-w', str(params.weights_path),
         ])
-        #"python {input.script} {params.function} -bi {input.binary_input_img} -ri {input.raw_input_img} -o {output.coil_unet_prediction} -w {params.weights_path}"
+
 
 rule binarize_coil:
     input:
@@ -168,8 +168,6 @@ rule binarize_coil:
             '-max_val', str(params.max_value),
         ])
 
-        #"python {input.script} {params.function} -i {input.input_img} -o {output.binary_img} -th {params.threshold} -max_val {params.max_value}"
-
 rule tiff2avi:
     input:
         input_img = "{datasets}raw_stack.btf"
@@ -190,45 +188,26 @@ rule tiff2avi:
             '-fps', str(params.fps),
         ])
 
-        #"python {input.script} {params.function} -i {input.input_img} -o {output.avi} -fourcc {params.fourcc} -fps {params.fps}" #!
-
-
 rule downsample_for_DLC:
     input:
-        script = "/scratch/neurobiology/zimmer/schaar/code/github/imutils/imutils/imutils/src/downsample_script_512.py",
         avi = "{datasets}raw_stack.avi"
     params:
         fps = config["fps"]
     output:
         downsampled_avi = "{datasets}raw_stack_downsampled.avi"
     run:
+        from imutils.src import downsample_script_512
         if config["downsample_for_DLC"] == 1:
-            shell("python {input.script} --video {input.avi} --output {output.downsampled_avi} --fps {params.fps} ")
+
+            downsample_script_512.main([
+                '--video', str(input.avi),
+                '--output', str(output.downsampled_avi),
+                '--fps', str(params.fps)
+            ])
+
         else:
             touch("{output.downsampled_avi}")  # Create an empty file to continue with pipeline
             print("Empty downsampled_avi file created to continue pipeline.")
-'''
-#needs other conda environment activation since dlc not installed in ulises environment and also packet colisions
-rule dlc_analyze_videos:
-    input:
-        downsampled_avi = "{datasets}raw_stack_downsampled.avi",
-        avi = "{datasets}raw_stack.avi"
-    params:
-        dlc_model_configfile_path = config["dlc_model_configfile_path"],
-        network_string = config["network_string"],
-        avi_used= "{datasets}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets}raw_stack.avi"
-    #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
-    output:
-        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5"
-        hdf5_file = "{datasets}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets}raw_stack"+config["network_string"]+".h5"
-    run:
-        from imutils.src import DLC_analyze_videos
-
-        DLC_analyze_videos.main([
-            '-path_config_file', str(params.dlc_model_configfile_path),
-            '-videofile_path', str(params.avi_used),
-        ])
-'''
 
 rule dlc_analyze_videos:
     input:
@@ -249,18 +228,26 @@ rule dlc_analyze_videos:
         python {input.script} -path_config_file {params.dlc_model_configfile_path} -videofile_path {params.avi_used}
         """
 
+'''
+#ToDO - create conda environment with deeplabcut and imutils to run via environment
+rule dlc_analyze_videos:
+    input:
+        downsampled_avi = "{datasets}raw_stack_downsampled.avi",
+        avi = "{datasets}raw_stack.avi"
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        network_string = config["network_string"],
+        avi_used= "{datasets}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets}raw_stack.avi"
+    #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+    output:
+        hdf5_file = "{datasets}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets}raw_stack"+config["network_string"]+".h5"
+    shell:
+        """
+        source /apps/conda/miniconda3/bin/activate /scratch/neurobiology/zimmer/.conda/envs/HR_tracker 
+        python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['-path_config_file', '{params.dlc_model_configfile_path}', '-videofile_path', '{params.avi_used}'])"
+        """
+'''
 
-# # rule dlc_label_videos:
-# #     input:
-# #         script = ,
-# #         input_avi =
-# #     params:
-# #         dlc_model_configfile_path = ""
-# #     output:
-# #         labeled_video = ""
-# #     shell:
-# #         ""
-# #
 # This rule erodes the binary mask from the background-subtracted image for a specified number of iterations and saves the eroded image.
 
 rule erode_binary_mask:
@@ -281,8 +268,6 @@ rule erode_binary_mask:
                  eroded_img = ndimage.binary_erosion(img,iterations=params.iter)
                  eroded_img = eroded_img * 255
                  eroded_img = eroded_img.astype(np.uint8)
-                 #eroded_img = np.array(eroded_img, dtype=np.uint8)
-                 # save as a btf
                  output_tif.write(eroded_img,photometric='minisblack',contiguous=True)
 
 rule create_centerline:
@@ -290,7 +275,6 @@ rule create_centerline:
         #TODO: Try ancient() to see if I can avoid re-running when the script is modified
         input_binary_img = "{datasets}raw_stack_background_subtracted_mask_eroded.btf",
         hdf5_file = "{datasets}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets}raw_stack"+config["network_string"]+".h5"
-        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
 
     params:
         csv_output_path = "{datasets}",  # This cant go into inputs because it is not a file
@@ -310,7 +294,7 @@ rule create_centerline:
         corrected_head = "{datasets}skeleton_corrected_head_coords.csv",
         corrected_tail = "{datasets}skeleton_corrected_tail_coords.csv"
     run:
-        from centerline_behavior_annotation.centerline.dev import head_and_tail
+        from centerline.dev import head_and_tail
 
         head_and_tail.main([
             '-i', str(input.input_binary_img),
@@ -324,8 +308,6 @@ rule create_centerline:
             '-ds', str(params.downsample_for_DLC),
         ])
 
-        #"python {input.script} -i {input.input_binary_img} -h5 {input.hdf5_file} -o {params.csv_output_path} -nose {params.nose} -tail {params.tail} -num_splines {params.num_splines} -n {params.number_of_neighbours} -dlc {params.fill_with_DLC} -ds {params.downsample_for_DLC}"
-
 rule reformat_skeleton_files:
     input:
         spline_K= "{datasets}skeleton_spline_K.csv",
@@ -334,6 +316,8 @@ rule reformat_skeleton_files:
     output:
         merged_spline_file = "{datasets}skeleton_merged_spline_data.csv",
     run:
+        from centerline.dev import reformat_skeleton_files
+
         reformat_skeleton_files.main([
             '-i_K', str(input.spline_K),
             'i_X', str(input.spline_X),
@@ -341,13 +325,8 @@ rule reformat_skeleton_files:
             '-o', str(output.merged_spline_file),
         ])
 
-
-        #"python {input.script} -i_K {input.spline_K} -i_X {input.spline_X} -i_Y {input.spline_Y} -o {output.merged_spline_file}"
-
-
 rule annotate_behaviour:
     input:
-        script = "/scratch/neurobiology/zimmer/schaar/code/github/curvature/curvature/curvature/src/annotate_reversals_snakemake.py",
         curvature_file = "{datasets}skeleton_spline_K.csv"
     params:
         #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
@@ -361,7 +340,7 @@ rule annotate_behaviour:
         behaviour_annotation = "{datasets}beh_annotation.csv"
 
     run:
-        from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
+        from curvature.src import annotate_reversals_snakemake
 
         annotate_reversals_snakemake.main([
             '-i', str(input.curvature_file),
@@ -373,7 +352,6 @@ rule annotate_behaviour:
             '-o_bh', str(output.behaviour_annotation),
         ])
 
-        #"python {input.script} -i {input.curvature_file} -pca {params.pca_model_path} -i_s {params.initial_segment} -f_s {params.final_segment} -win {params.window} -o_pc {output.principal_components} -o_bh {output.behaviour_annotation}"
 
 rule create_plots:
     input:
