@@ -46,7 +46,6 @@ def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
             else:
                 raise AttributeError(f"ventral should be either 'left' or 'right', you have: {ventral}")
 
-
     return None
 
 

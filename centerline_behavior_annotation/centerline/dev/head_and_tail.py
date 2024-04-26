@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import tifffile as tiff
 import skan
+from scopereader import MicroscopeDataReader
+import dask.array as da
 from skan import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
 from centerline_behavior_annotation.centerline.src.make_skeleton import make_skeleton
@@ -281,44 +283,42 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
     csv_writerK = csv.writer(csvfileK)
 
     # iterate over pages of the tiff file
-    with tiff.TiffFile(tiff_path) as tif:
-        for idx, page in enumerate(tif.pages):
-            print(idx)
-            # if idx%50==0:
-            #     print(idx, 'ha')
+    tif = da.squeeze(MicroscopeDataReader(tiff_path).dask_array)
+    for idx, img in enumerate(tif):
+        print(idx)
+        # if idx%50==0:
+        #     print(idx, 'ha')
 
-            img = page.asarray()
+        # access the head and tail coordinates of the frame
+        head_coords_i = (int(head_coords[1][idx]), int(head_coords[0][idx]))
+        tail_coords_i = (int(tail_coords[1][idx]), int(tail_coords[0][idx]))
 
-            # access the head and tail coordinates of the frame
-            head_coords_i = (int(head_coords[1][idx]), int(head_coords[0][idx]))
-            tail_coords_i = (int(tail_coords[1][idx]), int(tail_coords[0][idx]))
-
-            skel_head, skel_tail = head_and_tail_correction_from_img(img, number_of_neighbors, head_coords_i,
-                                                                     tail_coords_i, fill_with_DLC)
+        skel_head, skel_tail = head_and_tail_correction_from_img(img, number_of_neighbors, head_coords_i,
+                                                                 tail_coords_i, fill_with_DLC)
 
 
-            if np.isnan(skel_head[0]):  # if the skel_head or skel_tail are nan start
-                K = np.full(num_splines, np.nan)
-                x = np.full(num_splines, np.nan)
-                y = np.full(num_splines, np.nan)
-                x_new = np.full(num_splines, np.nan)
-                y_new = np.full(num_splines, np.nan)
-                u = np.nan
-                skel_coord = (x, y)
-                spline_coord = (x_new, y_new)
-            else:
-                u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail,
-                                                               num_splines=num_splines,
-                                                               img=img, min_worm_len=300)
+        if np.isnan(skel_head[0]):  # if the skel_head or skel_tail are nan start
+            K = np.full(num_splines, np.nan)
+            x = np.full(num_splines, np.nan)
+            y = np.full(num_splines, np.nan)
+            x_new = np.full(num_splines, np.nan)
+            y_new = np.full(num_splines, np.nan)
+            u = np.nan
+            skel_coord = (x, y)
+            spline_coord = (x_new, y_new)
+        else:
+            u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail,
+                                                           num_splines=num_splines,
+                                                           img=img, min_worm_len=300)
 
-            # write csvs
-            csv_writer_head.writerow(skel_head)
-            csv_writer_tail.writerow(skel_tail)
-            csv_writerPathX.writerow(skel_coord[0])
-            csv_writerPathY.writerow(skel_coord[1])
-            csv_writerX.writerow(spline_coord[0])
-            csv_writerY.writerow(spline_coord[1])
-            csv_writerK.writerow(K)
+        # write csvs
+        csv_writer_head.writerow(skel_head)
+        csv_writer_tail.writerow(skel_tail)
+        csv_writerPathX.writerow(skel_coord[0])
+        csv_writerPathY.writerow(skel_coord[1])
+        csv_writerX.writerow(spline_coord[0])
+        csv_writerY.writerow(spline_coord[1])
+        csv_writerK.writerow(K)
 
     csvfile_corrected_head.close()
     csvfile_corrected_tail.close()
