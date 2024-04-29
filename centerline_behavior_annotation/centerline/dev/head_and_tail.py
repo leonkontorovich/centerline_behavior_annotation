@@ -283,9 +283,11 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
     csv_writerK = csv.writer(csvfileK)
 
     # iterate over pages of the tiff file
-    tif = da.squeeze(MicroscopeDataReader(tiff_path).dask_array)
+    reader_obj_binary = MicroscopeDataReader(tiff_path, as_raw_tiff=True, raw_tiff_num_slices=1)
+    tif = da.squeeze(reader_obj_binary.dask_array)
     for idx, img in enumerate(tif):
         print(idx)
+        img = np.array(img)
         # if idx%50==0:
         #     print(idx, 'ha')
 
