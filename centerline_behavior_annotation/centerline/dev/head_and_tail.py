@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import tifffile as tiff
 import skan
-from scopereader import MicroscopeDataReader
+from imutils import MicroscopeDataReader
 import dask.array as da
 from skan import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
@@ -17,6 +17,7 @@ if skan.__version__ != '0.9':
     print('This code was written to work with skan version 0.9. You have skan version ',skan.__version__)
     #would this be better:
     #raise Exception(message)
+
 
 def load_bodypart_coords_from_DLC(dlc_df, bodypart):
     """
