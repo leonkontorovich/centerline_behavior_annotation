@@ -248,4 +248,4 @@ dependencies:
       - toposort==1.7
       - websocket-client==1.2.0
       - yte==1.5.1
-prefix: /scratch/neurobiology/zimmer/.conda/envs/oa_behavior_analysis_pipeline
+

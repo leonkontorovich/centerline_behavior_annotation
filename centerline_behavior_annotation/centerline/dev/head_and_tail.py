@@ -1,7 +1,6 @@
 import csv
 import itertools
 import math
-
 import numpy as np
 import pandas as pd
 import tifffile as tiff
@@ -11,15 +10,20 @@ import dask.array as da
 from skan import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
 from centerline_behavior_annotation.centerline.src.make_skeleton import make_skeleton
+import pickle
+import argparse
+import sys
+import os
 
 import matplotlib.pyplot as plt
+
 if skan.__version__ != '0.9':
-    print('This code was written to work with skan version 0.9. You have skan version ',skan.__version__)
-    #would this be better:
-    #raise Exception(message)
+    print('This code was written to work with skan version 0.9. You have skan version ', skan.__version__)
+    # would this be better:
+    # raise Exception(message)
 
 
-def load_bodypart_coords_from_DLC(dlc_df, bodypart):
+def load_bodypart_coords_from_DLC(dlc_df, bodypart, downsample_factor):
     """
     Returns the coordinates of the specified bodypart in an array format
     Parameters:
@@ -31,11 +35,12 @@ def load_bodypart_coords_from_DLC(dlc_df, bodypart):
     Returns:
     -----------
     bodypart cooords, array
-    
+
     """
 
     scorer = dlc_df.columns.get_level_values(0)[0]
-    bodypart_coords = (dlc_df[scorer][bodypart]['x'].values, dlc_df[scorer][bodypart]['y'].values)
+    bodypart_coords = ((dlc_df[scorer][bodypart]['x'].values) * downsample_factor,
+                       (dlc_df[scorer][bodypart]['y'].values) * downsample_factor)
 
     return bodypart_coords
 
@@ -144,7 +149,7 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     head_coords, tuple
     tail_coords, tuple
     list of tuples, (edge) candidate coordinates
-    
+
     Returns:
     -----------
     skel_head_coordinates, tuple
@@ -168,14 +173,13 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     # print min sum value:
     # print(cp_df['value_sum'].min())
 
-    #when does this fail? when there is only one element in the candidate_coords
+    # when does this fail? when there is only one element in the candidate_coords
     try:
 
         # Head Part
         # optimal distance head
         optimal_distance_head = df_cartesian_product['value1'][
             df_cartesian_product['value_sum'] == df_cartesian_product['value_sum'].min()]
-
 
         # find the edge coords that have dist_edge_to_head the dist1_good
         head_row = df_distance[df_distance['dist_edge_to_head'] == optimal_distance_head.values[0]]
@@ -227,7 +231,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     else:
         edge_coords = get_skeleton_points(skel, number_of_neighbors)
 
-        if len(edge_coords)>=2:  # if edge_coords is 2 or bigger
+        if len(edge_coords) >= 2:  # if edge_coords is 2 or bigger
             skel_head, skel_tail = assign_head_and_tail_to_coords(head_coords, tail_coords,
                                                                   candidate_coords=edge_coords)
 
@@ -238,8 +242,9 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
     return skel_head, skel_tail
 
 
-def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, nose, tail, num_splines=100, number_of_neighbors=1,
-                          fill_with_DLC=True):
+def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, nose, tail, num_splines=100,
+                          number_of_neighbors=1,
+                          fill_with_DLC=True, downsample_factor=1):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
     # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
@@ -258,8 +263,8 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
     # load DLC head and tail coordinates
     df = pd.read_hdf(hdf5_dlc_path)
 
-    head_coords = load_bodypart_coords_from_DLC(df, nose) #TODO: bodyparts should not be hardcoded
-    tail_coords = load_bodypart_coords_from_DLC(df, tail)
+    head_coords = load_bodypart_coords_from_DLC(df, nose, downsample_factor)  # TODO: bodyparts should not be hardcoded
+    tail_coords = load_bodypart_coords_from_DLC(df, tail, downsample_factor)
 
     # create csv objects
     csvfile_corrected_head = open(output_path + 'skeleton_corrected_head_coords.csv', 'w', newline='')
@@ -334,9 +339,28 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
     return
 
 
-def main(arg_list):
-    import argparse
+def load_downsample_factor_from_pickle(tiff_path):
+    # Extract the directory path from the TIFF file path
+    directory_path = os.path.dirname(tiff_path)
 
+    # Construct the full path to the cfactor.pickle file
+    cfactor_pickle_path = os.path.join(directory_path, 'cfactor.pickle')
+
+    # Check if the cfactor.pickle file exists
+    if os.path.exists(cfactor_pickle_path):
+        print(f"Found cfactor.pickle file at {cfactor_pickle_path}")
+        # Load the content of the pickle file
+        with open(cfactor_pickle_path, 'rb') as file:
+            downsample_factor = pickle.load(file)
+            print(f"Loaded downsample factor: {downsample_factor}")
+        return downsample_factor
+    else:
+        # Handle the case where the cfactor.pickle file is not found
+        print("cfactor.pickle file not found in the directory.")
+        return None  # You can return a specific value or raise an exception if needed
+
+
+def main(arg_list=None):
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_tiff_path', help='input path', required=True)
     parser.add_argument('-h5', '--hdf5_dlc_path', help='hdf5_dlc_path', required=True)
@@ -346,34 +370,43 @@ def main(arg_list):
     parser.add_argument('-num_splines', '--num_splines', type=int, help='number of splines', required=True)
     parser.add_argument('-n', '--number_of_neighbors', type=int, help='number_of_neighbors', required=False)
     parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
+    parser.add_argument('-ds', '--downsample', help='downsample_for_DLC, 1 True, 0 False', required=False)
 
-    args = vars(parser.parse_args(arg_list))
-    tiff_path = args['input_tiff_path']
-    hdf5_dlc_path = args['hdf5_dlc_path']
-    output_path = args['output_path']
-    nose = args['nose']
-    tail = args['tail']
-    num_splines = args['num_splines']
-    number_of_neighbors = int(args['number_of_neighbors'])
-    fill_with_DLC = int(args['fill_with_DLC']) #Not sure this will work, parsing True and false statements is not trivial
+    # args = parser.parse_args()
+    args = parser.parse_args(arg_list)
+    tiff_path = args.input_tiff_path
+    hdf5_dlc_path = args.hdf5_dlc_path
+    output_path = args.output_path
+    nose = args.nose
+    tail = args.tail
+    num_splines = args.num_splines
+    number_of_neighbors = args.number_of_neighbors  # This can be None if not provided
+    fill_with_DLC = args.fill_with_DLC == '1'  # Convert '1' or '0' to True or False
+    downsample_for_DLC = args.downsample == '1'  # Convert '1' or '0' to True or False, can be none if not provided
 
+    print('Fill with DLC', fill_with_DLC)
+    print('Downsample for DLC:', downsample_for_DLC)
 
-    ## To run locally
-    # tiff_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stack_background_subtracted_mask.btf'
-    # hdf5_dlc_path='/Volumes/scratch/neurobiology/zimmer/ulises/test_area/autoscope_snakemake/data/worm2/2022-11-27_13-19_w2_Ch0/raw_stackDLC_resnet50_Autoscope_recordingsFeb1shuffle1_1030000.h5'
-    # output_path='/Users/ulises.rey/local_data/test_spline/'
-    # number_of_neighbors = 1
-    # fill_with_DLC = True
+    downsample_factor = 0
+
+    if (downsample_for_DLC == True):
+        try:
+            downsample_factor = load_downsample_factor_from_pickle(tiff_path)
+        except FileNotFoundError:  # Handle the specific exception if the file is not found
+            downsample_factor = 1
+            print("Pickle File containing downsample factor not found :(")
+
     print('Parser worked fine, entering function now')
     print("These are the arguments", args)
-    head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose, tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors, fill_with_DLC=fill_with_DLC)
+    head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose,
+                          tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors,
+                          fill_with_DLC=fill_with_DLC, downsample_factor=downsample_factor)
     print("head_and_tail_wrapper worked fine")
 
 
+# run code locally
 if __name__ == '__main__':
-    import sys
-    main(sys.argv[1:])
-
+    main(sys.argv[1:])  # exclude the script name from the args when called from shell
 
 # assembling:
 #

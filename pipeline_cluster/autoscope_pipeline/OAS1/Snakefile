@@ -1,0 +1,369 @@
+import os
+import glob
+
+DATASETS=glob.glob("*/*w*/*Ch0*/")
+
+output_folder_name='output/'
+
+#Create a unique output folder for each dataset
+for dataset in DATASETS:
+    output_folder = os.path.join(dataset, output_folder_name)  # Append 'output' to each dataset path
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)  # Create the folder if it doesn't exist
+
+# Prepend '/output' to each dataset path to ensure processed data goes into the output folder
+DATASETS_OUTPUT = glob.glob("*/*w*/*Ch0*/" + output_folder_name)    
+
+background_img = glob.glob("*/background/*background*")[0]
+
+print(DATASETS)
+
+rule targets:
+    input:
+        #worm_mask = expand("{datasets}raw_stack.btf",datasets=DATASETS),
+        #erode_img=expand("{datasets}raw_stack_background_subtracted_mask_eroded.btf",datasets=DATASETS),
+        #kymogram = expand("{datasets}kymogram.png", datasets=DATASETS),
+        #ehtogram = expand("{datasets}ehtogram.png", datasets=DATASETS),
+        #ED_plot = expand("{datasets}distance_plot.png", datasets=DATASETS),
+        angle_animation = expand("{datasets_output}angle_animation.avi", datasets_output=DATASETS_OUTPUT),
+        worm_movie = expand("{datasets_output}worm_movie.avi", datasets_output=DATASETS_OUTPUT),
+        chemotaxis_overview = expand("{datasets_output}chemotaxis_overview.png", datasets_output=DATASETS_OUTPUT),
+        principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
+        output_skel_X=expand("{datasets_output}skeleton_skeleton_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_skel_Y=expand("{datasets_output}skeleton_skeleton_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        corrected_head=expand("{datasets_output}skeleton_corrected_head_coords.csv",datasets_output=DATASETS_OUTPUT),
+        corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT)
+        # final_img = expand("{files}_AVG_background_subtracted_normalised_unet_segmented_weights_5358068_1_mask_coil_segmented_mask.btf",files=FILES),
+        # # Maybe the avi is not needed because itself it is a requirement for final_img
+        # avi = expand("{files}_AVG_background_subtracted.avi", files=FILES),
+        # spline = expand("{files}_skeleton_spline_K.csv", files=FILES),
+        #merged_spline_file = expand("{datasets}skeleton_merged_spline_data.csv", datasets=DATASETS),
+        #behaviour_annotation = expand("{datasets}beh_annotation.csv", datasets=DATASETS),
+        # #speed_file= expand("{files}_raw_worm_speed.csv", files=FILES),
+        # #speed_file = expand("{bh_folder}/raw_worm_speed.csv", bh_folder=BH_FOLDERS) #This is not actually produced!
+        #figure = expand("{datasets}behavioral_summary_figure.pdf", datasets=DATASETS),  #This is not actually produced!
+
+'''
+-> doesnt work yet like this :/
+rule ometiff2bigtiff:
+    input:
+        source_path = '{datasets_output}../'
+    params:
+        function = "ometiff2bigtiff"
+    output:
+        btf_file = "{datasets_output}raw_stack.btf" #{files}raw_stack.btf"
+    run:
+        import os
+        from imutils.src import imutils_parser_main
+
+        imutils_parser_main.main([
+            params.function,
+            '-path', str(input.source_path),
+            '-output_filename', str(output.btf_file),
+        ])
+        
+'''
+
+rule ometiff2bigtiff:
+    input:
+
+    params:
+        function = "ometiff2bigtiff"
+    output:
+        btf_file = "{datasets_output}raw_stack.btf" #{files}raw_stack.btf"
+    run:
+        import os
+        from imutils.src import imutils_parser_main
+
+        # Example path to a big tiff file
+        output_btf_file = str(output.btf_file)
+        # Get the directory part of the path
+        dir_path = os.path.dirname(output_btf_file)
+        # Go one directory level up
+        path_parts = dir_path.split(os.sep)
+        new_dir_path = os.sep.join(path_parts[:-1])
+        print(new_dir_path)
+        # Print the parent directory path
+
+        imutils_parser_main.main([
+            params.function,
+            '-path', new_dir_path,
+            '-output_filename', str(output.btf_file),
+        ])
+
+rule subtract_background:
+    input:
+        raw_img ="{datasets_output}raw_stack.btf",
+        background_img = background_img
+    params:
+        function = "stack_subtract_background",
+        do_inverse = config["do_inverse"]
+    output:
+        background_subtracted_img ="{datasets_output}raw_stack_background_subtracted.btf"
+    run:
+        from imutils.src import imutils_parser_main
+        imutils_parser_main.main([
+            params.function,
+            '-i', str(input.raw_img),
+            '-o', str(output.background_subtracted_img),
+            '-bg', str(input.background_img),
+            '-invert', str(params.do_inverse),
+        ])
+
+rule normalize_img:
+    input:
+        input_img = "{datasets_output}raw_stack_background_subtracted.btf"
+    params:
+        function = "stack_normalise",
+        alpha = config["alpha"],
+        beta = config["beta"]
+    output:
+        normalised_img = "{datasets_output}raw_stack_AVG_background_subtracted_normalised.btf"
+    run:
+        from imutils.src import imutils_parser_main
+
+        imutils_parser_main.main([
+            params.function,
+            '-i', str(input.input_img),
+            '-o', str(output.normalised_img),
+            '-a', str(params.alpha),
+            '-b', str(params.beta),
+        ])
+
+
+rule make_contour_based_binary:
+    input:
+        input_img ="{datasets_output}raw_stack_AVG_background_subtracted_normalised.btf"
+    params:
+        function = "make_contour_based_binary",
+        threshold = config["threshold"],
+        max_value = config["max_value"],
+        blur_gaussian = config["blur_gaussian"],
+        blur = config["blur"],
+        contour_size = config["contour_size"],
+        tolerance = config["tolerance"],
+        inner_contour_to_fill = config["inner_contour_to_fill"]
+    output:
+        #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
+        binary_img = "{datasets_output}raw_stack_background_subtracted_mask.btf"
+    run:
+        from imutils.src import imutils_parser_main
+
+        imutils_parser_main.main([
+            str(params.function),
+            '-i', str(input.input_img),
+            '-o', str(output.binary_img),
+            '-blur', str(params.blur),
+            '-th', str(params.threshold),
+            '-max_val', str(params.max_value),
+            '-cs', str(params.contour_size),
+            '-t', str(params.tolerance),
+            '-ics', str(params.inner_contour_to_fill),
+            '-blur_gaussian',str(params.blur_gaussian),
+        ])
+
+rule tiff2avi:
+    input:
+        input_img = "{datasets_output}raw_stack.btf"
+    params:
+        function = "tiff2avi",
+        fourcc = config["fourcc"],
+        fps = config["fps"]
+    output:
+        avi = "{datasets_output}raw_stack.avi"
+    run:
+        from imutils.src import imutils_parser_main
+
+        imutils_parser_main.main([
+            params.function,
+            '-i', str(input.input_img),
+            '-o',str(output.avi),
+            '-fourcc', str(params.fourcc),
+            '-fps', str(params.fps),
+        ])
+
+rule downsample_for_DLC:
+    input:
+        avi = "{datasets_output}raw_stack.avi"
+    params:
+        fps = config["fps"]
+    output:
+        downsampled_avi = "{datasets_output}raw_stack_downsampled.avi"
+    run:
+        from imutils.src import downsample_script_512
+        if config["downsample_for_DLC"] == 1:
+
+            downsample_script_512.main([
+                '--video', str(input.avi),
+                '--output', str(output.downsampled_avi),
+                '--fps', str(params.fps)
+            ])
+
+        else:
+            touch("{output.downsampled_avi}")  # Create an empty file to continue with pipeline
+            print("Empty downsampled_avi file created to continue pipeline.")
+
+rule dlc_analyze_videos:
+    input:
+        downsampled_avi = "{datasets_output}raw_stack_downsampled.avi",
+        avi = "{datasets_output}raw_stack.avi"
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        network_string = config["network_string"],
+        avi_used= "{datasets_output}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack.avi"
+    #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
+    output:
+        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".h5"
+    shell:
+        """
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
+        python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{params.avi_used}'])"
+        """
+
+
+# This rule erodes the binary mask from the background-subtracted image for a specified number of iterations and saves the eroded image.
+rule erode_binary_mask:
+    input:
+        binary_img = "{datasets_output}raw_stack_background_subtracted_mask.btf"
+    params:
+        iter =  config['iterations']
+    output:
+        erode_img = "{datasets_output}raw_stack_background_subtracted_mask_eroded.btf"
+    run:
+        import pandas as pd
+        import numpy as np
+        import tifffile as tiff
+        from scipy import ndimage
+
+        with tiff.TiffFile(input.binary_img, multifile=False) as tif, tiff.TiffWriter(output.erode_img, bigtiff=True) as output_tif:
+             for i, page in enumerate(tif.pages):
+                 img = page.asarray()
+                 eroded_img = ndimage.binary_erosion(img,iterations=params.iter)
+                 eroded_img = eroded_img * 255
+                 eroded_img = eroded_img.astype(np.uint8)
+                 #eroded_img = np.array(eroded_img, dtype=np.uint8)
+                 # save as a btf
+                 output_tif.write(eroded_img,photometric='minisblack',contiguous=True)
+
+rule create_centerline:
+    input:
+        #TODO: Try ancient() to see if I can avoid re-running when the script is modified
+        input_binary_img = "{datasets_output}raw_stack_background_subtracted_mask_eroded.btf",
+        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".h5"
+        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
+
+    params:
+        csv_output_path = "{datasets_output}",  # This cant go into inputs because it is not a file
+        number_of_neighbours = "1",
+        nose = config['nose'],
+        tail = config['tail'],
+        num_splines = config['num_splines'],
+        downsample_for_DLC= config["downsample_for_DLC"],
+        fill_with_DLC = "1" # TODO: Improve so argparse takes boolean
+
+    output :
+        output_skel_X = "{datasets_output}skeleton_skeleton_X_coords.csv",
+        output_skel_Y = "{datasets_output}skeleton_skeleton_Y_coords.csv",
+        output_spline_K = "{datasets_output}skeleton_spline_K.csv",
+        output_spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
+        output_spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv",
+        corrected_head = "{datasets_output}skeleton_corrected_head_coords.csv",
+        corrected_tail = "{datasets_output}skeleton_corrected_tail_coords.csv"
+    run:
+        from centerline_behavior_annotation.centerline.dev import head_and_tail
+
+        head_and_tail.main([
+            '-i', str(input.input_binary_img),
+            '-h5', str(input.hdf5_file),
+            '-o', str(params.csv_output_path),
+            '-nose', str(params.nose),
+            '-tail', str(params.tail),
+            '-num_splines', str(params.num_splines),
+            '-n', str(params.number_of_neighbours),
+            '-dlc', str(params.fill_with_DLC),
+            '-ds', str(params.downsample_for_DLC),
+        ])
+
+
+rule reformat_skeleton_files:
+    input:
+        spline_K= "{datasets_output}skeleton_spline_K.csv",
+        spline_X= "{datasets_output}skeleton_spline_X_coords.csv",
+        spline_Y= "{datasets_output}skeleton_spline_Y_coords.csv"
+    output:
+        merged_spline_file = "{datasets_output}skeleton_merged_spline_data.csv",
+    run:
+        from centerline_behavior_annotation.centerline.dev import reformat_skeleton_files
+
+        reformat_skeleton_files.main([
+            '-i_K', str(input.spline_K),
+            'i_X', str(input.spline_X),
+            '-i_Y', str(input.spline_Y),
+            '-o', str(output.merged_spline_file),
+        ])
+
+rule annotate_behaviour:
+    input:
+        curvature_file = "{datasets_output}skeleton_spline_K.csv"
+    params:
+        #pca_model_path = "/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1651_20220810_eigenworm_PCA_bodypart_30_to_80.pkl"
+        pca_model_path = config["pca_model_path"],
+        #features should be added here, and maybe rolling mean (or use averaged splineK instead)
+        initial_segment = config["initial_segment"],
+        final_segment = config["final_segment"],
+        window = config["window"]
+    output:
+        principal_components = "{datasets_output}principal_components.csv",
+        behaviour_annotation = "{datasets_output}beh_annotation.csv"
+
+    run:
+        from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
+
+        annotate_reversals_snakemake.main([
+            '-i', str(input.curvature_file),
+            '-pca', str(params.pca_model_path),
+            '-i_s', str(params.initial_segment),
+            '-f_s', str(params.final_segment),
+            '-win', str(params.window),
+            '-o_bh', str(output.behaviour_annotation),
+            '-o_pc', str(output.principal_components),
+        ])
+
+rule create_plots2:
+    input:
+        behaviour_annotation="{datasets_output}beh_annotation.csv",
+        spline_K= "{datasets_output}skeleton_spline_K.csv",
+        skeleton_spline_X_coords= "{datasets_output}skeleton_spline_X_coords.csv",
+        skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_Y_coords.csv",
+        conc_gradient_array= "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde/conc_array_benzaldehyde.npy",
+        distance_array= "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde/distance_array_benzaldehyde.npy",
+    params:
+        factor_px_to_mm = '0.00082319',  #put in config.yaml
+        video_resolution_x = '1696',
+        video_resolution_y = '1700',
+        fps = config["fps"],
+        worm_pos= "{datasets_output}../worm_pos.txt",
+        stage_pos= "{datasets_output}../stage_pos.yaml",
+    output:
+        angle_animation= "{datasets_output}angle_animation.avi",
+        chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
+        worm_movie = "{datasets_output}worm_movie.avi",
+    run:
+        from chemotaxis_analysis_high_res import initialize_load_files
+
+        initialize_load_files.main([
+            '--beh_annotation', str(input.behaviour_annotation),
+            '--skeleton_spline', str(input.spline_K),
+            '--worm_pos', str(params.worm_pos),
+            '--stage_pos', str(params.stage_pos),
+            '--skeleton_spline_X_coords', str(input.skeleton_spline_X_coords),
+            '--skeleton_spline_Y_coords', str(input.skeleton_spline_Y_coords),
+            '--factor_px_to_mm', str(params.factor_px_to_mm),
+            '--video_resolution_x', str(params.video_resolution_x),
+            '--video_resolution_y', str(params.video_resolution_y),
+            '--fps', str(params.fps),
+            '--conc_gradient_array', str(input.conc_gradient_array),
+            '--distance_array', str(input.distance_array),
+        ])

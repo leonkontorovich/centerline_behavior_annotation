@@ -4,7 +4,7 @@
 import pandas as pd
 import yaml
 
-def invert_df(input_path, output_path):
+def invert_df(spline_K_path, output_file_path):
     """
     Invert the sign of a dataframe from the input_path and save it in the output_path
     Works when the dataframe does not have header nor index.
@@ -14,37 +14,26 @@ def invert_df(input_path, output_path):
     :param output_path: 
     :return: 
     """
-    df = pd.read_csv(input_path, index_col=None, header=None)
+    df = pd.read_csv(spline_K_path, index_col=None, header=None)
     df = - df
-    df.to_csv(output_path, header=None, index=None)
+    df.to_csv(output_file_path, header=None, index=None)
 
     return df
 
 
-def invert_df_based_on_ventral(input_path, output_path, config_yaml_path):
-    """
-    Flip the sign of the spline_K file if vetral is on the left side
-    :param input_path:
-    :param output_path:
-    :param config_yaml_path:
-    :return:
-    """
+def invert_df_based_on_ventral(spline_K_path, output_file_path, ventral):
 
-    with open(config_yaml_path, "r") as yamlfile:
-        data = yaml.load(yamlfile, Loader=yaml.FullLoader)
-        ventral = data['ventral']
+    if ventral == 'left':
+        print('ventral is on the left side of the image, changing signs')
+        invert_df(spline_K_path, output_file_path)
 
-        if ventral == 'left':
-            print('ventral is on the left side of the image, changing signs')
-            invert_df(input_path, output_path)
-
+    else:
+        if ventral == 'right':
+            print('ventral is on the right side of the image, keeping signs')
+            df = pd.read_csv(spline_K_path, index_col=None, header=None)
+            df.to_csv(output_file_path, header=None, index=None)
         else:
-            if ventral == 'right':
-                print('ventral is on the right side of the image, keeping signs')
-                df = pd.read_csv(input_path, index_col=None, header=None)
-                df.to_csv(output_path, header=None, index=None)
-            else:
-                raise AttributeError(f"ventral should be either 'left' or 'right', you have: {ventral}")
+            raise AttributeError(f"ventral should be either 'left' or 'right', you have: {ventral}")
 
     return None
 
@@ -54,22 +43,17 @@ def main(arg_list):
     import argparse
     import os
     import glob
-    parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i', '--input_path', help='folder of wbfm dataset', required=True)
-    parser.add_argument('-r', '--raw_data_path', help='folder of raw dataset', required=True)
+    parser = argparse.ArgumentParser(description='invert curvature sign')
+    parser.add_argument('--spline_K_path', help='spline_K file', required=True)
+    parser.add_argument('--ventral', help='ventral annotation from config', required=True)
+    parser.add_argument('--output_file_path', help='output file', required=True)
 
-    args = vars(parser.parse_args(arg_list))
-    project = args['input_path']
-    raw_data_path = args['raw_data_path']
+    args = parser.parse_args(arg_list)
+    spline_K_path = args.spline_K_path
+    ventral = args.ventral
+    output_file_path = args.output_file_path
 
-    print(f"Output folder: {project}, raw data folder: {raw_data_path}")
-
-    input_path = glob.glob(os.path.join(project, "skeleton_spline_K.csv"))[0]
-    output_path = os.path.splitext(input_path)[0]+"_signed.csv"
-
-    config_yaml_path = glob.glob(os.path.join(raw_data_path, "*config.yaml"))[0]
-
-    invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
+    invert_df_based_on_ventral(spline_K_path, output_file_path, ventral)
 
 
 if __name__ == "__main__":
