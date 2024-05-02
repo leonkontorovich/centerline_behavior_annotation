@@ -35,7 +35,6 @@ def invert_df_based_on_ventral(spline_K_path, output_file_path, ventral):
         else:
             raise AttributeError(f"ventral should be either 'left' or 'right', you have: {ventral}")
 
-
     return None
 
 
