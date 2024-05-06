@@ -7,7 +7,7 @@ import tifffile as tiff
 import skan
 from imutils import MicroscopeDataReader
 import dask.array as da
-from skan import skeleton_to_csgraph #use skan==0.9
+from skan.csr import skeleton_to_csgraph #use skan==0.9
 from skimage.morphology import skeletonize
 from centerline_behavior_annotation.centerline.src.make_skeleton import make_skeleton
 import pickle
