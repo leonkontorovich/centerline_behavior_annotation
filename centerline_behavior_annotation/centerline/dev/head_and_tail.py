@@ -3,7 +3,6 @@ import itertools
 import math
 import numpy as np
 import pandas as pd
-import tifffile as tiff
 import skan
 from imutils import MicroscopeDataReader
 import dask.array as da
@@ -14,6 +13,7 @@ import pickle
 import argparse
 import sys
 import os
+import tables
 
 import matplotlib.pyplot as plt
 
@@ -244,7 +244,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
 
 def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, nose, tail, num_splines=100,
                           number_of_neighbors=1,
-                          fill_with_DLC=True, downsample_factor=1):
+                          fill_with_DLC=True, downsample_factor=1, min_worm_lenght=300):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
     # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
@@ -317,7 +317,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
         else:
             u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail,
                                                            num_splines=num_splines,
-                                                           img=img, min_worm_len=300)
+                                                           img=img, min_worm_len=min_worm_lenght)
 
         # write csvs
         csv_writer_head.writerow(skel_head)
@@ -371,6 +371,7 @@ def main(arg_list=None):
     parser.add_argument('-n', '--number_of_neighbors', type=int, help='number_of_neighbors', required=False)
     parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
     parser.add_argument('-ds', '--downsample', help='downsample_for_DLC, 1 True, 0 False', required=False)
+    parser.add_argument('-mw', '--min_worm_length', type=int, default=300, help='minimum worm length, leave default when not sure', required=False)
 
     # args = parser.parse_args()
     args = parser.parse_args(arg_list)
@@ -383,6 +384,7 @@ def main(arg_list=None):
     number_of_neighbors = args.number_of_neighbors  # This can be None if not provided
     fill_with_DLC = args.fill_with_DLC == '1'  # Convert '1' or '0' to True or False
     downsample_for_DLC = args.downsample == '1'  # Convert '1' or '0' to True or False, can be none if not provided
+    min_worm_lenght = args.min_worm_length
 
     print('Fill with DLC', fill_with_DLC)
     print('Downsample for DLC:', downsample_for_DLC)
@@ -400,7 +402,7 @@ def main(arg_list=None):
     print("These are the arguments", args)
     head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose,
                           tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors,
-                          fill_with_DLC=fill_with_DLC, downsample_factor=downsample_factor)
+                          fill_with_DLC=fill_with_DLC, downsample_factor=downsample_factor, min_worm_lenght=min_worm_lenght)
     print("head_and_tail_wrapper worked fine")
 
 
