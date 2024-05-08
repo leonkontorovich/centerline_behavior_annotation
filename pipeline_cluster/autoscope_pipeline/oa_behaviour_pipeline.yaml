@@ -1,0 +1,26 @@
+
+channels:
+  - anaconda
+  - defaults
+dependencies:
+  - python=3.8
+  - matplotlib
+  - numpy
+  - pandas
+  - scipy
+  - scikit-image
+  - natsort
+  - dask
+  - packaging
+  - loguru
+  - pytables
+  - scikit-learn
+  - zarr
+  - numba
+  - pip:
+      - tifffile==2023.7.10
+      - opencv-python==3.4.11.41 #3.4.3 requested by lukas yaml file doenst work
+      - skan==0.9
+      - snakemake
+      - pulp==2.7.0 #important for snakemake
+      - tqdm
