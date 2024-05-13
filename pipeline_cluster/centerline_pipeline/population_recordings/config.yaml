@@ -1,0 +1,47 @@
+
+# rule binarize with contours: threshold : 40 (standart)
+threshold : 70
+max_value : 255
+
+blur_gaussian: 5 #needs to be odd
+blur : 1 #needs to be odd
+
+contour_size : 400
+tolerance : 0.5
+inner_contour_to_fill : 50
+
+#rule erode_binary_mask:
+iterations : 1
+
+# rule tiff2avi:
+fourcc : 0
+fps : 10
+
+#rule dlc_analyze_videos:
+dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/ItamarLev/Code/DLC/coverslip_HR-Itamar-2020-12-10/config.yaml"
+network_string : "DLC_resnet50_coverslip_HRDec10shuffle1_1030000_filtered" # You might need to run the code to find out how the string looks like
+
+#rule create_centerline:
+# rule create centerline
+nose : "head" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
+tail : "tail" # how was the tail annotated as in DLC model?
+num_splines : 50
+number_of_neighbours : 1
+fill_with_DLC : 1
+
+#annotate ventral side in worm
+ventral: "left"
+
+#rule annotate_behaviour:
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/ItamarLev/Code/high_res_backup_not_used/PCA_models/eigenworm_PCA_N2_1per_filtered_3.5zscore_1.5minmax_bodypart_5_to_45.pkl"
+initial_segment : 5
+final_segment : 45
+window : 30 #smoothing wndows, sometimes use but check yourself
+
+turn_threshold: 0.5
+
+#binarisation threshold for PCA reverse/forward annotation
+upper_threshold: "0.000006"  #my findetuned thresholds
+lower_threshold: "-0.00002"
+
+
