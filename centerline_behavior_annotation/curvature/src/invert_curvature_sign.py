@@ -37,8 +37,30 @@ def invert_df_based_on_ventral(spline_K_path, output_file_path, ventral):
 
     return None
 
-
 def main(arg_list):
+    # Invert sign with folder name PREFERABLY with DATASET FOLDER (NOT BH folder)
+    import argparse
+    import os
+    import glob
+    parser = argparse.ArgumentParser(description='Description of your program')
+    parser.add_argument('-i', '--input_path', help='folder of wbfm dataset', required=True)
+    parser.add_argument('-r', '--raw_data_path', help='folder of raw dataset', required=True)
+
+    args = vars(parser.parse_args(arg_list))
+    project = args['input_path']
+    raw_data_path = args['raw_data_path']
+
+    print(f"Output folder: {project}, raw data folder: {raw_data_path}")
+
+    input_path = glob.glob(os.path.join(project, "skeleton_spline_K.csv"))[0]
+    output_path = os.path.splitext(input_path)[0]+"_signed.csv"
+
+    config_yaml_path = glob.glob(os.path.join(raw_data_path, "*config.yaml"))[0]
+
+    invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
+
+
+def main_benjamin(arg_list):
     # Invert sign with folder name PREFERABLY with DATASET FOLDER (NOT BH folder)
     import argparse
     import os
@@ -54,7 +76,7 @@ def main(arg_list):
     output_file_path = args.output_file_path
 
     invert_df_based_on_ventral(spline_K_path, output_file_path, ventral)
-
+    
 
 if __name__ == "__main__":
     import sys
