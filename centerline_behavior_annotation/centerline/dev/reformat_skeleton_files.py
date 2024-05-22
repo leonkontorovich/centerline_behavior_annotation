@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
+import argparse
 
 
 #read skeleton files
@@ -40,15 +41,14 @@ def reformat_skeleton_files(df_splineX, df_splineY, df_splineK):
 
     return new_df
 
+def main(arg_list=None):
+    # run it with cluster_jobs/array_job_directories.sh
 
-def main(arg_list):
-    #run it with cluster_jobs/array_job_directories.sh
-    import argparse
     parser = argparse.ArgumentParser(description='Description of your program')
-    parser.add_argument('-i_K', '--input_spline_K', help='csv file with the spline curvature', required=True)
-    parser.add_argument('-i_X', '--input_spline_X', help='csv file with the spline X coords', required=True)
-    parser.add_argument('-i_Y', '--input_spline_Y', help='csv file with the spline Y coords', required=True)
-    parser.add_argument('-o', '--o_path', help='output path, has t be .csv file', required=True)
+    parser.add_argument('--input_spline_K', help='csv file with the spline curvature', required=True)
+    parser.add_argument('--input_spline_X', help='csv file with the spline X coords', required=True)
+    parser.add_argument('--input_spline_Y', help='csv file with the spline Y coords', required=True)
+    parser.add_argument('--o_path', help='output path, has t be .csv file', required=True)
 
     args = vars(parser.parse_args(arg_list))
     spline_K = args['input_spline_K']
@@ -77,5 +77,5 @@ def main(arg_list):
 
 
 if __name__ == "__main__":
-    import sys
-    main(sys.argv[1:])
+
+    main(sys.argv[1:])  # exclude the script name from the args when called from shell

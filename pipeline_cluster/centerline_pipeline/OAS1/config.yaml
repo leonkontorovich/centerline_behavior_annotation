@@ -1,0 +1,54 @@
+
+#rule subtract background
+do_inverse : True
+
+#rule normalise
+alpha: 0
+beta: 255
+
+# rule binarize with contours: threshold : 40 (standart)
+threshold : 24
+max_value : 255
+
+blur_gaussian: 49 #needs to be odd
+blur : 1 #needs to be odd
+
+contour_size : 80000
+tolerance : 0.5
+inner_contour_to_fill : 20000
+
+#rule erode_binary_mask:
+iterations : 10
+
+# rule tiff2avi:
+fourcc : 0
+fps : 30
+downsample_for_DLC : 1  #downdownsample_for_DLC 1 = yes 0 = no -> will downsample video to 512 for DLC to track head and tail properly
+
+#rule dlc_analyze_videos:
+dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/track_nose_pharynx_tail_3-stoll-2024-04-05/config.yaml"
+network_string : "DLC_resnet50_track_nose_pharynx_tail_3Apr5shuffle1_173000" # You might need to run the code to find out how the string looks like
+
+#rule create_centerline:
+# rule create centerline
+nose : "nose" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
+tail : "tail" # how was the tail annotated as in DLC model?
+num_splines : 100
+number_of_neighbours : 1
+fill_with_DLC : 1
+
+#annotate ventral side in worm
+ventral: "left"
+
+#rule annotate_behaviour:
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
+initial_segment : 30
+final_segment : 80
+window : 30
+
+turn_threshold: 0.5
+
+#binarisation threshold for PCA reverse/forward annotation
+upper_threshold: "0.000001"  #my findetuned thresholds
+lower_threshold: "-0.000001"
+
