@@ -4,6 +4,7 @@
 import pandas as pd
 import yaml
 
+
 def invert_df(spline_K_path, output_file_path):
     """
     Invert the sign of a dataframe from the input_path and save it in the output_path
@@ -37,6 +38,7 @@ def invert_df_based_on_ventral(spline_K_path, output_file_path, ventral):
 
     return None
 
+
 def main(arg_list):
     # Invert sign with folder name PREFERABLY with DATASET FOLDER (NOT BH folder)
     import argparse
@@ -57,14 +59,20 @@ def main(arg_list):
 
     config_yaml_path = glob.glob(os.path.join(raw_data_path, "*config.yaml"))[0]
 
+    # Read yaml file and get ventral parameter (only one needed)
+    with open(config_yaml_path, 'r') as f:
+        config = yaml.safe_load(f)
+
+    ventral = config.get('ventral', None)
+    if ventral is None:
+        raise AttributeError(f"ventral parameter not found in config file: {config_yaml_path}")
+
     invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
 
 
 def main_benjamin(arg_list):
     # Invert sign with folder name PREFERABLY with DATASET FOLDER (NOT BH folder)
     import argparse
-    import os
-    import glob
     parser = argparse.ArgumentParser(description='invert curvature sign')
     parser.add_argument('--spline_K_path', help='spline_K file', required=True)
     parser.add_argument('--ventral', help='ventral annotation from config', required=True)
