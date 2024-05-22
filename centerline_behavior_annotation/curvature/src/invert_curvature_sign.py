@@ -67,7 +67,7 @@ def main(arg_list):
     if ventral is None:
         raise AttributeError(f"ventral parameter not found in config file: {config_yaml_path}")
 
-    invert_df_based_on_ventral(input_path, output_path, config_yaml_path)
+    invert_df_based_on_ventral(input_path, output_path, ventral)
 
 
 def main_benjamin(arg_list):
