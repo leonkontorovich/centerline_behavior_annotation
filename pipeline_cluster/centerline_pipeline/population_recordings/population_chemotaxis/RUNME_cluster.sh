@@ -8,5 +8,5 @@ echo "Submitting $NUM_JOBS_TO_SUBMIT Jobs. Make sure that these are the number o
 # Needs writable cache
 # As of 8/2022 your home folder at /home/user should be writable from the cluster, but this may be temporary
 # export HOME="/scratch/neurobiology/zimmer/YOUR/USER"
-#snakemake --configfile config.yaml --latency-wait 120 --use-conda --cluster "$OPT" --cluster-config cluster_config.yaml --jobs $NUM_JOBS_TO_SUBMIT
-snakemake --configfile config.yaml --latency-wait 120 --use-conda --cores 1
+snakemake --configfile config.yaml --latency-wait 120 --use-conda --cluster "$OPT" --cluster-config cluster_config.yaml --jobs $NUM_JOBS_TO_SUBMIT
+#snakemake --configfile config.yaml --latency-wait 240 --use-conda --cores 1
