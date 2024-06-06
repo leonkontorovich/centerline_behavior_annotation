@@ -2,15 +2,7 @@
 #rule subtract background
 do_inverse : True
 
-#rule normalise
-alpha: 0
-beta: 255
-
-# rule binarize with contours: threshold : 40 (standart)
-threshold : 28
-max_value : 255
-
-unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_modified/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
+unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
 filter_prediction: 1
 
 blur_gaussian: 49 #needs to be odd
@@ -52,8 +44,8 @@ window : 30
 turn_threshold: 0.5
 
 #binarisation threshold for PCA reverse/forward annotation
-upper_threshold: "0.000006"  #my findetuned thresholds
-lower_threshold: "-0.00002"
+upper_threshold: "0.0000001"  #my findetuned thresholds
+lower_threshold: "-0.000001"
 
 #pharynx tracking
 crop_size_pharynx: 200
