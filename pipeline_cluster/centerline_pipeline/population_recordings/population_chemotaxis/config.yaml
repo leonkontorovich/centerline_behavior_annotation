@@ -1,10 +1,10 @@
 # Arena details in px -> get from background tif
 top_left: "x=27, y=54"
-odor_pos: "x=1000, y=1800"
+odor_pos: "x=954, y=1671"
 
 
 # rule binarize with contours: threshold : 40 (standart)
-threshold : 70
+threshold : 50
 max_value : 255
 
 blur_gaussian: 5 #needs to be odd
