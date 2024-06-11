@@ -176,6 +176,7 @@ rule invert_curvature_sign:
         import yaml
         from centerline_behavior_annotation.curvature.src import invert_curvature_sign
         import os
+        import sys
 
         # Construct the path to the config file one level up from params.path using ../
         config_path = params.stage_pos
@@ -188,11 +189,11 @@ rule invert_curvature_sign:
                 worm_config = yaml.safe_load(stream)
             
             # Extract the 'ventral' parameter from the config
-            ventral = worm_config['ventral']
+            ventral = worm_config.get('ventral', 'left')
             print(ventral)
-        except KeyError:
-            print("Error: 'ventral' key not found in the worm_config_file. Annotate Vulva side!")
-            sys.exit(1)
+        except (FileNotFoundError, yaml.YAMLError) as e:
+            print(f"Error: {e}. Setting 'ventral' to 'left' by default.")
+            ventral = 'left'
 
         # Call the invert_curvature_sign function with the correct parameters
         invert_curvature_sign.main_benjamin([
@@ -271,9 +272,9 @@ rule create_plots2:
         odor_pos  = config["odor_pos"],
         tif_path = "{datasets_output}../track.tif",
     output:
-        angle_animation= "{datasets_output}angle_animation.avi",
+        #angle_animation= "{datasets_output}angle_animation.avi",
         chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
-        worm_movie = "{datasets_output}worm_movie.avi",
+        #worm_movie = "{datasets_output}worm_movie.avi",
     run:
         from chemotaxis_analysis_high_res import initialize_load_files_population
         import tifffile as tiff
