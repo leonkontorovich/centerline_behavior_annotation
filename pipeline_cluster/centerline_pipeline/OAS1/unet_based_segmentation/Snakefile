@@ -20,36 +20,58 @@ print(DATASETS)
 
 rule targets:
     input:
-        behaviour_annotation = expand("{datasets_output}beh_annotation.csv" , datasets_output=DATASETS_OUTPUT),
-        turn_annotation=expand("{datasets_output}turn_annotation.csv", datasets_output=DATASETS_OUTPUT)
+          binary_mask = expand("{datasets_output}raw_stack_mask.btf", datasets_output=DATASETS_OUTPUT),
+          coil_mask = expand("{datasets_output}raw_stack_background_subtracted_coil_segmented_mask.btf", datasets_output=DATASETS_OUTPUT),
+          downsampled_avi = expand("{datasets_output}raw_stack_downsampled.avi" , datasets_output=DATASETS_OUTPUT),
+          behaviour_annotation = expand("{datasets_output}beh_annotation.csv" , datasets_output=DATASETS_OUTPUT),
+          turn_annotation = expand("{datasets_output}turn_annotation.csv", datasets_output=DATASETS_OUTPUT)
 
 
 
-rule ometiff2bigtiff:
+# rule ometiff2bigtiff:
+#     input:
+#
+#     params:
+#         function = "ometiff2bigtiff"
+#     output:
+#         btf_file = "{datasets_output}raw_stack.btf"
+#     run:
+#         import os
+#         from imutils.src import imutils_parser_main
+#
+#         # Example path to a big tiff file
+#         output_btf_file = str(output.btf_file)
+#         # Get the directory part of the path
+#         dir_path = os.path.dirname(output_btf_file)
+#         # Go one directory level up
+#         path_parts = dir_path.split(os.sep)
+#         new_dir_path = os.sep.join(path_parts[:-1])
+#         print(new_dir_path)
+#         # Print the parent directory path
+#
+#         imutils_parser_main.main([
+#             params.function,
+#             '-path', new_dir_path,
+#             '-output_filename', str(output.btf_file),
+#         ])
+rule subtract_background:
     input:
-
+        raw_img  = "{datasets_output}raw_stack.btf",
+        background_img = background_img
     params:
-        function = "ometiff2bigtiff"
+        function = "stack_subtract_background",
+        do_inverse = config["do_inverse"]
     output:
-        btf_file = "{datasets_output}raw_stack.btf"
+        background_subtracted_img ="{datasets_output}background_subtracted.btf"
     run:
-        import os
         from imutils.src import imutils_parser_main
-
-        # Example path to a big tiff file
-        output_btf_file = str(output.btf_file)
-        # Get the directory part of the path
-        dir_path = os.path.dirname(output_btf_file)
-        # Go one directory level up
-        path_parts = dir_path.split(os.sep)
-        new_dir_path = os.sep.join(path_parts[:-1])
-        print(new_dir_path)
-        # Print the parent directory path
 
         imutils_parser_main.main([
             params.function,
-            '-path', new_dir_path,
-            '-output_filename', str(output.btf_file),
+            '-i', str(input.raw_img),
+            '-o',str(output.background_subtracted_img),
+            '-bg', str(input.background_img),
+            '-invert', str(params.do_inverse)
         ])
 
 rule unet_predict_and_filter:
@@ -57,19 +79,68 @@ rule unet_predict_and_filter:
         btf_file = "{datasets_output}raw_stack.btf"
     params:
         model = config["unet_segmentation_model"],
-        filter_prediction = config["filter_prediction"] 
+        filter_prediction = config["filter_prediction"],
+        fill_in_mask = config["fill_in"],
+        inner_contour_to_fill = config["inner_contour_to_fill"],
+        max_size = config["max_contour_size"],
+        min_size = config["min_contour_size"]
     output:
         btf_file = "{datasets_output}raw_stack_mask.btf"
     shell:
         """
         source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/unet_shared
-        python /lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/predict.py \
+        python /lisc/scratch/neurobiology/zimmer/jalaja/behaviour/codes/Pytorch-UNet/predict.py \
             --model {params.model} \
             --input_file_path {input.btf_file} \
             --output_file_path {output.btf_file} \
-            --filter_mask {params.filter_prediction}
-        """
+            --filter_mask {params.filter_prediction} \
+            --fill_in {params.fill_in_mask} \
+            --inner_contour_to_fill {params.inner_contour_to_fill} \
+            --max_contour_size {params.max_size} \
+            --min_contour_size {params.min_size}
 
+        """
+rule coil_unet:
+    input:
+        btf_file = "{datasets_output}raw_stack_mask.btf",
+        background_subtracted_img = "{datasets_output}background_subtracted.btf"
+    params:
+        function = "unet_segmentation_contours_with_children",
+        weights_path= config["coil_unet_weights"]#"/scratch/neurobiology/zimmer/ulises/code/unet-master/data/2023_worm_coiled_segmentation/training_results/5910044_0_w_validation_2batchsize_500steps_100epochs_5patience/unet_master.hdf5",
+        #network_name="5910044_0"
+    output:
+        coil_unet_prediction = "{datasets_output}raw_stack_mask_coil_segmented.btf"
+    run:
+        from imutils.src import imutils_parser_main
+
+        imutils_parser_main.main([
+            params.function,
+            '-bi', str(input.btf_file),
+            '-ri', str(input.background_subtracted_img),
+            '-o', str(output.coil_unet_prediction),
+            '-w', str(params.weights_path)
+        ])
+
+rule binarize_coil:
+    input:
+        coil_unet_prediction = "{datasets_output}raw_stack_mask_coil_segmented.btf"
+    params:
+        function = "stack_make_binary",
+        threshold = config["coil_threshold"], # 240
+        max_value = config["coil_new_value"] # 255
+    output:
+        binary_img = "{datasets_output}raw_stack_background_subtracted_coil_segmented_mask.btf"
+
+    run:
+        from imutils.src import imutils_parser_main
+
+        imutils_parser_main.main([
+            params.function,
+            '-i', str(input.coil_unet_prediction),
+            '-o', str(output.binary_img),
+            '-th', str(params.threshold),
+            '-max_val', str(params.max_value)
+        ])
 
 rule tiff2avi:
     input:
@@ -126,7 +197,7 @@ rule dlc_analyze_videos:
         csv= "{datasets_output}raw_stack_downsampled"+config["network_string"]+".csv" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".csv"
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils
         python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{params.avi_used}'])"
         """
 
@@ -226,7 +297,7 @@ rule annotate_behaviour:
 
     run:
         from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
-        
+
         annotate_reversals_snakemake.main([
             '-i', str(input.curvature_file),
             '-pca', str(params.pca_model_path),

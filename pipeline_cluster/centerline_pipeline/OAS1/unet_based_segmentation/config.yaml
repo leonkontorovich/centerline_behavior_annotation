@@ -2,27 +2,36 @@
 #rule subtract background
 do_inverse : True
 
-unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
+#rule coil_unet
+coil_unet_weights : "/lisc/scratch/neurobiology/zimmer/jalaja/behaviour/codes/unet-master/training_result/2474992_10_w_validation_2batchsize_500steps_100epochs_10patience/unet_master.hdf5"
+
+unet_segmentation_model : "/lisc/scratch/neurobiology/zimmer/jalaja/behaviour/codes/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
 filter_prediction: 1
+max_contour_size: 240000
+fill_in: 1
 
-blur_gaussian: 49 #needs to be odd
-blur : 1 #needs to be odd
+#rule binarize_coil
+coil_threshold : 220
+coil_new_value : 255
 
-contour_size : 80000
-tolerance : 0.5
-inner_contour_to_fill : 20000
+#blur_gaussian: 49 #needs to be odd
+#blur : 1 #needs to be odd
+
+min_contour_size : 80000
+#tolerance : 0.5
+inner_contour_to_fill : 2000.0
 
 #rule erode_binary_mask:
 iterations : 3
 
 # rule tiff2avi:
 fourcc : 0
-fps : 30
+fps : 10
 downsample_for_DLC : 1  #downdownsample_for_DLC 1 = yes 0 = no -> will downsample video to 512 for DLC to track head and tail properly
 
 #rule dlc_analyze_videos:
-dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/track_nose_pharynx_tail_3-stoll-2024-04-05/config.yaml"
-network_string : "DLC_resnet50_track_nose_pharynx_tail_3Apr5shuffle1_173000" # You might need to run the code to find out how the string looks like
+dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/jalaja/DLC_models/autoscope_final-jalaja-2024-07-03/config.yaml"
+network_string : "DLC_resnet50_autoscope_finalJul3-trainset95shuffle1_1030000" # You might need to run the code to find out how the string looks like
 
 #rule create_centerline:
 # rule create centerline
@@ -36,7 +45,7 @@ fill_with_DLC : 1
 ventral: "left"
 
 #rule annotate_behaviour:
-pca_model_path : "/lisc/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/jalaja/behaviour/Autoscope/pca_model/1745_20230227_eigenworm_PCA_bodypart_30_to_80.pkl"
 initial_segment : 30
 final_segment : 80
 window : 30
