@@ -14,16 +14,26 @@ for dataset in DATASETS:
 # Prepend '/output' to each dataset path to ensure processed data goes into the output folder
 DATASETS_OUTPUT = glob.glob("*/*w*/*Ch0*/" + output_folder_name)    
 
-background_img = glob.glob("*/background/*background*")[0]
+#background_img = glob.glob("*/background/*background*")[0]
 
 print(DATASETS)
 
 rule targets:
     input:
-        behaviour_annotation = expand("{datasets_output}beh_annotation.csv" , datasets_output=DATASETS_OUTPUT),
-        turn_annotation=expand("{datasets_output}turn_annotation.csv", datasets_output=DATASETS_OUTPUT)
+        #angle_animation = expand("{datasets_output}angle_animation.avi", datasets_output=DATASETS_OUTPUT),
+        worm_movie = expand("{datasets_output}worm_movie.avi", datasets_output=DATASETS_OUTPUT),
+        chemotaxis_overview = expand("{datasets_output}chemotaxis_overview.png", datasets_output=DATASETS_OUTPUT),
+        principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
+        output_skel_X=expand("{datasets_output}skeleton_skeleton_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_skel_Y=expand("{datasets_output}skeleton_skeleton_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        corrected_head=expand("{datasets_output}skeleton_corrected_head_coords.csv",datasets_output=DATASETS_OUTPUT),
+        corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT),
+        cropped_pharynx=expand("{datasets_output}cropped_pharynx_video.avi", datasets_output=DATASETS_OUTPUT),
+        #btf_file = expand("{datasets_output}raw_stack_mask.btf", datasets_output=DATASETS_OUTPUT)
 
-
+'''
 
 rule ometiff2bigtiff:
     input:
@@ -57,17 +67,19 @@ rule unet_predict_and_filter:
         btf_file = "{datasets_output}raw_stack.btf"
     params:
         model = config["unet_segmentation_model"],
-        filter_prediction = config["filter_prediction"] 
+        filter_prediction = config["filter_prediction"],
+        scale = 0.301
     output:
         btf_file = "{datasets_output}raw_stack_mask.btf"
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/unet_shared
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/schaar/.conda/envs/unet_server_3
         python /lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/predict.py \
             --model {params.model} \
             --input_file_path {input.btf_file} \
             --output_file_path {output.btf_file} \
-            --filter_mask {params.filter_prediction}
+            --filter_mask {params.filter_prediction} \
+            --scale {params.scale}
         """
 
 
@@ -130,31 +142,6 @@ rule dlc_analyze_videos:
         python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{params.avi_used}'])"
         """
 
-
-# This rule erodes the binary mask from the background-subtracted image for a specified number of iterations and saves the eroded image.
-rule erode_binary_mask:
-    input:
-        binary_img = "{datasets_output}raw_stack_background_subtracted_mask.btf"
-    params:
-        iter =  config['iterations']
-    output:
-        erode_img = "{datasets_output}raw_stack_background_subtracted_mask_eroded.btf"
-    run:
-        import pandas as pd
-        import numpy as np
-        import tifffile as tiff
-        from scipy import ndimage
-
-        with tiff.TiffFile(input.binary_img, multifile=False) as tif, tiff.TiffWriter(output.erode_img, bigtiff=True) as output_tif:
-             for i, page in enumerate(tif.pages):
-                 img = page.asarray()
-                 eroded_img = ndimage.binary_erosion(img,iterations=params.iter)
-                 eroded_img = eroded_img * 255
-                 eroded_img = eroded_img.astype(np.uint8)
-                 #eroded_img = np.array(eroded_img, dtype=np.uint8)
-                 # save as a btf
-                 output_tif.write(eroded_img,photometric='minisblack',contiguous=True)
-
 rule create_centerline:
     input:
         #TODO: Try ancient() to see if I can avoid re-running when the script is modified
@@ -204,7 +191,7 @@ rule invert_curvature_sign:
     run:
         from centerline_behavior_annotation.curvature.src import invert_curvature_sign
 
-        invert_curvature_sign.main([
+        invert_curvature_sign.main_benjamin([
             '--spline_K_path', str(input.spline_K),
             '--ventral', str(params.ventral),
             '--output_file_path', str(output.spline_K_signed),
@@ -262,3 +249,82 @@ rule annotate_turns:
             '-bh', str(output.turn_annotation),
         ])
 
+
+rule crop_pharynx_video:
+    input:
+        csv = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".csv" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".csv",
+        avi = "{datasets_output}raw_stack.avi"
+    output:
+        cropped_pharynx = "{datasets_output}cropped_pharynx_video.avi"
+    params:
+        fps = config["fps"],
+        crop_size = config["crop_size_pharynx"]
+    run:
+        from pharynx_tracking import crop_pharynx_video_script
+
+        crop_pharynx_video_script.main([
+            '--video', str(input.avi),
+            '--csv', str(input.csv),
+            '--output', str(output.cropped_pharynx),
+            '--fps', str(params.fps),
+            '--crop_size', str(params.crop_size),
+        ])
+        
+rule pharynx_pump_dlc_analyze_videos:
+    input:
+        cropped_pharynx = "{datasets_output}cropped_pharynx_video.avi"
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path_track_pumps"],
+        network_string = config["network_string"],
+    output:
+        hdf5_file_pharynx = "{datasets_output}cropped_pharynx_video"+config["network_string_pharynx"]+".h5",
+        csv_file_pharynx= "{datasets_output}cropped_pharynx_video"+config["network_string_pharynx"]+".csv"
+    shell:
+        """
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
+        python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{input.cropped_pharynx}'])"
+        """ 
+'''
+        
+rule create_plots2:
+    input:
+        behaviour_annotation="{datasets_output}beh_annotation.csv",
+        turn_annotation="{datasets_output}turn_annotation.csv",
+        spline_K= "{datasets_output}skeleton_spline_K_signed.csv",
+        skeleton_spline_X_coords= "{datasets_output}skeleton_spline_X_coords.csv",
+        skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_Y_coords.csv",
+        conc_gradient_array= config["conc_gradient_array"],
+        distance_array= config["distance_array"],
+        pharynx_pumps_csv= "{datasets_output}cropped_pharynx_video"+config["network_string_pharynx"]+".csv", 
+        downsampled_avi = "{datasets_output}raw_stack_downsampled.avi",
+    params:
+        factor_px_to_mm = '0.00082319',  #put in config.yaml
+        video_resolution_x = '1696',
+        video_resolution_y = '1700',
+        fps = config["fps"],
+        worm_pos= "{datasets_output}../worm_pos.txt",
+        worm_config= "{datasets_output}../worm_config.yaml",
+    output:
+        #angle_animation= "{datasets_output}angle_animation.avi",
+        chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
+        worm_movie = "{datasets_output}worm_movie.avi",
+    run:
+        from chemotaxis_analysis_high_res import initialize_load_files
+
+        initialize_load_files.main([
+            '--beh_annotation', str(input.behaviour_annotation),
+            '--skeleton_spline', str(input.spline_K),
+            '--worm_pos', str(params.worm_pos),
+            '--worm_config', str(params.worm_config),
+            '--skeleton_spline_X_coords', str(input.skeleton_spline_X_coords),
+            '--skeleton_spline_Y_coords', str(input.skeleton_spline_Y_coords),
+            '--factor_px_to_mm', str(params.factor_px_to_mm),
+            '--video_resolution_x', str(params.video_resolution_x),
+            '--video_resolution_y', str(params.video_resolution_y),
+            '--fps', str(params.fps),
+            '--conc_gradient_array', str(input.conc_gradient_array),
+            '--distance_array', str(input.distance_array),
+            '--turn_annotation', str(input.turn_annotation),
+            '--pharynx_pump_csv', str(input.pharynx_pumps_csv),
+            '--downsampled_avi', str(input.downsampled_avi),
+        ])

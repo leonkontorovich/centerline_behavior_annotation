@@ -1,12 +1,10 @@
 
-#rule subtract background
-do_inverse : True
+#"/scratch/neurobiology/zimmer/schaar/code/networks_trainingsdata/unet/autoscope/roboflow_V5_no_augmentation/checkpoints/stable_checkpoint_epoch4.pth" no augment
+#"/lisc/scratch/neurobiology/zimmer/schaar/code/networks_trainingsdata/unet/autoscope/roboflow_V5/networks/checkpoint_epoch4.pth"
 
-unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
-filter_prediction: 1
+unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_modified/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
 
-blur_gaussian: 49 #needs to be odd
-blur : 1 #needs to be odd
+filter_prediction: 0
 
 contour_size : 80000
 tolerance : 0.5
@@ -32,11 +30,8 @@ num_splines : 100
 number_of_neighbours : 1
 fill_with_DLC : 1
 
-#annotate ventral side in worm
-ventral: "left"
-
 #rule annotate_behaviour:
-pca_model_path : "/lisc/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/networks_trainingsdata/PCA_model/autoscope_1/pca_model.pkl"
 initial_segment : 30
 final_segment : 80
 window : 30
@@ -44,11 +39,15 @@ window : 30
 turn_threshold: 0.5
 
 #binarisation threshold for PCA reverse/forward annotation
-upper_threshold: "0.0000001"  #my findetuned thresholds
-lower_threshold: "-0.000001"
+upper_threshold: "0.000000001"  #my findetuned thresholds
+lower_threshold: "-0.00000001"
 
 #pharynx tracking
 crop_size_pharynx: 200
 pharynx: "pharynx" # how was the pharynx annotated as in DLC model?
 dlc_model_configfile_path_track_pumps: "/lisc/scratch/neurobiology/zimmer/stoll/code/pharynxpump_network_selected_frames-stoll-2024-04-17/config.yaml"
 network_string_pharynx: "DLC_resnet50_pharynxpump_network_selected_framesApr17shuffle1_910000"
+
+#simulated diffusion data
+conc_gradient_array: "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_concentration_array.npy"
+distance_array: "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_distance_array.npy"
