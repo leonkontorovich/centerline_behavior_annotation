@@ -33,7 +33,7 @@ rule targets:
         cropped_pharynx=expand("{datasets_output}cropped_pharynx_video.avi", datasets_output=DATASETS_OUTPUT),
         #btf_file = expand("{datasets_output}raw_stack_mask.btf", datasets_output=DATASETS_OUTPUT)
 
-'''
+
 
 rule ometiff2bigtiff:
     input:
@@ -284,7 +284,7 @@ rule pharynx_pump_dlc_analyze_videos:
         source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
         python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{input.cropped_pharynx}'])"
         """ 
-'''
+
         
 rule create_plots2:
     input:
