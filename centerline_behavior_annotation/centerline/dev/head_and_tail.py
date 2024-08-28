@@ -128,13 +128,23 @@ def get_skeleton_points(skel, number_of_neighbors):
     list of tuples with the coordinates of the skeleton points with the specified number of neighbours
     """
 
-    # if skel return empty, if not return skel_points
-    if np.all(skel == 0):  # what does this exactly do??
-        skel_points_coords = []
+
+    if skel.size == 0 or np.all(skel == 0):
+        print("Skeleton is empty or has no foreground pixels")
+        # Return an array with NaN coordinates
+        skel_points_coords = np.array([[np.nan, np.nan]])
     else:
-        # obtain the degrees of each skeleton coordinate (requires skan version 0.9)
-        pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
-        skel_points_coords = list(zip(*np.where(degrees == number_of_neighbors)))
+        try:
+            # Obtain the degrees of each skeleton coordinate (requires skan version 0.9)
+            pixel_graph, coordinates, degrees = skeleton_to_csgraph(skel)
+            print("Degrees calculated")
+            skel_points_coords = list(zip(*np.where(degrees == number_of_neighbors)))
+            if not skel_points_coords:
+                skel_points_coords = np.array([[np.nan, np.nan]])
+            print(f"Skeleton points with {number_of_neighbors} neighbors: {skel_points_coords}")
+        except ValueError as e:
+            print(f"Error in skeleton_to_csgraph: {e}")
+            skel_points_coords = np.array([[np.nan, np.nan]])
 
     return skel_points_coords
 
