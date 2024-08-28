@@ -22,9 +22,14 @@ print(DATASETS)
 
 rule targets:
     input:
-        #behaviour_annotation=expand("{datasets_output}beh_annotation.csv", datasets_output=DATASETS_OUTPUT),
-        ethogram = expand("{datasets_output}ethogram.png", datasets_output=DATASETS_OUTPUT),
-        kymogram = expand("{datasets_output}kymogram.png", datasets_output=DATASETS_OUTPUT)
+        chemotaxis_overview = expand("{datasets_output}chemotaxis_overview.png", datasets_output=DATASETS_OUTPUT),
+        principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
+        output_skel_X=expand("{datasets_output}skeleton_skeleton_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_skel_Y=expand("{datasets_output}skeleton_skeleton_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        corrected_head=expand("{datasets_output}skeleton_corrected_head_coords.csv",datasets_output=DATASETS_OUTPUT),
+        corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT),
        
 
 
@@ -160,9 +165,46 @@ rule create_centerline:
             '-mw', str(params.min_worm_lenght),
         ])
 
+rule invert_curvature_sign:
+    input:
+        spline_K = "{datasets_output}skeleton_spline_K.csv",
+    params:
+        stage_pos= "{datasets_output}../worm_config.yaml",
+    output:
+        spline_K_signed = "{datasets_output}skeleton_spline_K_signed.csv"
+    run:        
+        import yaml
+        from centerline_behavior_annotation.curvature.src import invert_curvature_sign
+        import os
+        import sys
+
+        # Construct the path to the config file one level up from params.path using ../
+        config_path = params.stage_pos
+
+        print(config_path)
+
+        try:
+            # Read the config file
+            with open(config_path, 'r') as stream:
+                worm_config = yaml.safe_load(stream)
+            
+            # Extract the 'ventral' parameter from the config
+            ventral = worm_config.get('ventral', 'left')
+            print(ventral)
+        except (FileNotFoundError, yaml.YAMLError) as e:
+            print(f"Error: {e}. Setting 'ventral' to 'left' by default.")
+            ventral = 'left'
+
+        # Call the invert_curvature_sign function with the correct parameters
+        invert_curvature_sign.main_benjamin([
+            '--spline_K_path', str(input.spline_K),
+            '--ventral', str(ventral),
+            '--output_file_path', str(output.spline_K_signed),
+        ])
+
 rule annotate_behaviour:
     input:
-        curvature_file = "{datasets_output}skeleton_spline_K.csv"
+        curvature_file = "{datasets_output}skeleton_spline_K_signed.csv"
     params:
         pca_model_path = config["pca_model_path"],
         initial_segment = config["initial_segment"],
@@ -189,36 +231,95 @@ rule annotate_behaviour:
             '--lower_threshold', str(params.upper_threshold),
         ])
 
-
-rule make_kymogram:
+rule annotate_turns:
     input:
-        curvature_file = "{datasets_output}skeleton_spline_K.csv",
-        input_file_path= "{datasets_output}"
+        curvature_file="{datasets_output}skeleton_spline_K_signed.csv"
+    params:
+        threshold = config["turn_threshold"],
+        initial_segment=config["initial_segment"],
+        final_segment=config["final_segment"],
+        window=config["window"],
     output:
-        kymogram = "{datasets_output}kymogram.png"
-    run:
-        from centerline_behavior_annotation.curvature.src import make_kymogram
+        turn_annotation="{datasets_output}turn_annotation.csv"
 
-        make_kymogram.main([
-                    '--input_path', str(input.input_file_path),
-                    '--spline_K', str(input.curvature_file),
-                    '--output_file', str(output.kymogram)
+    run:
+        from centerline_behavior_annotation.curvature.src import annotate_turns_snakemake
+
+        annotate_turns_snakemake.main([
+            '-input', str(input.curvature_file),
+            '-t', str(params.threshold),
+            '-i_s', str(params.initial_segment),
+            '-f_s', str(params.final_segment),
+            '-avg_window', str(params.window),
+            '-bh', str(output.turn_annotation),
         ])
 
 
-
-rule make_ethogram:
+rule create_plots2:
     input:
-        beh_annotation_file = "{datasets_output}beh_annotation.csv",
-        input_file_path= "{datasets_output}",
+        behaviour_annotation="{datasets_output}beh_annotation.csv",
+        turn_annotation="{datasets_output}turn_annotation.csv",
+        spline_K= "{datasets_output}skeleton_spline_K_signed.csv",
+        skeleton_spline_X_coords= "{datasets_output}skeleton_spline_X_coords.csv",
+        skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_Y_coords.csv",
+        conc_gradient_array= "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde/conc_array_benzaldehyde.npy",
+        distance_array= "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde/distance_array_benzaldehyde.npy",
+    params:
+        factor_px_to_mm = config["factor_px_to_mm"],
+        fps = config["fps"],
+        worm_pos= "{datasets_output}../track.txt",
+        top_left_pos = config["top_left"],
+        odor_pos  = config["odor_pos"],
+        tif_path = "{datasets_output}../track.tif",
     output:
-        ethogram = "{datasets_output}ethogram.png"
+        #angle_animation= "{datasets_output}angle_animation.avi",
+        chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
+        #worm_movie = "{datasets_output}worm_movie.avi",
     run:
-        from centerline_behavior_annotation.curvature.src import make_ethogram
+        from chemotaxis_analysis_high_res import initialize_load_files_population
+        import tifffile as tiff
+        from imutils.scopereader import MicroscopeDataReader
+        import dask.array as da
+        import numpy as np
 
-        make_ethogram.main([
-                    '--input_path', str(input.input_file_path),
-                    '--beh_annotation', str(input.beh_annotation_file),
-                    '--output_file', str(output.ethogram)
+        def get_video_resolution(tif_path):
+            
+            # List all files in the directory
+            reader_obj = MicroscopeDataReader(tif_path, as_raw_tiff=True, raw_tiff_num_slices=1)
+            tif = da.squeeze(reader_obj.dask_array)
+            
+            for i, img in enumerate(tif):
+                # Read the first frame
+                
+                first_frame = np.array(img)
+                
+                # Get the x and y dimensions
+                video_resolution_y, video_resolution_x = first_frame.shape
 
+                break
+
+            
+            return video_resolution_x, video_resolution_y
+
+        tif_path = str(params.tif_path)
+        video_resolution_x, video_resolution_y = get_video_resolution(tif_path)
+
+        print(video_resolution_x, video_resolution_y)
+        
+
+        initialize_load_files_population.main([
+            '--beh_annotation', str(input.behaviour_annotation),
+            '--skeleton_spline', str(input.spline_K),
+            '--worm_pos', str(params.worm_pos),
+            '--skeleton_spline_X_coords', str(input.skeleton_spline_X_coords),
+            '--skeleton_spline_Y_coords', str(input.skeleton_spline_Y_coords),
+            '--factor_px_to_mm', str(params.factor_px_to_mm),
+            '--video_resolution_x', str(video_resolution_x),
+            '--video_resolution_y', str(video_resolution_y),
+            '--fps', str(params.fps),
+            '--conc_gradient_array', str(input.conc_gradient_array),
+            '--distance_array', str(input.distance_array),
+            '--turn_annotation', str(input.turn_annotation),
+            '--top_left_pos', str(params.top_left_pos),
+            '--odor_pos', str(params.odor_pos),
         ])

@@ -1,6 +1,10 @@
+# Arena details in px -> get from background tif
+top_left: "x=27, y=54"
+odor_pos: "x=954, y=1671"
+
 
 # rule binarize with contours: threshold : 40 (standart)
-threshold : 70
+threshold : 50
 max_value : 255
 
 blur_gaussian: 5 #needs to be odd
@@ -16,6 +20,8 @@ iterations : 1
 # rule tiff2avi:
 fourcc : 0
 fps : 10
+
+factor_px_to_mm: "0.012345679"
 
 #rule dlc_analyze_videos:
 dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/ItamarLev/Code/DLC/coverslip_HR-Itamar-2020-12-10/config.yaml"
@@ -33,15 +39,15 @@ fill_with_DLC : 1
 ventral: "left"
 
 #rule annotate_behaviour:
-pca_model_path : "/lisc/scratch/neurobiology/zimmer/ItamarLev/Code/high_res_backup_not_used/PCA_models/eigenworm_PCA_N2_1per_filtered_3.5zscore_1.5minmax_bodypart_5_to_45.pkl"
-initial_segment : 5
-final_segment : 45
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/ulises/code/curvature/curvature/models/1550_20230202_eigenworm_PCA_bodypart_30_to_80.pkl"
+initial_segment : 0
+final_segment : 50
 window : 30 #smoothing wndows, sometimes use but check yourself
 
 turn_threshold: 0.5
 
 #binarisation threshold for PCA reverse/forward annotation
-upper_threshold: "0.000006"  #my findetuned thresholds
-lower_threshold: "-0.00002"
+upper_threshold: "0.000001"  #my findetuned thresholds
+lower_threshold: "-0.00001"
 
 
