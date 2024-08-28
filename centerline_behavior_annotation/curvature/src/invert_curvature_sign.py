@@ -68,6 +68,7 @@ def main(arg_list):
         logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
         ventral = 'right'  # Doesn't change anything
         invert_df_based_on_ventral(input_path, output_path, ventral)
+        return
         # raise FileNotFoundError(f"No config file found in {raw_data_path}")
     else:
         raise FileNotFoundError(f"More than one config file found in {raw_data_path}")
