@@ -4,7 +4,7 @@ __default__:
     time: 0-08:00:00
     partition: basic
     nodes: 1
-    cpus_per_task: 8
+    cpus_per_task: 24
     mem: 64G
     disk_mb: 8000
     mem_mb: 8000
@@ -12,11 +12,11 @@ __default__:
     gres:  #empty
 
 create_plots2:
-    time: 0-08:00:00
+    time: 0-01:00:00
     partition: basic
     nodes: 1
-    cpus_per_task: 24
-    mem: 64G
+    cpus_per_task: 2
+    mem: 10G
     disk_mb: 8000
     mem_mb: 8000
     output: log/log_%x_%A_%a_%j.out
@@ -67,17 +67,19 @@ normalize_img:
     output: log/log_%x_%A_%a_%j.out
 
 create_centerline:
-    time: 0-12:00:00
-    partition: basic
+    time: 1-12:00:00
+    partition: basic,gpu
     cpus_per_task: 24
+    mem: 64G
     output: log/log_%x_%A_%a_%j.out
-    gres:  #empty
+    gres: shard:32
 
 
 unet_predict_and_filter:
     time: 7-08:00:00
-    partition: basic,gpu
-    mem: 200G
+    partition: gpu
+    mem: 128G
+
     gres: shard:32
 
 coil_unet:

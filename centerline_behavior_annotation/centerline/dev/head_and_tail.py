@@ -254,7 +254,7 @@ def head_and_tail_correction_from_img(img, number_of_neighbors, head_coords, tai
 
 def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, nose, tail, num_splines=100,
                           number_of_neighbors=1,
-                          fill_with_DLC=True, downsample_factor=1, min_worm_lenght=300):
+                          fill_with_DLC=True, downsample_factor=1, min_worm_length=300):
     """
     wrapper to create corrected head and tail coordinates AND skeleton.
     # TODO Should be merged with the scripts make_skeleton.py files like make_skeleton_cluster_from_csv.py etc
@@ -327,7 +327,7 @@ def head_and_tail_wrapper(tiff_path: str, hdf5_dlc_path: str, output_path: str, 
         else:
             u, skel_coord, spline_coord, K = make_skeleton(start_point=skel_head, end_point=skel_tail,
                                                            num_splines=num_splines,
-                                                           img=img, min_worm_len=min_worm_lenght)
+                                                           img=img, min_worm_len=min_worm_length)
 
         # write csvs
         csv_writer_head.writerow(skel_head)
@@ -392,16 +392,18 @@ def main(arg_list=None):
     tail = args.tail
     num_splines = args.num_splines
     number_of_neighbors = args.number_of_neighbors  # This can be None if not provided
-    fill_with_DLC = args.fill_with_DLC == '1'  # Convert '1' or '0' to True or False
-    downsample_for_DLC = args.downsample == '1'  # Convert '1' or '0' to True or False, can be none if not provided
-    min_worm_lenght = args.min_worm_length
+    min_worm_length = args.min_worm_length
+    # conditional statements: if == "1" then variable is True
+    fill_with_DLC = args.fill_with_DLC == '1' # Convert '1' or '0' to True or False
+    downsample_for_DLC = args.downsample == '1' # Convert '1' or '0' to True or False, can be none if not provided
 
     print('Fill with DLC', fill_with_DLC)
     print('Downsample for DLC:', downsample_for_DLC)
 
-    downsample_factor = 0
+    # default is 1
+    downsample_factor = 1
 
-    if (downsample_for_DLC == True):
+    if downsample_for_DLC:
         try:
             downsample_factor = load_downsample_factor_from_pickle(tiff_path)
         except FileNotFoundError:  # Handle the specific exception if the file is not found
@@ -412,7 +414,7 @@ def main(arg_list=None):
     print("These are the arguments", args)
     head_and_tail_wrapper(tiff_path=tiff_path, hdf5_dlc_path=hdf5_dlc_path, output_path=output_path, nose=nose,
                           tail=tail, num_splines=num_splines, number_of_neighbors=number_of_neighbors,
-                          fill_with_DLC=fill_with_DLC, downsample_factor=downsample_factor, min_worm_lenght=min_worm_lenght)
+                          fill_with_DLC=fill_with_DLC, downsample_factor=downsample_factor, min_worm_length=min_worm_length)
     print("head_and_tail_wrapper worked fine")
 
 
