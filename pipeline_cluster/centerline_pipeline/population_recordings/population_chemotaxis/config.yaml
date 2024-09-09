@@ -2,9 +2,11 @@
 top_left: "x=27, y=54"
 odor_pos: "x=954, y=1671"
 
+unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/checkpoints/checkpoint_epoch15.pth"
+filter_prediction: 0
 
 # rule binarize with contours: threshold : 40 (standart)
-threshold : 50
+threshold : 200
 max_value : 255
 
 blur_gaussian: 5 #needs to be odd
@@ -24,8 +26,9 @@ fps : 10
 factor_px_to_mm: "0.012345679"
 
 #rule dlc_analyze_videos:
-dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/ItamarLev/Code/DLC/coverslip_HR-Itamar-2020-12-10/config.yaml"
-network_string : "DLC_resnet50_coverslip_HRDec10shuffle1_1030000_filtered" # You might need to run the code to find out how the string looks like
+dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/DLC_NOSETAIL-FERNANDOGCP-2024-06-12/config.yaml"
+network_string : "DLC_resnet50_DLC_NOSETAILJun12shuffle1_1030000_filtered" # You might need to run the code to find out how the string looks like
+
 
 #rule create_centerline:
 # rule create centerline
