@@ -22,74 +22,36 @@ print(DATASETS)
 
 rule targets:
     input:
-        chemotaxis_overview = expand("{datasets_output}chemotaxis_overview.png", datasets_output=DATASETS_OUTPUT),
-        principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
-        output_skel_X=expand("{datasets_output}skeleton_skeleton_X_coords.csv",datasets_output=DATASETS_OUTPUT),
-        output_skel_Y=expand("{datasets_output}skeleton_skeleton_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
-        output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
-        output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
-        corrected_head=expand("{datasets_output}skeleton_corrected_head_coords.csv",datasets_output=DATASETS_OUTPUT),
-        corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT),
-       
+        #chemotaxis_overview = expand("{datasets_output}chemotaxis_overview.png", datasets_output=DATASETS_OUTPUT),
+        #principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
+        #output_skel_X=expand("{datasets_output}skeleton_skeleton_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        #output_skel_Y=expand("{datasets_output}skeleton_skeleton_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        #output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        #output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        #corrected_head=expand("{datasets_output}skeleton_corrected_head_coords.csv",datasets_output=DATASETS_OUTPUT),
+        #corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT),
+        mask=expand("{datasets_output}track_mask.btf",datasets_output=DATASETS_OUTPUT),    
 
 
-rule make_contour_based_binary:
+rule unet_predict_and_filter:
     input:
-        input_img = "{datasets_output}../track.tif"
+        btf_file = "{datasets_output}../track.tif"
     params:
-        function = "make_contour_based_binary",
-        threshold = config["threshold"],
-        max_value = config["max_value"],
-        blur_gaussian = config["blur_gaussian"],
-        blur = config["blur"],
-        contour_size = config["contour_size"],
-        tolerance = config["tolerance"],
-        inner_contour_to_fill = config["inner_contour_to_fill"],
-        substract_background = 0
+        model = config["unet_segmentation_model"],
+        filter_prediction = config["filter_prediction"] 
     output:
-        #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
-        binary_img = "{datasets_output}track_mask.btf"
-    run:
-        from imutils.src import imutils_parser_main
-
-        imutils_parser_main.main([
-            str(params.function),
-            '-i', str(input.input_img),
-            '-o', str(output.binary_img),
-            '-blur', str(params.blur),
-            '-th', str(params.threshold),
-            '-max_val', str(params.max_value),
-            '-cs', str(params.contour_size),
-            '-t', str(params.tolerance),
-            '-ics', str(params.inner_contour_to_fill),
-            '-blur_gaussian',str(params.blur_gaussian),
-            '-sb',str(params.substract_background),
-        ])
-
-# This rule erodes the binary mask from the background-subtracted image for a specified number of iterations and saves the eroded image.
-rule erode_binary_mask:
-    input:
-        binary_img = "{datasets_output}track_mask.btf"
-    params:
-        iter =  config['iterations']
-    output:
-        erode_img = "{datasets_output}track_mask_eroded.btf"
-    run:
-        import pandas as pd
-        import numpy as np
-        import tifffile as tiff
-        from scipy import ndimage
-
-        with tiff.TiffFile(input.binary_img) as tif, tiff.TiffWriter(output.erode_img, bigtiff=True) as output_tif:
-             for i, page in enumerate(tif.pages):
-                 img = page.asarray()
-                 eroded_img = ndimage.binary_erosion(img,iterations=params.iter)
-                 eroded_img = eroded_img * 255
-                 eroded_img = eroded_img.astype(np.uint8)
-                 #eroded_img = np.array(eroded_img, dtype=np.uint8)
-                 # save as a btf
-                 output_tif.write(eroded_img,photometric='minisblack',contiguous=True)
-
+        btf_file = "{datasets_output}track_mask.btf"
+    shell:
+        """
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/unet_shared
+        python /lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_pytorch/Pytorch-UNet/predict.py \
+            --model {params.model} \
+            --input_file_path {input.btf_file} \
+            --output_file_path {output.btf_file} \
+            --filter_mask {params.filter_prediction} \
+            --scale 1
+        """
+'''
 rule tiff2avi:
     input:
         input_img = "{datasets_output}../track.tif"
@@ -129,7 +91,7 @@ rule dlc_analyze_videos:
 rule create_centerline:
     input:
         #TODO: Try ancient() to see if I can avoid re-running when the script is modified
-        input_binary_img = "{datasets_output}track_mask_eroded.btf",
+        input_binary_img = "{datasets_output}track_mask.btf",
         hdf5_file = "{datasets_output}track"+config["network_string"]+".h5"
         #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
 
@@ -189,7 +151,7 @@ rule invert_curvature_sign:
                 worm_config = yaml.safe_load(stream)
             
             # Extract the 'ventral' parameter from the config
-            ventral = worm_config.get('ventral', 'left')
+            ventral = worm_config.get('ventral')
             print(ventral)
         except (FileNotFoundError, yaml.YAMLError) as e:
             print(f"Error: {e}. Setting 'ventral' to 'left' by default.")
@@ -323,3 +285,5 @@ rule create_plots2:
             '--top_left_pos', str(params.top_left_pos),
             '--odor_pos', str(params.odor_pos),
         ])
+
+'''
