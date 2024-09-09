@@ -3,6 +3,7 @@
 
 import pandas as pd
 import yaml
+import logging
 
 
 def invert_df(spline_K_path, output_file_path):
@@ -25,12 +26,12 @@ def invert_df(spline_K_path, output_file_path):
 def invert_df_based_on_ventral(spline_K_path, output_file_path, ventral):
 
     if ventral == 'left':
-        print('ventral is on the left side of the image, changing signs')
+        logging.info('ventral is on the left side of the image, changing signs')
         invert_df(spline_K_path, output_file_path)
 
     else:
         if ventral == 'right':
-            print('ventral is on the right side of the image, keeping signs')
+            logging.info('ventral is on the right side of the image, keeping signs')
             df = pd.read_csv(spline_K_path, index_col=None, header=None)
             df.to_csv(output_file_path, header=None, index=None)
         else:
@@ -52,12 +53,25 @@ def main(arg_list):
     project = args['input_path']
     raw_data_path = args['raw_data_path']
 
-    print(f"Output folder: {project}, raw data folder: {raw_data_path}")
+    logging.info(f"Output folder: {project}, raw data folder: {raw_data_path}")
 
     input_path = glob.glob(os.path.join(project, "skeleton_spline_K.csv"))[0]
     output_path = os.path.splitext(input_path)[0]+"_signed.csv"
 
-    config_yaml_path = glob.glob(os.path.join(raw_data_path, "*config.yaml"))[0]
+    # Get config file
+    config_yaml_path = glob.glob(os.path.join(raw_data_path, "config.yaml"))
+    if len(config_yaml_path) == 1:
+        config_yaml_path = config_yaml_path[0]
+    elif len(config_yaml_path) == 0:
+        logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        logging.warning(f"No config file found in {raw_data_path}; SKIPPING THIS STEP!!!!!!!!")
+        logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        ventral = 'right'  # Doesn't change anything
+        invert_df_based_on_ventral(input_path, output_path, ventral)
+        return
+        # raise FileNotFoundError(f"No config file found in {raw_data_path}")
+    else:
+        raise FileNotFoundError(f"More than one config file found in {raw_data_path}")
 
     # Read yaml file and get ventral parameter (only one needed)
     with open(config_yaml_path, 'r') as f:
