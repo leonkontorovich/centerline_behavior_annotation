@@ -14,10 +14,6 @@ for dataset in DATASETS:
 # Prepend '/output' to each dataset path to ensure processed data goes into the output folder
 DATASETS_OUTPUT = glob.glob("*/*track*/" + output_folder_name)    
 
-background_img = glob.glob("*/*background*")[0]
-
-print(background_img)
-
 print(DATASETS)
 
 rule targets:
@@ -30,75 +26,38 @@ rule targets:
         output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
         corrected_head=expand("{datasets_output}skeleton_corrected_head_coords.csv",datasets_output=DATASETS_OUTPUT),
         corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT),
-       
+        #mask=expand("{datasets_output}track_mask.btf",datasets_output=DATASETS_OUTPUT),    
 
-
-rule make_contour_based_binary:
+rule sam2_segment:
     input:
-        input_img = "{datasets_output}../track.tif"
-    params:
-        function = "make_contour_based_binary",
-        threshold = config["threshold"],
-        max_value = config["max_value"],
-        blur_gaussian = config["blur_gaussian"],
-        blur = config["blur"],
-        contour_size = config["contour_size"],
-        tolerance = config["tolerance"],
-        inner_contour_to_fill = config["inner_contour_to_fill"],
-        substract_background = 0
+        input_file = "{datasets_output}/../track.tif",
+        dlc_csv = "{datasets_output}/track"+config["network_string"]+".csv"
     output:
-        #I think I could write {params.lower_threshold} in the binary_img string, so that it is not hard coded.
-        binary_img = "{datasets_output}track_mask.btf"
-    run:
-        from imutils.src import imutils_parser_main
-
-        imutils_parser_main.main([
-            str(params.function),
-            '-i', str(input.input_img),
-            '-o', str(output.binary_img),
-            '-blur', str(params.blur),
-            '-th', str(params.threshold),
-            '-max_val', str(params.max_value),
-            '-cs', str(params.contour_size),
-            '-t', str(params.tolerance),
-            '-ics', str(params.inner_contour_to_fill),
-            '-blur_gaussian',str(params.blur_gaussian),
-            '-sb',str(params.substract_background),
-        ])
-
-# This rule erodes the binary mask from the background-subtracted image for a specified number of iterations and saves the eroded image.
-rule erode_binary_mask:
-    input:
-        binary_img = "{datasets_output}track_mask.btf"
+        output_file = "{datasets_output}/track_mask.btf"
     params:
-        iter =  config['iterations']
-    output:
-        erode_img = "{datasets_output}track_mask_eroded.btf"
-    run:
-        import pandas as pd
-        import numpy as np
-        import tifffile as tiff
-        from scipy import ndimage
-
-        with tiff.TiffFile(input.binary_img) as tif, tiff.TiffWriter(output.erode_img, bigtiff=True) as output_tif:
-             for i, page in enumerate(tif.pages):
-                 img = page.asarray()
-                 eroded_img = ndimage.binary_erosion(img,iterations=params.iter)
-                 eroded_img = eroded_img * 255
-                 eroded_img = eroded_img.astype(np.uint8)
-                 #eroded_img = np.array(eroded_img, dtype=np.uint8)
-                 # save as a btf
-                 output_tif.write(eroded_img,photometric='minisblack',contiguous=True)
+        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/sam2-segmentation_pipeline.py",
+        column_names = ["vulva", "neck"],
+        model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2"
+    shell:
+        """
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
+        python {params.script_path} \
+            {input.input_file} \
+            {output.output_file} \
+            {input.dlc_csv} \
+            {params.column_names} \
+            {params.model_path}
+        """
 
 rule tiff2avi:
     input:
-        input_img = "{datasets_output}../track.tif"
+        input_img = "{datasets_output}/../track.tif"
     params:
         function = "tiff2avi",
         fourcc = config["fourcc"],
         fps = config["fps"]
     output:
-        avi = "{datasets_output}track.avi"
+        avi = "{datasets_output}/track.avi"
     run:
         from imutils.src import imutils_parser_main
 
@@ -112,14 +71,14 @@ rule tiff2avi:
 
 rule dlc_analyze_videos:
     input:
-        avi = "{datasets_output}track.avi"
+        avi = "{datasets_output}/track.avi"
     params:
         dlc_model_configfile_path = config["dlc_model_configfile_path"],
         network_string = config["network_string"],
     #TODO: run conda properly, instead of activating it in the shell. # conda: "/scratch/neurobiology/zimmer/.conda/envs/HR_tracker"
     output:
-        hdf5_file = "{datasets_output}track"+config["network_string"]+".h5",
-        csv= "{datasets_output}track"+config["network_string"]+".csv"
+        hdf5_file = "{datasets_output}/track"+config["network_string"]+".h5",
+        csv= "{datasets_output}/track"+config["network_string"]+".csv"
     shell:
         """
         source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
@@ -129,8 +88,9 @@ rule dlc_analyze_videos:
 rule create_centerline:
     input:
         #TODO: Try ancient() to see if I can avoid re-running when the script is modified
-        input_binary_img = "{datasets_output}track_mask_eroded.btf",
+        input_binary_img = "{datasets_output}track_mask.btf",
         hdf5_file = "{datasets_output}track"+config["network_string"]+".h5"
+        #hdf5_file = "{datasets}raw_stack"+config["network_string"]+".h5" #"AVG_background_subtracted_normalisedDLC_resnet50_wbfm_nose_tailJan4shuffle1_1030000.h5"
 
     params:
         csv_output_path = "{datasets_output}",  # This cant go into inputs because it is not a file
@@ -164,9 +124,46 @@ rule create_centerline:
             '-mw', str(params.min_worm_lenght),
         ])
 
+rule invert_curvature_sign:
+    input:
+        spline_K = "{datasets_output}skeleton_spline_K.csv",
+    params:
+        stage_pos= "{datasets_output}../worm_config.yaml",
+    output:
+        spline_K_signed = "{datasets_output}skeleton_spline_K_signed.csv"
+    run:        
+        import yaml
+        from centerline_behavior_annotation.curvature.src import invert_curvature_sign
+        import os
+        import sys
+
+        # Construct the path to the config file one level up from params.path using ../
+        config_path = params.stage_pos
+
+        print(config_path)
+
+        try:
+            # Read the config file
+            with open(config_path, 'r') as stream:
+                worm_config = yaml.safe_load(stream)
+            
+            # Extract the 'ventral' parameter from the config
+            ventral = worm_config.get('ventral')
+            print(ventral)
+        except (FileNotFoundError, yaml.YAMLError) as e:
+            print(f"Error: {e}. Setting 'ventral' to 'left' by default.")
+            ventral = 'left'
+
+        # Call the invert_curvature_sign function with the correct parameters
+        invert_curvature_sign.main_benjamin([
+            '--spline_K_path', str(input.spline_K),
+            '--ventral', str(ventral),
+            '--output_file_path', str(output.spline_K_signed),
+        ])
+
 rule annotate_behaviour:
     input:
-        curvature_file = "{datasets_output}skeleton_spline_K.csv"
+        curvature_file = "{datasets_output}skeleton_spline_K_signed.csv"
     params:
         pca_model_path = config["pca_model_path"],
         initial_segment = config["initial_segment"],
@@ -195,7 +192,7 @@ rule annotate_behaviour:
 
 rule annotate_turns:
     input:
-        curvature_file="{datasets_output}skeleton_spline_K.csv"
+        curvature_file="{datasets_output}skeleton_spline_K_signed.csv"
     params:
         threshold = config["turn_threshold"],
         initial_segment=config["initial_segment"],
@@ -221,11 +218,11 @@ rule create_plots2:
     input:
         behaviour_annotation="{datasets_output}beh_annotation.csv",
         turn_annotation="{datasets_output}turn_annotation.csv",
-        spline_K= "{datasets_output}skeleton_spline_K.csv",
+        spline_K= "{datasets_output}skeleton_spline_K_signed.csv",
         skeleton_spline_X_coords= "{datasets_output}skeleton_spline_X_coords.csv",
         skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_Y_coords.csv",
         conc_gradient_array= config["conc_gradient_array"],
-        distance_array= config["distance_array"],
+        distance_array= config["distance_array"]
     params:
         factor_px_to_mm = config["factor_px_to_mm"],
         fps = config["fps"],
