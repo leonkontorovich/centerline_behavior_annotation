@@ -19,6 +19,7 @@ def calculate_circularity(contour):
         return 0
     return 4 * np.pi * (area / (perimeter * perimeter))
 
+
 def annotate_behavior(mask, min_threshold, max_threshold):
     """
     Annotate behavior based on circularity threshold range for a single mask.
@@ -31,13 +32,36 @@ def annotate_behavior(mask, min_threshold, max_threshold):
     Returns:
     dict: A dictionary containing circularity and behavior annotation
     """
-    contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Convert dask array to numpy array if necessary
+    if isinstance(mask, da.Array):
+        mask = mask.compute()
 
-    if contours:
-        largest_contour = max(contours, key=cv2.contourArea)
-        circularity = calculate_circularity(largest_contour)
-        behavior = 1 if min_threshold <= circularity <= max_threshold else 0
-    else:
+    # Ensure mask is a proper 2D numpy array
+    mask = np.array(mask, dtype=np.uint8)
+
+    # Remove single-dimensional entries if present
+    mask = np.squeeze(mask)
+
+    # Ensure proper shape and type
+    if len(mask.shape) > 2:
+        return {'behavior': 0, 'circularity': 0}  # Return default values for invalid masks
+
+    # Convert to cv2 format
+    mask_cv = cv2.UMat(mask)
+
+    try:
+        contours, _ = cv2.findContours(mask_cv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            circularity = calculate_circularity(largest_contour)
+            behavior = 1 if min_threshold <= circularity <= max_threshold else 0
+        else:
+            circularity = 0
+            behavior = 0
+
+    except Exception as e:
+        print(f"Error processing contours: {str(e)}")
         circularity = 0
         behavior = 0
 
