@@ -86,7 +86,7 @@ def main(arg_list):
     annotations = []
     for i, page in enumerate(tif):
         result = annotate_behavior(page, args.min_circ_threshold, args.max_circ_threshold)
-        annotations.append({'frame': i, **result})
+        annotations.append(result)
 
     df = pd.DataFrame(annotations)
     save_as_csv(df, args.beh)
