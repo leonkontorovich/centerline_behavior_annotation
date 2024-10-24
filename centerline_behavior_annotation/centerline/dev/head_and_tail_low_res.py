@@ -173,13 +173,9 @@ def compute_shortest_path(mask, start, end, num_splines=100, min_worm_len=0):
                     if skeleton[ny, nx_]:
                         G.add_edge((y, x), (ny, nx_))
 
-    # Ensure start and end are valid numeric values before rounding
-    try:
-        start = (int(round(float(start[0]))), int(round(float(start[1]))))
-        end = (int(round(float(end[0]))), int(round(float(end[1]))))
-    except ValueError as e:
-        print(f"Error converting start or end points to float: {e}")
-        return np.array([]), np.array([])  # Return an empty array if the conversion fails
+    # Ensure start and end are integers
+    start = (int(round(start[0])), int(round(start[1])))
+    end = (int(round(end[0])), int(round(end[1])))
 
     # Check if start and end nodes are in G; if not, find the nearest skeleton pixel
     if start not in G:
@@ -476,10 +472,11 @@ def main(arg_list=None):
 
         skeleton_image = skeletonize_frame(image)
 
-        head_x = head_dlc['x'].iloc[i]
-        head_y = head_dlc['y'].iloc[i]
-        tail_x = tail_dlc['x'].iloc[i]
-        tail_y = tail_dlc['y'].iloc[i]
+        # Force head and tail coordinates to float
+        head_x = float(head_dlc['x'].iloc[i])
+        head_y = float(head_dlc['y'].iloc[i])
+        tail_x = float(tail_dlc['x'].iloc[i])
+        tail_y = float(tail_dlc['y'].iloc[i])
 
         #round int to pixel values
         head = (int(round(head_y)), int(round(head_x)))
