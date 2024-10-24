@@ -468,7 +468,7 @@ def main(arg_list=None):
 
     for i, image in enumerate(tif):
 
-        image_np = np.array(image)
+        image = np.array(image)
 
         skeleton_image = skeletonize_frame(image)
 
