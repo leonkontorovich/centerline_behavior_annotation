@@ -173,9 +173,13 @@ def compute_shortest_path(mask, start, end, num_splines=100, min_worm_len=0):
                     if skeleton[ny, nx_]:
                         G.add_edge((y, x), (ny, nx_))
 
-    # Ensure start and end are integers
-    start = (int(round(start[0])), int(round(start[1])))
-    end = (int(round(end[0])), int(round(end[1])))
+    # Ensure start and end are valid numeric values before rounding
+    try:
+        start = (int(round(float(start[0]))), int(round(float(start[1]))))
+        end = (int(round(float(end[0]))), int(round(float(end[1]))))
+    except ValueError as e:
+        print(f"Error converting start or end points to float: {e}")
+        return np.array([]), np.array([])  # Return an empty array if the conversion fails
 
     # Check if start and end nodes are in G; if not, find the nearest skeleton pixel
     if start not in G:
