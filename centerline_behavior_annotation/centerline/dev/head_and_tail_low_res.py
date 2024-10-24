@@ -173,9 +173,19 @@ def compute_shortest_path(mask, start, end, num_splines=100, min_worm_len=0):
                     if skeleton[ny, nx_]:
                         G.add_edge((y, x), (ny, nx_))
 
-    # Ensure start and end are integers
-    start = (int(round(start[0])), int(round(start[1])))
-    end = (int(round(end[0])), int(round(end[1])))
+    # Print data type and value before conversion
+    print(f"Before conversion: start: {start}, end: {end}")
+    print(f"start[0]: {start[0]} (type: {type(start[0])}), start[1]: {start[1]} (type: {type(start[1])})")
+    print(f"end[0]: {end[0]} (type: {type(end[0])}), end[1]: {end[1]} (type: {type(end[1])})")
+
+    # Force to float before rounding and converting to int
+    start = (int(round(float(start[0]))), int(round(float(start[1]))))
+    end = (int(round(float(end[0]))), int(round(float(end[1]))))
+
+    # Print data type and value after conversion
+    print(f"After conversion: start: {start}, end: {end}")
+    print(f"start[0]: {start[0]} (type: {type(start[0])}), start[1]: {start[1]} (type: {type(start[1])})")
+    print(f"end[0]: {end[0]} (type: {type(end[0])}), end[1]: {end[1]} (type: {type(end[1])})")
 
     # Check if start and end nodes are in G; if not, find the nearest skeleton pixel
     if start not in G:
