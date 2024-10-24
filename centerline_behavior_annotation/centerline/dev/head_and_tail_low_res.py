@@ -385,11 +385,6 @@ def create_skeleton_dataframes(skeleton_ordered, all_K, num_spline_points):
 
     return skeleton_x, skeleton_y, skeleton_K
 
-
-import numpy as np
-import pandas as pd
-
-
 def refine_skeleton_and_curvature_data(skeleton_x, skeleton_y, spline_K, threshold):
     """
     Refines both skeleton and curvature data by:
@@ -472,6 +467,8 @@ def main(arg_list=None):
     all_K = []
 
     for i, image in enumerate(tif):
+
+        image_np = np.array(image)
 
         skeleton_image = skeletonize_frame(image)
 
