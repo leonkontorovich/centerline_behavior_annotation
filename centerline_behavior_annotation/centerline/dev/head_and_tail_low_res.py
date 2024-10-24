@@ -519,9 +519,9 @@ def main(arg_list=None):
     output_dir = os.path.dirname(args.input_binary_mask)
 
     # Save files in the same directory
-    refined_x.to_csv(os.path.join(output_dir, "refined_x.csv"), index=False, header=False)
-    refined_y.to_csv(os.path.join(output_dir, "refined_y.csv"), index=False, header=False)
-    refined_K.to_csv(os.path.join(output_dir, "refined_k.csv"), index=False, header=False)
+    refined_x.to_csv(os.path.join(output_dir, "skeleton_spline_X_coords.csv"), index=False, header=False)
+    refined_y.to_csv(os.path.join(output_dir, "skeleton_spline_Y_coords.csv"), index=False, header=False)
+    refined_K.to_csv(os.path.join(output_dir, "skeleton_spline_K.csv"), index=False, header=False)
 
 
 if __name__ == '__main__':
