@@ -506,6 +506,9 @@ def main(arg_list=None):
             # Order points from head to tail
             frame_points = assign_skeleton_to_head_tail(points, head, tail)
 
+        print("Frame:", i)
+        print("Skelleton:", frame_points)
+
         skeleton_ordered.append(frame_points)
 
     # Create coordinate and curvature DataFrames
@@ -516,10 +519,30 @@ def main(arg_list=None):
     # Get the directory from input_binary_mask path
     output_dir = os.path.dirname(args.input_binary_mask)
 
-    # Save files in the same directory
-    refined_x.to_csv(os.path.join(output_dir, "skeleton_spline_X_coords.csv"), index=False, header=False)
-    refined_y.to_csv(os.path.join(output_dir, "skeleton_spline_Y_coords.csv"), index=False, header=False)
-    refined_K.to_csv(os.path.join(output_dir, "skeleton_spline_K.csv"), index=False, header=False)
+    # Check image array length and dataframe rows
+    print(f"Length of image array: {len(tif)}")
+    print(f"Rows in refined_x: {len(refined_x)}")
+    print(f"Rows in refined_y: {len(refined_y)}")
+    print(f"Rows in refined_K: {len(refined_K)}")
+
+    # Save files in the same directory with proper NaN handling but no headers
+    refined_x.to_csv(os.path.join(output_dir, "skeleton_spline_X_coords.csv"),
+                     index=False,
+                     header=False,
+                     na_rep='nan',
+                     float_format='%.3f')
+
+    refined_y.to_csv(os.path.join(output_dir, "skeleton_spline_Y_coords.csv"),
+                     index=False,
+                     header=False,
+                     na_rep='nan',
+                     float_format='%.3f')
+
+    refined_K.to_csv(os.path.join(output_dir, "skeleton_spline_K.csv"),
+                     index=False,
+                     header=False,
+                     na_rep='nan',
+                     float_format='%.3f')
 
 
 if __name__ == '__main__':
