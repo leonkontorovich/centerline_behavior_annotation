@@ -46,7 +46,7 @@ def calculate_roundness(contour):
     return roundness, circularity, area
 
 
-def annotate_behavior(mask, min_threshold, max_threshold, min_area=10, max_area=float('inf')):
+def annotate_behavior(mask, min_threshold, max_threshold, min_area, max_area):
     try:
         mask_cv = (mask * 255).astype(np.uint8)
         contours = cv2.findContours(mask_cv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
