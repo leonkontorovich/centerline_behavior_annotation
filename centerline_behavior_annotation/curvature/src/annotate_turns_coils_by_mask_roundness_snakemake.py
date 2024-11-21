@@ -13,6 +13,7 @@ References:
 Takashimizu, Y., & Iiyoshi, M. (2016). New parameter of roundness R: circularity corrected by 
 aspect ratio. Progress in Earth and Planetary Science, 3(2).
 """
+
 import argparse
 import pandas as pd
 import numpy as np
@@ -46,7 +47,7 @@ def calculate_roundness(contour):
     return roundness, circularity, area
 
 
-def annotate_behavior(mask, min_threshold, max_threshold, min_area, max_area):
+def annotate_behavior(mask, min_threshold, max_threshold, min_area=10, max_area=float('inf')):
     try:
         mask_cv = (mask * 255).astype(np.uint8)
         contours = cv2.findContours(mask_cv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -56,12 +57,13 @@ def annotate_behavior(mask, min_threshold, max_threshold, min_area, max_area):
             largest_contour = max(contours, key=cv2.contourArea)
             hull = cv2.convexHull(largest_contour)
             roundness, _, area = calculate_roundness(hull)
+            raw_area = cv2.contourArea(largest_contour)
 
-            if not (min_area <= area <= max_area):
+            if not (min_area <= raw_area <= max_area):
                 return {
                     'turn': 0,
                     'roundness_mask_convex_hull': 0,
-                    'mask_area': area,
+                    'mask_area': raw_area,
                     'convex_hull_area': cv2.contourArea(hull)
                 }
 
@@ -69,7 +71,7 @@ def annotate_behavior(mask, min_threshold, max_threshold, min_area, max_area):
             return {
                 'turn': behavior,
                 'roundness_mask_convex_hull': roundness,
-                'mask_area': area,
+                'mask_area': raw_area,
                 'convex_hull_area': cv2.contourArea(hull)
             }
         else:
@@ -109,8 +111,10 @@ def main(arg_list):
                         required=True)
     parser.add_argument('-window', '--smoothing_window', help='size of smoothing window', type=int, default=10)
     parser.add_argument('-output_file', '--beh', help='path to the behavioural output', required=True)
-    parser.add_argument('-min_worm_area', '--min_area', help='minimum area threshold', type=float, required=True)
-    parser.add_argument('-max_worm_area', '--max_area', help='maximum area threshold', type=float, required=True)
+    parser.add_argument('-min_worm_area', '--min_area', help='minimum area threshold for raw mask', type=float,
+                        required=True)
+    parser.add_argument('-max_worm_area', '--max_area', help='maximum area threshold for raw mask', type=float,
+                        required=True)
 
     args = parser.parse_args(arg_list)
 
