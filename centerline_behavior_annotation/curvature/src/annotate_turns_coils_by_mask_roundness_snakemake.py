@@ -27,7 +27,6 @@ def calculate_CAR(aspect_ratio):
             0.103642 * AR ** 3 - 0.0155562 * AR ** 4 +
             0.00114582 * AR ** 5 - 0.0000330834 * AR ** 6)
 
-
 def calculate_roundness(contour):
     area = cv2.contourArea(contour)
     perimeter = cv2.arcLength(contour, True)
@@ -44,36 +43,37 @@ def calculate_roundness(contour):
     CAR = calculate_CAR(aspect_ratio)
     return circularity + (0.913 - CAR)
 
-
-def annotate_behavior(mask, min_threshold, max_threshold):
+def annotate_behavior(mask, min_threshold, max_threshold, min_area=10, max_area=float('inf')):
     try:
         mask_cv = (mask * 255).astype(np.uint8)
-        contours, _ = cv2.findContours(mask_cv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = cv2.findContours(mask_cv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours = contours[-2] if len(contours) == 3 else contours[0]
 
         if contours:
             largest_contour = max(contours, key=cv2.contourArea)
+            area = cv2.contourArea(largest_contour)
+            
+            if not (min_area <= area <= max_area):
+                return {'behavior': 0, 'roundness': 0, 'area': area}
+                
             roundness = calculate_roundness(largest_contour)
             behavior = 1 if min_threshold <= roundness <= max_threshold else 0
+            return {'behavior': behavior, 'roundness': roundness, 'area': area}
         else:
-            roundness = 0
-            behavior = 0
+            return {'behavior': 0, 'roundness': 0, 'area': 0}
 
     except Exception as e:
         print(f"Error processing contours: {str(e)}")
-        roundness = 0
-        behavior = 0
-
-    return {'behavior': behavior, 'roundness': roundness}
+        return {'behavior': 0, 'roundness': 0, 'area': 0}
 
 def apply_smoothing(df, window_size, min_threshold, max_threshold):
-    df['roundness_smooth'] = df['roundness'].rolling(
+    df_copy = df.copy()
+    df_copy['roundness_smooth'] = df_copy['roundness'].rolling(
         window=window_size, center=True, min_periods=1
     ).mean()
-    df['behavior'] = ((df['roundness_smooth'] >= min_threshold) &
-                     (df['roundness_smooth'] <= max_threshold)).astype(int)
-
-def save_as_csv(df, output_path):
-    df.to_csv(output_path, index=True)
+    df_copy['behavior'] = ((df_copy['roundness_smooth'] >= min_threshold) &
+                         (df_copy['roundness_smooth'] <= max_threshold)).astype(int)
+    return df_copy
 
 def main(arg_list):
     parser = argparse.ArgumentParser()
@@ -82,25 +82,29 @@ def main(arg_list):
     parser.add_argument('-max_t', '--max_round_threshold', help='max threshold of roundness for behavior', type=float, required=True)
     parser.add_argument('-window', '--smoothing_window', help='size of smoothing window', type=int, default=10)
     parser.add_argument('-output_file', '--beh', help='path to the behavioural output', required=True)
+    parser.add_argument('-min_worm_area', '--min_area', help='minimum area threshold', type=float, required=True)
+    parser.add_argument('-max_worm_area', '--max_area', help='maximum area threshold', type=float, required=True)
 
     args = parser.parse_args(arg_list)
 
     reader_obj = MicroscopeDataReader(args.input, as_raw_tiff=True, raw_tiff_num_slices=1)
     tif = da.squeeze(reader_obj.dask_array)
+    del reader_obj
 
     annotations = []
     for i, page in enumerate(tif):
         img = np.array(page)
-        result = annotate_behavior(img, args.min_round_threshold, args.max_round_threshold)
+        result = annotate_behavior(img, args.min_round_threshold, args.max_round_threshold,
+                                 args.min_area, args.max_area)
         annotations.append(result)
+        del img
 
+    del tif
     df = pd.DataFrame(annotations)
     df = apply_smoothing(df, args.smoothing_window, args.min_round_threshold, args.max_round_threshold)
-    save_as_csv(df, args.beh)
-
+    df.to_csv(args.beh, index=True)
     print(f"Saved behavior annotations to {args.beh}")
 
 if __name__ == "__main__":
     import sys
-
     main(sys.argv[1:])
