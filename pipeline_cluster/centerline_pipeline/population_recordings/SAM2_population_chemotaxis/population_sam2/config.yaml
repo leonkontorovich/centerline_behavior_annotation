@@ -1,0 +1,52 @@
+# Arena details in px -> get from background tif
+top_left: "x=27, y=54"
+odor_pos: "x=954, y=1671"
+
+contour_size : 400
+tolerance : 0.9
+inner_contour_to_fill : 50
+
+min_worm_area: 400
+max_worm_area: 1000
+
+#rule erode_binary_mask:
+iterations : 1
+
+# rule tiff2avi:
+fourcc : 0
+fps : 10
+
+factor_px_to_mm: "0.00962"
+
+#rule dlc_analyze_videos:
+dlc_model_configfile_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml"
+network_string : "DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_itamarSep23shuffle2_1030000" # You might need to run the code to find out how the string looks like
+
+
+#rule create_centerline:
+# rule create centerline
+nose : "head" # how was the nose annotated as in DLC model? e.g. head, nose, Head, Nose, etc..
+tail : "tail" # how was the tail annotated as in DLC model?
+num_splines : 20
+number_of_neighbours : 1
+fill_with_DLC : 1
+
+#annotate ventral side in worm
+ventral: "left"
+
+#rule annotate_behaviour:
+pca_model_path : "/lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/population_centerline/models/pca_model_population_4to14.pkl"
+initial_segment : 4
+final_segment : 14
+window : 10 
+
+turn_threshold: 0.5
+
+#binarisation threshold for PCA reverse/forward annotation
+upper_threshold: "0.000001"  #my findetuned thresholds
+lower_threshold: "-0.00001"
+
+#simulated diffusion data
+conc_gradient_array: "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_concentration_array.npy"
+distance_array: "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_distance_array.npy"
+

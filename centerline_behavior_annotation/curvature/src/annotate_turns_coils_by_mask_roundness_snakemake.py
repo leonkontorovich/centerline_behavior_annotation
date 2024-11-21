@@ -1,0 +1,106 @@
+"""
+This script analyzes particle roundness in microscopy images using a novel roundness parameter R
+developed by Takashimizu & Iiyoshi (2016). The parameter R combines circularity with aspect ratio
+correction to provide a more accurate measure of true roundness than circularity alone.
+
+R = Circularity + (0.913 - CAR)
+where:
+- Circularity = 4π × Area/Perimeter²
+- CAR = Circularity Aspect Ratio correction (6th degree polynomial)
+- 0.913 = maximum circularity value for a perfect circle
+
+References:
+Takashimizu, Y., & Iiyoshi, M. (2016). New parameter of roundness R: circularity corrected by 
+aspect ratio. Progress in Earth and Planetary Science, 3(2).
+"""
+
+import argparse
+import pandas as pd
+import numpy as np
+import cv2
+import dask.array as da
+from imutils import MicroscopeDataReader
+
+def calculate_CAR(aspect_ratio):
+    AR = aspect_ratio
+    return (0.826261 + 0.337479 * AR - 0.335455 * AR ** 2 +
+            0.103642 * AR ** 3 - 0.0155562 * AR ** 4 +
+            0.00114582 * AR ** 5 - 0.0000330834 * AR ** 6)
+
+
+def calculate_roundness(contour):
+    area = cv2.contourArea(contour)
+    perimeter = cv2.arcLength(contour, True)
+    if perimeter == 0:
+        return 0
+
+    circularity = 4 * np.pi * (area / (perimeter * perimeter))
+    x, y, w, h = cv2.boundingRect(contour)
+    aspect_ratio = float(w) / h if h > 0 else np.nan
+
+    if np.isnan(aspect_ratio):
+        return 0
+
+    CAR = calculate_CAR(aspect_ratio)
+    return circularity + (0.913 - CAR)
+
+
+def annotate_behavior(mask, min_threshold, max_threshold):
+    try:
+        mask_cv = (mask * 255).astype(np.uint8)
+        contours, _ = cv2.findContours(mask_cv, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if contours:
+            largest_contour = max(contours, key=cv2.contourArea)
+            roundness = calculate_roundness(largest_contour)
+            behavior = 1 if min_threshold <= roundness <= max_threshold else 0
+        else:
+            roundness = 0
+            behavior = 0
+
+    except Exception as e:
+        print(f"Error processing contours: {str(e)}")
+        roundness = 0
+        behavior = 0
+
+    return {'behavior': behavior, 'roundness': roundness}
+
+def apply_smoothing(df, window_size, min_threshold, max_threshold):
+    df['roundness_smooth'] = df['roundness'].rolling(
+        window=window_size, center=True, min_periods=1
+    ).mean()
+    df['behavior'] = ((df['roundness_smooth'] >= min_threshold) &
+                     (df['roundness_smooth'] <= max_threshold)).astype(int)
+
+def save_as_csv(df, output_path):
+    df.to_csv(output_path, index=True)
+
+def main(arg_list):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-input', '--input', help='path to the input_mask_stack', required=True)
+    parser.add_argument('-min_t', '--min_round_threshold', help='min threshold of roundness for behavior', type=float, required=True)
+    parser.add_argument('-max_t', '--max_round_threshold', help='max threshold of roundness for behavior', type=float, required=True)
+    parser.add_argument('-window', '--smoothing_window', help='size of smoothing window', type=int, default=10)
+    parser.add_argument('-output_file', '--beh', help='path to the behavioural output', required=True)
+
+    args = parser.parse_args(arg_list)
+
+    reader_obj = MicroscopeDataReader(args.input, as_raw_tiff=True, raw_tiff_num_slices=1)
+    tif = da.squeeze(reader_obj.dask_array)
+
+    annotations = []
+    for i, page in enumerate(tif):
+        img = np.array(page)
+        result = annotate_behavior(img, args.min_round_threshold, args.max_round_threshold)
+        annotations.append(result)
+
+    df = pd.DataFrame(annotations)
+    df = apply_smoothing(df, args.smoothing_window, args.min_round_threshold, args.max_round_threshold)
+    save_as_csv(df, args.beh)
+
+    print(f"Saved behavior annotations to {args.beh}")
+
+if __name__ == "__main__":
+    import sys
+
+    main(sys.argv[1:])
