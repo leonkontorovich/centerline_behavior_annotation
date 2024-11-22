@@ -94,7 +94,7 @@ def annotate_behavior(mask, min_threshold, max_threshold, min_area=10, max_area=
 
 def binarize_turn_from_roundness(df, window_size, min_threshold, max_threshold):
     df_copy = df.copy()
-    df_copy['roundness_smooth'] = df_copy['roundness_mask_convex_hull'].rolling(
+    df_copy['roundness_mask_convex_hull'] = df_copy['roundness_mask_convex_hull'].rolling(
         window=window_size, center=True, min_periods=1
     ).mean()
     df_copy['turn'] = ((df_copy['roundness_smooth'] >= min_threshold) &
