@@ -23,10 +23,8 @@ rule targets:
         principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
         output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
         output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
-        turn_annotation = expand("{datasets_output}turn_annotation_by_circularity.csv",datasets_output=DATASETS_OUTPUT),
-        coil_annotation = expand("{datasets_output}coil_annotation_by_circularity.csv",datasets_output=DATASETS_OUTPUT),
         # No expand() needed for temp_cleanup
-        temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
+        #temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
 
 rule tiff2avi:
     input:
@@ -58,8 +56,8 @@ rule sam2_segment:
         script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2-video-processing_from_jpeg_batch_pipeline.py",
         column_names = ["neck"],
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
-        downsample_factor = 0,
-        batch_size = 200
+        downsample_factor = config["downsample_factor"]
+        batch_size = config["batch_size"]
     shell:
         """
         # Activate the environment
@@ -152,7 +150,7 @@ rule create_centerline:
         head_annotation = config['nose'],
         tail_annotation = config['tail'],
         number_of_spline = config['num_splines'],
-        min_worm_length = 60
+        min_worm_length = config['min_worm_lenght']
         
     output:
         output_spline_K = "{datasets_output}skeleton_spline_K.csv",
@@ -200,7 +198,7 @@ rule delete_temp_data:
             f.write("Temporary files cleaned up")
 
 
-rule annotate_behaviour:
+rule annotate_reversals:
     input:
         curvature_file = "{datasets_output}skeleton_spline_K.csv"
     params:
@@ -212,7 +210,7 @@ rule annotate_behaviour:
         lower_threshold = config["lower_threshold"]
     output:
         principal_components = "{datasets_output}principal_components.csv",
-        behaviour_annotation = "{datasets_output}beh_annotation.csv"
+        behaviour_annotation = "{datasets_output}reversal_annotation.csv"
 
     run:
         from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
@@ -229,105 +227,34 @@ rule annotate_behaviour:
             '--lower_threshold', str(params.upper_threshold),
         ])
 
-rule calc_turns_by_circ:
-    input:
-        mask_stack = "{datasets_output}track_mask_corrected.btf"
-    output:
-        turn_annotation = "{datasets_output}turn_annotation_by_circularity.csv"
-    params:
-        min_circ_threshold = 0.2,
-        max_circ_threshold = 0.5
-    run:
-        from centerline_behavior_annotation.curvature.src import annotate_turns_coils_by_mask_circularity_snakemake
+rule calc_turns_by_roundness:
+   input:
+       mask_stack = "{datasets_output}track_mask_corrected.btf"
+   output:
+       turn_annotation = "{datasets_output}turn_annotation_by_roundness.csv" 
+   params:
+       min_round_threshold = config['min_round_threshold'],
+       max_round_threshold = config['max_round_threshold'],
+       smoothing_window = config['fps'],
+        min_worm_area = config["min_worm_area"], 
+        max_worm_area = config["max_worm_area"],
+   run:
+       from centerline_behavior_annotation.curvature.src import annotate_turns_coils_by_mask_roundness_snakemake
 
-        annotate_turns_coils_by_mask_circularity_snakemake.main([
-            '-input', str(input.mask_stack),
-            '-min_t', str(params.min_circ_threshold),
-            '-max_t', str(params.max_circ_threshold),
-            '-output_file', str(output.turn_annotation),
-        ])
-
-rule calc_coils_by_circ:
-    input:
-        mask_stack = "{datasets_output}track_mask_corrected.btf"
-    output:
-        coil_annotation = "{datasets_output}coil_annotation_by_circularity.csv"
-    params:
-        min_circ_threshold = 0.6,
-        max_circ_threshold = 0.9
-    run:
-        from centerline_behavior_annotation.curvature.src import annotate_turns_coils_by_mask_circularity_snakemake
-
-        annotate_turns_coils_by_mask_circularity_snakemake.main([
-            '-input', str(input.mask_stack),
-            '-min_t', str(params.min_circ_threshold),
-            '-max_t', str(params.max_circ_threshold),
-            '-output_file', str(output.coil_annotation),
-        ])
-
-rule annotate_turns:
-    input:
-        curvature_file="{datasets_output}skeleton_spline_K.csv"
-    params:
-        threshold = config["turn_threshold"],
-        initial_segment=config["initial_segment"],
-        final_segment=config["final_segment"],
-        window=config["window"],
-    output:
-        turn_annotation="{datasets_output}turn_annotation.csv"
-
-    run:
-        from centerline_behavior_annotation.curvature.src import annotate_turns_snakemake
-
-        annotate_turns_snakemake.main([
-            '-input', str(input.curvature_file),
-            '-t', str(params.threshold),
-            '-i_s', str(params.initial_segment),
-            '-f_s', str(params.final_segment),
-            '-avg_window', str(params.window),
-            '-bh', str(output.turn_annotation),
-        ])
-
-rule combine_turn_annotations:
-    input:
-        circularity_annot = "{datasets_output}turn_annotation_by_circularity.csv",
-        behavior_annot = "{datasets_output}turn_annotation.csv"
-    output:
-        combined = "{datasets_output}turn_annotation_combined.csv"
-    run:
-        import pandas as pd
-        
-        # Read both annotation files
-        df_circularity = pd.read_csv(input.circularity_annot)
-        df_behavior = pd.read_csv(input.behavior_annot)
-        
-        # Ensure both dataframes have the same index
-        if not df_circularity.index.equals(df_behavior.index):
-            raise ValueError("Input dataframes must have the same index")
-        
-        # Get second column values regardless of column name
-        circularity_values = df_circularity.iloc[:, 1]
-        behavior_values = df_behavior.iloc[:, 1]
-        
-        # Create new binary column where 1 appears if either source has 1
-        combined_behavior = (
-            (circularity_values.astype(bool) | 
-             behavior_values.astype(bool))
-        ).astype(int)
-        
-        # Create output dataframe with index and combined behavior
-        result_df = pd.DataFrame({
-            'turns': combined_behavior
-        })
-        
-        # Save the combined annotations
-        result_df.to_csv(output.combined, index=True)
+       annotate_turns_coils_by_mask_roundness_snakemake.main([
+           '-input', str(input.mask_stack),
+           '-min_t', str(params.min_round_threshold),
+           '-max_t', str(params.max_round_threshold), 
+           '-min_worm_area', str(params.min_worm_area),
+           '-max_worm_area', str(params.max_worm_area),
+           '-window', str(params.smoothing_window),
+           '-output_file', str(output.turn_annotation)
+       ])
 
 rule chemotaxis_analysis:
     input:
-        behaviour_annotation="{datasets_output}beh_annotation.csv",
-        turn_annotation="{datasets_output}turn_annotation_combined.csv",
-        coil_annotation = "{datasets_output}coil_annotation_by_circularity.csv",
+        reversal_annotation="{datasets_output}reversal_annotation.csv",
+        turn_annotation="{datasets_output}turn_annotation_by_roundness.csv",
         spline_K= "{datasets_output}skeleton_spline_K.csv",
         skeleton_spline_X_coords= "{datasets_output}skeleton_spline_X_coords.csv",
         skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_Y_coords.csv",
@@ -378,7 +305,7 @@ rule chemotaxis_analysis:
         
 
         initialize_load_files_population.main([
-            '--beh_annotation', str(input.behaviour_annotation),
+            '--reversal_annotation', str(input.reversal_annotation),
             '--skeleton_spline', str(input.spline_K),
             '--worm_pos', str(params.worm_pos),
             '--skeleton_spline_X_coords', str(input.skeleton_spline_X_coords),
@@ -390,7 +317,6 @@ rule chemotaxis_analysis:
             '--conc_gradient_array', str(input.conc_gradient_array),
             '--distance_array', str(input.distance_array),
             '--turn_annotation', str(input.turn_annotation),
-            '--coil_annotation', str(input.coil_annotation),
             '--top_left_pos', str(params.top_left_pos),
             '--odor_pos', str(params.odor_pos),
         ])
