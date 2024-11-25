@@ -30,7 +30,7 @@ upper_threshold: '0.000001'
 lower_threshold: '-0.00001'
 
 # Position parameters
-top_left_pos: x=496, y=211
+top_left: x=496, y=211
 odor_pos: x=2288, y=3721
 
 # Data file paths
