@@ -1,16 +1,13 @@
 #!/bin/bash
 
-# File Copy Script
-# This script copies all files from a specified source folder to each subfolder in the current directory,
-# overriding any existing files in those subfolders.
-
+# Enhanced File Copy Script
+# This script:
+# 1. Creates a nested folder structure for each subfolder
+# 2. Copies all files from source folder to each nested subfolder
+#
 # Usage:
 #   1. Set the 'src_file_folder' variable to the path of your source files.
 #   2. Run this script from the directory containing the subfolders to process.
-# 
-# Note: Ensure you have the necessary permissions to read from the source folder 
-# and write to the destination folders.
-#from within dataset directory: bash /lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/population_centerline/copy_chemotaxis_population_pipeline.sh 
 
 # Define source folder for files to be copied
 src_file_folder="/lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/population_centerline/population_sam2"
@@ -28,15 +25,52 @@ log_message() {
 
 # Initialize log
 log_message "File copy script started."
+log_message "Phase 1: Creating nested folder structure"
 
-# Main loop to copy files to each subfolder
+# First phase: Create nested structure
 for subfolder in "${current_dir}"/*/ ; do
     if [ -d "$subfolder" ]; then
-        log_message "Copying files to $subfolder (overriding any existing files)"
-        cp -R "${src_file_folder}/." "$subfolder/"
-        log_message "Files copied to $subfolder"
-    else
-        log_message "$subfolder is not a directory. Skipping."
+        # Remove trailing slash from subfolder path
+        subfolder=${subfolder%/}
+        # Get just the folder name
+        folder_name=$(basename "$subfolder")
+        
+        # Create temporary directory
+        temp_dir="${current_dir}/temp_${folder_name}"
+        
+        log_message "Processing $folder_name"
+        
+        # Move contents to temporary directory
+        mv "$subfolder"/* "$temp_dir" 2>/dev/null || mkdir "$temp_dir"
+        
+        # Create nested directory structure
+        mkdir -p "${subfolder}/${folder_name}"
+        
+        # Move contents from temp to nested directory
+        mv "$temp_dir"/* "${subfolder}/${folder_name}/" 2>/dev/null
+        
+        # Clean up temp directory
+        rm -r "$temp_dir"
+        
+        log_message "Created nested structure for $folder_name"
+    fi
+done
+
+log_message "Phase 1 completed. Starting Phase 2: Copying files"
+
+# Second phase: Copy files to nested folders
+for subfolder in "${current_dir}"/*/ ; do
+    if [ -d "$subfolder" ]; then
+        folder_name=$(basename "${subfolder%/}")
+        nested_path="${subfolder}${folder_name}"
+        
+        if [ -d "$nested_path" ]; then
+            log_message "Copying files to $nested_path (overriding any existing files)"
+            cp -R "${src_file_folder}/." "$nested_path/"
+            log_message "Files copied to $nested_path"
+        else
+            log_message "Warning: Nested path $nested_path not found. Skipping."
+        fi
     fi
 done
 
