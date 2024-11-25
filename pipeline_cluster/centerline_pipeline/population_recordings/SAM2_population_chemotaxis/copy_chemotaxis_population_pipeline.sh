@@ -2,8 +2,8 @@
 
 # Enhanced File Copy Script
 # This script:
-# 1. Creates a nested folder structure for each subfolder
-# 2. Copies all files from source folder to each nested subfolder
+# 1. Creates a nested folder structure for each subfolder, where the original subfolder becomes a subfolder inside a new subfolder.
+# 2. Copies all files from source folder to each nested subfolder.
 #
 # Usage:
 #   1. Set the 'src_file_folder' variable to the path of your source files.
@@ -35,22 +35,16 @@ for subfolder in "${current_dir}"/*/ ; do
         # Get just the folder name
         folder_name=$(basename "$subfolder")
         
-        # Create temporary directory
-        temp_dir="${current_dir}/temp_${folder_name}"
+        # Create a new nested subfolder structure
+        new_nested_dir="${subfolder}/${folder_name}_snakemake"
         
         log_message "Processing $folder_name"
         
-        # Move contents to temporary directory
-        mv "$subfolder"/* "$temp_dir" 2>/dev/null || mkdir "$temp_dir"
+        # Create the new nested directory
+        mkdir -p "$new_nested_dir"
         
-        # Create nested directory structure
-        mkdir -p "${subfolder}/${folder_name}"
-        
-        # Move contents from temp to nested directory
-        mv "$temp_dir"/* "${subfolder}/${folder_name}/" 2>/dev/null
-        
-        # Clean up temp directory
-        rm -r "$temp_dir"
+        # Move the original subfolder (with its contents) into the new nested subfolder
+        mv "$subfolder" "$new_nested_dir/"
         
         log_message "Created nested structure for $folder_name"
     fi
@@ -62,7 +56,7 @@ log_message "Phase 1 completed. Starting Phase 2: Copying files"
 for subfolder in "${current_dir}"/*/ ; do
     if [ -d "$subfolder" ]; then
         folder_name=$(basename "${subfolder%/}")
-        nested_path="${subfolder}${folder_name}"
+        nested_path="${subfolder}${folder_name}_nested"
         
         if [ -d "$nested_path" ]; then
             log_message "Copying files to $nested_path (overriding any existing files)"
