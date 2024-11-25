@@ -56,8 +56,8 @@ rule sam2_segment:
         script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2-video-processing_from_jpeg_batch_pipeline.py",
         column_names = ["neck"],
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
-        downsample_factor = config["downsample_factor"]
-        batch_size = config["batch_size"]
+        downsample_factor = config["downsample_factor"],
+        batch_size = config["batch_size"],
     shell:
         """
         # Activate the environment
