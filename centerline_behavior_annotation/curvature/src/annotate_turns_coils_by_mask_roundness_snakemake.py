@@ -97,8 +97,8 @@ def binarize_turn_from_roundness(df, window_size, min_threshold, max_threshold):
     df_copy['roundness_mask_convex_hull'] = df_copy['roundness_mask_convex_hull'].rolling(
         window=window_size, center=True, min_periods=1
     ).mean()
-    df_copy['turn'] = ((df_copy['roundness_smooth'] >= min_threshold) &
-                       (df_copy['roundness_smooth'] <= max_threshold)).astype(int)
+    df_copy['turn'] = ((df_copy['roundness_mask_convex_hull'] >= min_threshold) &
+                       (df_copy['roundness_mask_convex_hull'] <= max_threshold)).astype(int)
     return df_copy
 
 
