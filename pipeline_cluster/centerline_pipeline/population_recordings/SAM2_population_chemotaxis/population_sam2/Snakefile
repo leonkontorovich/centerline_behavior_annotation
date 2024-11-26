@@ -24,7 +24,7 @@ rule targets:
         output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
         output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
         # No expand() needed for temp_cleanup
-        #temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
+        temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
 
 rule tiff2avi:
     input:
