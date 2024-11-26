@@ -1,3 +1,15 @@
+From Experiment folder run this to generate folderstructure and copy files:
+
+bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/create_folders_and_copy_chemotaxis_population_pipeline.sh
+
+to just copy files in already existing folder structure run:
+
+bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/copy_chemotaxis_population_pipeline.sh
+
+to start the pipeline for dataset run:
+
+bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/population_centerline/run_chemotaxis_population_pipeline.sh
+
 
 # Folder Search and Deletion Commands
 
