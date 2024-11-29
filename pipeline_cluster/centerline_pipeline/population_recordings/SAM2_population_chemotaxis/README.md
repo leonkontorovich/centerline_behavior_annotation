@@ -8,7 +8,7 @@ bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annota
 
 to start the pipeline for dataset run:
 
-bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/population_centerline/run_chemotaxis_population_pipeline.sh
+bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/run_chemotaxis_population_pipeline.sh
 
 If you want to delete specific output in datafolder use this command within the experiment folder:
 
