@@ -24,7 +24,7 @@ rule targets:
         output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
         output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
         # No expand() needed for temp_cleanup
-        temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
+        #temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
 
 rule tiff2avi:
     input:
@@ -66,9 +66,21 @@ rule sam2_segment:
         # Display the temporary directory being used
         echo "Using temporary directory: $TMPDIR"
 
-        # Copy input files to the temporary directory
+        # Copy input files to the temporary directory with verification
         cp {input.avi_path} $TMPDIR/track.avi
+        while [ ! -f $TMPDIR/track.avi ] || [ ! -s $TMPDIR/track.avi ]; do
+            sleep 1
+            echo "Waiting for avi file to be fully copied..."
+        done
+
         cp {input.dlc_csv} $TMPDIR/track{config[network_string]}_filtered.csv
+        while [ ! -f $TMPDIR/track{config[network_string]}_filtered.csv ] || [ ! -s $TMPDIR/track{config[network_string]}_filtered.csv ]; do
+            sleep 1
+            echo "Waiting for CSV file to be fully copied..."
+        done
+
+        # Add a small delay to ensure filesystem sync
+        sleep 2
 
         # Run the script within the temporary directory
         python {params.script_path} \
@@ -80,8 +92,23 @@ rule sam2_segment:
             --downsample_factor {params.downsample_factor} \
             --batch_size {params.batch_size}
         
+        # Verify output file exists and wait for it to be fully written
+        while [ ! -f $TMPDIR/track_mask.btf ] || [ ! -s $TMPDIR/track_mask.btf ]; do
+            sleep 1
+            echo "Waiting for output file to be fully written..."
+        done
+
+        # Add a small delay before moving
+        sleep 2
+        
         # Move the output file back to the final output path
         mv $TMPDIR/track_mask.btf {output.output_file}
+        
+        # Verify the move completed successfully
+        while [ ! -f {output.output_file} ] || [ ! -s {output.output_file} ]; do
+            sleep 1
+            echo "Waiting for final file move to complete..."
+        done
 
         # Clean up the temporary directory
         rm -rf $TMPDIR/*
