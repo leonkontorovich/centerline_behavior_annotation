@@ -53,6 +53,10 @@ to start the pipeline for dataset run:
 
 bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/run_chemotaxis_population_pipeline.sh
 
+To unlock snakemake directorys use this command:
+
+bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/unlock_snakemake_directorys.sh
+
 If you want to delete specific output in datafolder (folder where you run analysis on) use this command within the experiment folder:
 
 e.g deleting those 2 final outputfiles from rule chemotaxis_analysis to forece rule to rerun:
