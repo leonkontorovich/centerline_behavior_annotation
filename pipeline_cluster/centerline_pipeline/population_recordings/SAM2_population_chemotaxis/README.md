@@ -53,8 +53,12 @@ to start the pipeline for dataset run:
 
 bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/run_chemotaxis_population_pipeline.sh
 
-If you want to delete specific output in datafolder use this command within the experiment folder:
+If you want to delete specific output in datafolder (folder where you run analysis on) use this command within the experiment folder:
 
-e.g deleting those 2 outputfiles to forece rule to rerun:
+e.g deleting those 2 final outputfiles from rule chemotaxis_analysis to forece rule to rerun:
 
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -delete
+
+e.g deleting whole output folders to rerun everything
+
+find "$(pwd)" -type d -name "output" -exec rm -r {} +
