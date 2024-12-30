@@ -1,17 +1,7 @@
 
-#"/scratch/neurobiology/zimmer/schaar/code/networks_trainingsdata/unet/autoscope/roboflow_V5_no_augmentation/checkpoints/stable_checkpoint_epoch4.pth" no augment
-#"/lisc/scratch/neurobiology/zimmer/schaar/code/networks_trainingsdata/unet/autoscope/roboflow_V5/networks/checkpoint_epoch4.pth"
-
-unet_segmentation_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/unet_modified/Pytorch-UNet/checkpoints/checkpoint_epoch5.pth"
-
-filter_prediction: 0
-
 contour_size : 80000
 tolerance : 0.5
 inner_contour_to_fill : 20000
-
-#rule erode_binary_mask:
-iterations : 3
 
 # rule tiff2avi:
 fourcc : 0
@@ -32,7 +22,7 @@ fill_with_DLC : 1
 
 #rule annotate_behaviour:
 pca_model_path : "/lisc/scratch/neurobiology/zimmer/schaar/code/networks_trainingsdata/PCA_model/autoscope_1/pca_model.pkl"
-initial_segment : 30
+initial_segment : 28
 final_segment : 80
 window : 30
 

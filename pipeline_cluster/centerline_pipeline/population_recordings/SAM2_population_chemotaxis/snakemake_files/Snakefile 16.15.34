@@ -53,7 +53,7 @@ rule sam2_segment:
     output:
         output_file = "{datasets_output}track_mask.btf"
     params:
-        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2-video-processing_from_jpeg_batch_pipeline.py",
+        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2_video_processing_from_jpeg_batch_pipeline.py",
         column_names = ["neck"],
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
         downsample_factor = config["downsample_factor"],

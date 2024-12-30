@@ -11,7 +11,7 @@
 #from Experimentfolder run: bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/copy_chemotaxis_population_pipeline.sh
 
 # Define source folder
-src_file_folder="/lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/population_sam2"
+src_file_folder="/lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files"
 
 # Get current directory
 current_dir="$PWD"
