@@ -1,0 +1,38 @@
+# Video processing parameters
+fourcc: 0
+fps: 10
+factor_px_to_mm: '0.00962'
+
+# Model paths and settings
+dlc_model_configfile_path: /lisc/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml
+network_string: DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_itamarSep23shuffle2_1030000
+pca_model_path: /lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/population_centerline/models/pca_model_population_4to14.pkl
+
+# SAM2 parameters
+downsample_factor: 0
+batch_size: 200
+
+# Worm detection parameters
+min_worm_area: 400
+max_worm_area: 1000
+min_worm_lenght: 60  # Note: there's a typo in 'length'
+
+# Annotation parameters
+nose: head
+tail: tail
+num_splines: 20
+initial_segment: 4
+final_segment: 14
+window: 10
+min_round_threshold: 0.55
+max_round_threshold: 0.99
+upper_threshold: '0.000001'
+lower_threshold: '-0.00001'
+
+# Position parameters
+top_left: x=496, y=211
+odor_pos: x=2288, y=3721
+
+# Data file paths
+conc_gradient_array: /lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_concentration_array.npy
+distance_array: /lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_distance_array.npy

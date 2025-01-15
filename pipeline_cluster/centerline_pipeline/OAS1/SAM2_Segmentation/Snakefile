@@ -32,63 +32,72 @@ rule targets:
         corrected_tail=expand("{datasets_output}skeleton_corrected_tail_coords.csv",datasets_output=DATASETS_OUTPUT),
         cropped_pharynx=expand("{datasets_output}cropped_pharynx_video.avi", datasets_output=DATASETS_OUTPUT),
         #btf_file = expand("{datasets_output}raw_stack_mask.btf", datasets_output=DATASETS_OUTPUT)
-
-
-rule ometiff2bigtiff:
-    input:
-
-    params:
-        function = "ometiff2bigtiff"
-    output:
-        btf_file = "{datasets_output}raw_stack.btf"
-    run:
-        import os
-        from imutils.src import imutils_parser_main
-
-        # Example path to a big tiff file
-        output_btf_file = str(output.btf_file)
-        # Get the directory part of the path
-        dir_path = os.path.dirname(output_btf_file)
-        # Go one directory level up
-        path_parts = dir_path.split(os.sep)
-        new_dir_path = os.sep.join(path_parts[:-1])
-        print(new_dir_path)
-        # Print the parent directory path
-
-        imutils_parser_main.main([
-            params.function,
-            '-path', new_dir_path,
-            '-output_filename', str(output.btf_file),
-        ])
+       
 
 rule sam2_segment:
     input:
         avi_path = "{datasets_output}raw_stack.avi",
-        dlc_csv = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".csv" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".csv",
+        dlc_csv = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".csv",
     output:
         output_file = "{datasets_output}raw_stack_mask.btf",
     params:
-        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2-video-processing_from_jpeg_batch_pipeline.py",
         column_names = ["pharynx"],
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
         downsample_factor = 3.3125,
         batch_size = 2000
     shell:
         """
+        # Activate the environment
         source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
-        python {params.script_path} \
-            -video_path {input.avi_path} \
-            -output_file_path {output.output_file} \
-            -DLC_csv_file_path {input.dlc_csv} \
-            -column_names {params.column_names} \
-            -SAM2_path {params.model_path} \
-            --downsample_factor {params.downsample_factor} \
-            --batch_size {params.batch_size}
+
+        # Display the temporary directory being used
+        echo "Using temporary directory: $TMPDIR"
+
+        # Copy input files to the temporary directory with verification
+        cp {input.avi_path} $TMPDIR/track.avi
+        while [ ! -f $TMPDIR/track.avi ] || [ ! -s $TMPDIR/track.avi ]; do
+            sleep 1
+            echo "Waiting for avi file to be fully copied..."
+        done
+
+        cp {input.dlc_csv} $TMPDIR/track{config[network_string]}_filtered.csv
+        while [ ! -f $TMPDIR/track{config[network_string]}_filtered.csv ] || [ ! -s $TMPDIR/track{config[network_string]}_filtered.csv ]; do
+            sleep 1
+            echo "Waiting for CSV file to be fully copied..."
+        done
+
+        # Add a small delay to ensure filesystem sync
+        sleep 2
+
+        # Run the script within the temporary directory
+        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import *; main(['-video_path', '$TMPDIR/track.avi', '-output_file_path', '$TMPDIR/track_mask.btf', '-DLC_csv_file_path', '$TMPDIR/track{config[network_string]}_filtered.csv', '-column_names', 'pharynx', '-SAM2_path', '{params.model_path}', '--downsample_factor', '{params.downsample_factor}', '--batch_size', '{params.batch_size}'])"
+
+        # Verify output file exists and wait for it to be fully written
+        while [ ! -f $TMPDIR/track_mask.btf ] || [ ! -s $TMPDIR/track_mask.btf ]; do
+            sleep 1
+            echo "Waiting for output file to be fully written..."
+        done
+
+        # Add a small delay before moving
+        sleep 2
+        
+        # Move the output file back to the final output path
+        mv $TMPDIR/track_mask.btf {output.output_file}
+        
+        # Verify the move completed successfully
+        while [ ! -f {output.output_file} ] || [ ! -s {output.output_file} ]; do
+            sleep 1
+            echo "Waiting for final file move to complete..."
+        done
+
+        # Clean up the temporary directory
+        rm -rf $TMPDIR/*
         """
+
 
 rule tiff2avi:
     input:
-        input_img = "{datasets_output}raw_stack.btf"
+        input_img = "{datasets_output}/../raw_stack_sliced.btf"
     params:
         function = "tiff2avi",
         fourcc = config["fourcc"],
@@ -134,21 +143,20 @@ rule dlc_analyze_videos:
     params:
         dlc_model_configfile_path = config["dlc_model_configfile_path"],
         network_string = config["network_string"],
-        avi_used= "{datasets_output}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack.avi"
+        avi_used= "{datasets_output}raw_stack_downsampled.avi" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack.avi",
     output:
-        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".h5",
-        csv= "{datasets_output}raw_stack_downsampled"+config["network_string"]+".csv" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".csv"
+        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5",
+        csv= "{datasets_output}raw_stack_downsampled"+config["network_string"]+".csv",
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
-        python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{params.avi_used}'])"
+        source /lisc/app/conda/miniconda3/bin/activate /lisc/app/conda/miniconda3/envs/deeplabcut-2.3.10 
+        python -c "import deeplabcut; deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', ['{input.downsampled_avi}'], videotype='avi', gputouse=0, save_as_csv=True)"
         """
 
 rule create_centerline:
     input:
         input_binary_img = "{datasets_output}raw_stack_mask.btf",
-        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5" if (config["downsample_for_DLC"] == 1) else "{datasets_output}raw_stack"+config["network_string"]+".h5",
-
+        hdf5_file = "{datasets_output}raw_stack_downsampled"+config["network_string"]+".h5",
     params:
         csv_output_path = "{datasets_output}",  # This cant go into inputs because it is not a file
         number_of_neighbours = "1",
@@ -160,7 +168,7 @@ rule create_centerline:
     output:
         output_skel_X = "{datasets_output}skeleton_skeleton_X_coords.csv",
         output_skel_Y = "{datasets_output}skeleton_skeleton_Y_coords.csv",
-        output_spline_K = "{datasets_output}skeleton_spline_K_signed.csv",
+        output_spline_K = "{datasets_output}skeleton_spline_K.csv",
         output_spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
         output_spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv",
         corrected_head = "{datasets_output}skeleton_corrected_head_coords.csv",
@@ -180,6 +188,22 @@ rule create_centerline:
             '-ds', str(params.downsample_for_DLC),
         ])
 
+
+rule invert_curvature_sign:
+    input:
+        spline_K = "{datasets_output}skeleton_spline_K.csv",
+    params:
+        ventral = "left"
+    output:
+        spline_K_signed = "{datasets_output}skeleton_spline_K_signed.csv"
+    run:
+        from centerline_behavior_annotation.curvature.src import invert_curvature_sign
+
+        invert_curvature_sign.main_benjamin([
+            '--spline_K_path', str(input.spline_K),
+            '--ventral', str(params.ventral),
+            '--output_file_path', str(output.spline_K_signed),
+        ])
 
 rule annotate_behaviour:
     input:
@@ -268,6 +292,7 @@ rule pharynx_pump_dlc_analyze_videos:
         source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
         python -c "from imutils.src import DLC_analyze_videos; DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', '--videofile_path', '{input.cropped_pharynx}'])"
         """ 
+
         
 rule create_plots2:
     input:
