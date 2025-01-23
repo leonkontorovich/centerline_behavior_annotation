@@ -15,7 +15,7 @@ batch_size: 200
 # Worm detection parameters
 min_worm_area: 400
 max_worm_area: 1000
-min_worm_lenght: 60  # Note: there's a typo in 'length'
+min_worm_lenght: 83  # Note: there's a typo in 'length'
 
 # Annotation parameters
 nose: head
