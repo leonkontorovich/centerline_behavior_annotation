@@ -58,7 +58,7 @@ rule sam2_segment:
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
         downsample_factor = config["downsample_factor"],
         batch_size = config["batch_size"],
-     shell:
+    shell:
         """
         # Activate the environment
         source /lisc/app/conda/miniforge3/bin/activate  /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
