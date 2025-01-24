@@ -37,7 +37,7 @@ def load_bodypart_coords_from_DLC(dlc_df, bodypart, downsample_factor):
     bodypart cooords, array
 
     """
-
+    print("downsample_factor", downsample_factor) #TODO: remove
     scorer = dlc_df.columns.get_level_values(0)[0]
     bodypart_coords = ((dlc_df[scorer][bodypart]['x'].values) * downsample_factor,
                        (dlc_df[scorer][bodypart]['y'].values) * downsample_factor)
