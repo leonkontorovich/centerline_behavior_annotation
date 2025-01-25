@@ -37,7 +37,7 @@ def load_bodypart_coords_from_DLC(dlc_df, bodypart, downsample_factor):
     bodypart cooords, array
 
     """
-
+    print("downsample_factor", downsample_factor) #TODO: remove
     scorer = dlc_df.columns.get_level_values(0)[0]
     bodypart_coords = ((dlc_df[scorer][bodypart]['x'].values) * downsample_factor,
                        (dlc_df[scorer][bodypart]['y'].values) * downsample_factor)
@@ -380,7 +380,7 @@ def main(arg_list=None):
     parser.add_argument('-num_splines', '--num_splines', type=int, help='number of splines', required=True)
     parser.add_argument('-n', '--number_of_neighbors', type=int, help='number_of_neighbors', required=False)
     parser.add_argument('-dlc', '--fill_with_DLC', help='fill_with_DLC, 1 True, 0 False', required=False)
-    parser.add_argument('-ds', '--downsample', help='downsample_for_DLC, 1 True, 0 False', required=False)
+    parser.add_argument('-ds', '--downsample', help='downsample_for_DLC, 1 True, 0 False', required=False, default=0)
     parser.add_argument('-mw', '--min_worm_length', type=int, default=300, help='minimum worm length, leave default when not sure', required=False)
 
     # args = parser.parse_args()
