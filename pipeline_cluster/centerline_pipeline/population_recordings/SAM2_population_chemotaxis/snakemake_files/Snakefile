@@ -53,7 +53,7 @@ rule sam2_segment:
     output:
         output_file = "{datasets_output}track_mask.btf"
     params:
-        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2_video_processing_from_jpeg_batch_pipeline.py",
+        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2-video-processing_from_jpeg_batch_pipeline.py",
         column_names = ["neck"],
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
         downsample_factor = config["downsample_factor"],
@@ -61,7 +61,7 @@ rule sam2_segment:
     shell:
         """
         # Activate the environment
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
+        source /lisc/app/conda/miniforge3/bin/activate  /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
 
         # Display the temporary directory being used
         echo "Using temporary directory: $TMPDIR"
@@ -73,8 +73,8 @@ rule sam2_segment:
             echo "Waiting for avi file to be fully copied..."
         done
 
-        cp {input.dlc_csv} $TMPDIR/track{config[network_string]}_filtered.csv
-        while [ ! -f $TMPDIR/track{config[network_string]}_filtered.csv ] || [ ! -s $TMPDIR/track{config[network_string]}_filtered.csv ]; do
+        cp {input.dlc_csv} $TMPDIR/track_dlc.csv
+        while [ ! -f $TMPDIR/track_dlc.csv ] || [ ! -s $TMPDIR/track_dlc.csv ]; do
             sleep 1
             echo "Waiting for CSV file to be fully copied..."
         done
@@ -83,15 +83,8 @@ rule sam2_segment:
         sleep 2
 
         # Run the script within the temporary directory
-        python {params.script_path} \
-            -video_path $TMPDIR/track.avi \
-            -output_file_path $TMPDIR/track_mask.btf \
-            -DLC_csv_file_path $TMPDIR/track{config[network_string]}_filtered.csv \
-            -column_names {params.column_names} \
-            -SAM2_path {params.model_path} \
-            --downsample_factor {params.downsample_factor} \
-            --batch_size {params.batch_size}
-        
+        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import main; main(['-video_path', '$TMPDIR/track.avi', '-output_file_path', '$TMPDIR/track_mask.btf', '-DLC_csv_file_path', '$TMPDIR/track_dlc.csv', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}'])"
+
         # Verify output file exists and wait for it to be fully written
         while [ ! -f $TMPDIR/track_mask.btf ] || [ ! -s $TMPDIR/track_mask.btf ]; do
             sleep 1
@@ -100,10 +93,10 @@ rule sam2_segment:
 
         # Add a small delay before moving
         sleep 2
-        
+
         # Move the output file back to the final output path
         mv $TMPDIR/track_mask.btf {output.output_file}
-        
+
         # Verify the move completed successfully
         while [ ! -f {output.output_file} ] || [ ! -s {output.output_file} ]; do
             sleep 1
