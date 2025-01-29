@@ -174,7 +174,6 @@ def assign_head_and_tail_to_coords(head_coords, tail_coords, candidate_coords):
     number_of_edges = len(candidate_coords)
     index_to_exclude = np.arange(0, len(df_cartesian_product), number_of_edges + 1)
     df_cartesian_product.loc[index_to_exclude, 'value_sum'] = np.nan
-
     # find the row where the distance sum is the minimum
     min_of_cartesian_product = df_cartesian_product['value_sum'].min()
     idx_of_min_value = df_cartesian_product['value_sum'] == min_of_cartesian_product
