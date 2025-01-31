@@ -5,8 +5,11 @@ import tifffile as tiff
 from skimage.measure import label, regionprops
 from scipy.stats import zscore
 import pandas as pd
+import os
 
-def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5, debug: bool = False):
+
+
+def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 0.4, centroid=None,zscore_threshold : float = 1.5, debug: bool = False, fps: int = 10):
     """
     Calculates difference in pixels between two time points
     it recieves a binarized image and outputs a numpy array of pixel_diffs
@@ -23,16 +26,21 @@ def get_frame_diff(img_path, frame_shift: int = 3, norm_size_threshold: float = 
         absolute zscore threshold to remove frames where worm is too big/small than the rest
     norm_size_threshold: float
         threshold for ignoring small differences, given as fraction of reference size
+    fps: int
+        framerate of the recording, needed for normalization of frameshift variable
     """
+    # normalize the frameshift by frame rate, then round to a full number and convert to integer
+    norm_frame_shift = int(round((frame_shift / 10) * fps))
 
     # decide if frame cropping should be corrected
-    # if centroid is given then correct frame croping
+    fix_crop = False
+    # if centroid is given then correct frame cropping
     if centroid is not None:
         fix_crop = True
 
     # get reference size
     ref_size,ref_size_std = get_average_ref_area(img_path, fraction_frames=0.2)
-    tiff_read_buffer = frame_shift + 1
+    tiff_read_buffer = norm_frame_shift + 1
     if debug: print("...diff: img path", img_path)
 
     # read binarized image in a buffered manner
@@ -170,7 +178,7 @@ from math import floor
 
 def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: bool = False):
     """
-    recieves an binarize image stack, make sure it has at least 3 dimentions.
+    receives a binarize image stack, make sure it has at least 3 dimensions.
     measures the average worm size (area in pixels),
     to save processing time takes only fraction of all frames defined in fraction_frames
 
@@ -206,14 +214,17 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
             curr_frame = page.asarray().astype(np.int16)
 
             # get segments area
-            segments_area = get_segments_area(curr_frame,debug=debug)
+            segments_area = get_segments_area(curr_frame, debug=debug)
 
             # make sure there's only one segment..
-            # COMMENT: we could implement take the biggest if there's more than one
+            # if there are more than one it takes the biggest one
             if len(segments_area) == 1:
                 measured_area[jdx] = segments_area[0]
+            elif len(segments_area) > 1:
+                measured_area[jdx] = np.max(segments_area)
             else:
-                # skip if there's not one clear object
+                # skip if there's no clear object
+                if debug: print("skipped frame")
                 continue
             jdx+=1
 
@@ -224,7 +235,7 @@ def get_average_ref_area(img_path: str, fraction_frames: float = 0.1, debug: boo
         if debug: print("problem with getting worm average size")
         return None
 
-    return average_ref_area,average_ref_area_std
+    return average_ref_area, average_ref_area_std
 
 def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=1.5,debug:bool=False):
     """
@@ -243,19 +254,24 @@ def validate_frame(frame:np.array,ref_size:int,ref_size_std,zscore_thresh:float=
     """
     validated_frame = False
 
-    segments_area_frame = get_segments_area(frame,debug=debug)
-    #if less than 1 object, or no objects do not validate frame
+    segments_area_frame = get_segments_area(frame, debug=debug)
+    # if less than 1 object, or no objects do not validate frame
 
     if len(segments_area_frame) == 1:
         area = segments_area_frame[0]
+    elif len(segments_area_frame) > 1:
+        area = np.max(segments_area_frame)
+        if debug: print("More than 1 object in frame, continuing with the largest object")
     else:
-        if debug: print("...frame_diff...val_frame...not validated since no object or more than 1 object in frame")
+        if debug: print("...frame_diff...val_frame...not validated since no object")
         # if debug: print("...frame_diff...val_frame...areas",segments_area_frame)
         return validated_frame
 
-    #if worm size in that frame is more than threshold throw it
+    # if worm size in that frame is more than threshold throw it
 
     zscore_area = (area-ref_size)/ref_size_std
+
+    if debug: print(f"area: {area}, zscore_area {zscore_area}, zscore_thresh {zscore_thresh}", )
 
     # if debug: print("...frame_diff...val_frame...frame_area_zscore",zscore_area)
     if np.abs(zscore_area)<zscore_thresh:
@@ -352,7 +368,7 @@ def get_quiescence(speed_arr, pixel_diff_arr, speed_threshold, pixel_diff_thresh
 
     # return original nan values
     quiescence_arr[nan_idx] = np.nan
-
+    # do not chang
     return quiescence_arr
 
 ### functions used only during development of this package ###
@@ -372,21 +388,22 @@ def load_tiff(input_filename: str):
             img[i] = page.asarray()
     return img
 
-def get_segment_area_stats(img,frame_shift:int=3):
+def get_segment_area_stats(img,frame_shift:int=3, fps:int=10):
     """
     A temporary function used just to accumualte data for later estimation of noise in this type of data
     recieves a binarized image stack and calculates the diff between frames
     returns an array with all the pixel diff events found
     """
-
+    norm_frame_shift = (frame_shift / 10) * fps
+    
     area_array = np.zeros(100)
     area_array[:] = np.nan
     segment_idx = 0
 
-    for frame_idx in range(0, img.shape[0] - frame_shift):
+    for frame_idx in range(0, img.shape[0] - norm_frame_shift):
         # get the two frames
         frame = img[frame_idx]
-        next_frame = img[frame_idx + frame_shift]
+        next_frame = img[frame_idx + norm_frame_shift]
         # calcualte the diff between frames, take absolute diff
         frames_diff = np.abs(next_frame - frame)
         # get segments
