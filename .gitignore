@@ -1,26 +1,11 @@
-<<<<<<< HEAD
-core.4069
+# ipython things
+*/__pycache__/*
+__pycache__
 .ipynb_checkpoints
-*.ipynb_checkpoints/*
-.idea/*
-__pycache__/*
-*/__pycache
-*checkpoint*
-*.png
-*.pyc
-*-checkpoint.ipynb
-centerline_behavior_annotation/centerline/dev/.ipynb_checkpoints/extract_centerlines-checkpoint.ipynb
-centerline_behavior_annotation/centerline/dev/.ipynb_checkpoints/skeleton_utils-checkpoint.ipynb
-=======
+*/.ipynb_checkpoints/*
+*.egg-info
 
-.idea/*
-*/*/._*
-*/._*
-build/*
-curvature.egg*
-.idea/*
-.idea/modules.xml
-.idea/curvature_test.iml
-.idea/inspectionProfiles/Project_Default.xml
-*/._*.py
->>>>>>> curvature/master
+.idea/
+
+# Apple things
+*.DS_Store
