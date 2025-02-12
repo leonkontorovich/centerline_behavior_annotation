@@ -1,0 +1,6 @@
+matplotlib
+numpy
+cv2==3.4.2
+tifffile
+os
+pandas
