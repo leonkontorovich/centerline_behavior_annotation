@@ -183,3 +183,72 @@ def main(arg_list=None):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+
+
+'''
+rule process_skeleton_curvature:
+    """
+    Process skeleton coordinate data to calculate curvature and perform smoothing
+    
+    Parameters:
+        spacing: Distance between resampled points along the skeleton curve (default: 5)
+        num_sampled_points: Number of points used for initial spline sampling (default: 10000)
+        smoothing: Spline smoothing factor - higher values create smoother curves (default: 0.1)
+        time_sigma: Temporal smoothing parameter for Gaussian filter (default: 2.0)
+        spatial_sigma: Spatial smoothing parameter for Gaussian filter (default: 1.0)
+    """
+    input:
+        skeleton_x = "{datasets_output}/skeleton_x.csv",
+        skeleton_y = "{datasets_output}/skeleton_y.csv"
+    output:
+        output_x = "{datasets_output}/processed_skeleton_x.csv",
+        output_y = "{datasets_output}/processed_skeleton_y.csv",
+        output_curvature = "{datasets_output}/curvature.csv",
+        output_smoothed_curvature = "{datasets_output}/smoothed_curvature.csv"
+    params:
+        # Distance between points after resampling the skeleton curve
+        spacing = config['spacing'],
+        
+        # Number of points to sample during initial spline fitting
+        # Higher values give more precise curve representation
+        num_sampled_points = config['num_sampled_points'],
+        
+        # Controls how closely the spline follows original points
+        # Lower values = closer fit, higher values = smoother curve
+        smoothing = config['smoothing'],
+        
+        # Controls smoothing along the time dimension
+        # Higher values reduce temporal noise but may blur rapid movements
+        time_sigma = config['time_sigma'],
+        
+        # Controls smoothing along the spatial dimension
+        # Higher values create smoother curves but may lose fine details
+        spatial_sigma = config['spatial_sigma']
+    run:
+        import sys
+        from path.to.script import main  # Adjust import path as needed
+
+        main([
+            '--skeleton_x', str(input.skeleton_x),
+            '--skeleton_y', str(input.skeleton_y),
+            '--spacing', str(params.spacing),
+            '--num_sampled_points', str(params.num_sampled_points),
+            '--smoothing', str(params.smoothing),
+            '--time_sigma', str(params.time_sigma),
+            '--spatial_sigma', str(params.spatial_sigma),
+            '--output_x', str(output.output_x),
+            '--output_y', str(output.output_y),
+            '--output_curvature', str(output.output_curvature),
+            '--output_smoothed_curvature', str(output.output_smoothed_curvature)
+        ])
+
+
+config:
+
+    spacing: 5
+    num_sampled_points: 10000
+    smoothing: 0.1
+    time_sigma: 2.0
+    spatial_sigma: 1.0
+
+'''

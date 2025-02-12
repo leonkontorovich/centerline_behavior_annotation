@@ -60,7 +60,7 @@ rule sam2_segment:
     shell:
         """
         # Activate the environment
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
 
         # Display the temporary directory being used
         echo "Using temporary directory: $TMPDIR"
@@ -144,7 +144,7 @@ rule dlc_analyze_videos:
         csv= "{datasets_output}track"+config["network_string"]+".csv"
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/app/conda/miniconda3/envs/deeplabcut-2.3.10 
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/app/conda/miniforge3/envs/deeplabcut-2.3.10 
         python -c "import deeplabcut; deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', ['{input.avi}'], shuffle={params.shuffle}, videotype='avi', gputouse=0, save_as_csv=True)"
         """
 
@@ -163,7 +163,7 @@ rule dlc_filter_predictions_arima:
         filtered_csv = "{datasets_output}track"+config["network_string"]+"_filtered.csv"
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/app/conda/miniconda3/envs/deeplabcut-2.3.10
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/app/conda/miniforge3/envs/deeplabcut-2.3.10
         python -c "import deeplabcut; deeplabcut.filterpredictions('{params.dlc_model_configfile_path}', ['{input.avi}'], shuffle={params.shuffle}, filtertype='arima', windowlength={params.window_length}, p_bound={params.p_bound}, save_as_csv=True)"
         """
 
