@@ -19,12 +19,12 @@ print(DATASETS)
 rule targets:
     input:
         basic_params = expand("{datasets_output}basic_params.csv", datasets_output=DATASETS_OUTPUT),
-        #principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
-        #output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
-        #output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
+        principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
+        output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
         # No expand() needed for temp_cleanup
-        #temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
-'''
+        temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
+
 rule tiff2avi:
     input:
         input_img = "{datasets_output}../track.tif"
@@ -277,8 +277,6 @@ rule calc_turns_by_roundness:
            '-output_file', str(output.turn_annotation)
        ])
 
-'''
-       
 rule basic_analysis:
     input:
         reversal_annotation="{datasets_output}reversal_annotation.csv",
