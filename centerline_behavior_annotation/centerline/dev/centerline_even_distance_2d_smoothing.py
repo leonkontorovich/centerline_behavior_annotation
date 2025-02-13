@@ -11,7 +11,7 @@ from scipy.ndimage import gaussian_filter
 def fit_spline(x_coords, y_coords, smoothing):
     if len(x_coords) < 3:
         return None
-    tck, * = splprep([x_coords, y_coords], s=smoothing)
+    tck, _ = splprep([x_coords, y_coords], s=smoothing)
     return tck
 
 
@@ -149,6 +149,7 @@ def main(arg_list=None):
     args = parser.parse_args(arg_list)
 
     # Load input data
+    print("Loading input data...")
     skeleton_x = pd.read_csv(args.skeleton_x)
     skeleton_y = pd.read_csv(args.skeleton_y)
 
@@ -174,6 +175,7 @@ def main(arg_list=None):
     )
 
     # Save results
+    print("\nSaving results...")
     new_x_df.to_csv(args.output_x, index=False)
     new_y_df.to_csv(args.output_y, index=False)
     curvature_df.to_csv(args.output_curvature, index=False)
@@ -183,7 +185,6 @@ def main(arg_list=None):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
 
 '''
 rule process_skeleton_curvature:
