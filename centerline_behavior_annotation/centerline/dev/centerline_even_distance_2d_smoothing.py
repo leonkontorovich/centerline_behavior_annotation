@@ -176,10 +176,10 @@ def main(arg_list=None):
 
     # Save results
     print("\nSaving results...")
-    new_x_df.to_csv(args.output_x, index=False)
-    new_y_df.to_csv(args.output_y, index=False)
-    curvature_df.to_csv(args.output_curvature, index=False)
-    smoothed_curvature.to_csv(args.output_smoothed_curvature, index=False)
+    new_x_df.to_csv(args.output_x, index=False, header=False)
+    new_y_df.to_csv(args.output_y, index=False, header=False)
+    curvature_df.to_csv(args.output_curvature, index=False, header=False)
+    smoothed_curvature.to_csv(args.output_smoothed_curvature, index=False, header=False)
     print("All files saved successfully!")
 
 
