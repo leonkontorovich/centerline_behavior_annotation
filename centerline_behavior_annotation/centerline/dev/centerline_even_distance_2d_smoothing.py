@@ -41,47 +41,15 @@ def resample_skeleton(x_coords, y_coords, spacing=10, num_sampled_points=10000, 
     return new_x, new_y
 
 
-def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points=10000, smoothing=0.1, max_points=None):
+def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points=10000, smoothing=0.1):
     print(f"Processing {len(skel_x_df)} frames...")
-    print(
-        f"Parameters: spacing={spacing}, sampling_points={num_sampled_points}, smoothing={smoothing}, max_points={max_points}")
+    print(f"Parameters: spacing={spacing}, sampling_points={num_sampled_points}, smoothing={smoothing}")
 
     all_new_x = []
     all_new_y = []
+    max_points = 0
 
-    # First pass to determine natural max points and average curve length
-    if max_points is None:
-        max_natural_points = 0
-        total_curve_length = 0
-        frame_count = 0
-
-        for frame in tqdm(range(len(skel_x_df)), desc="Analyzing curves"):
-            x_coords = skel_x_df.iloc[frame].dropna().values
-            y_coords = skel_y_df.iloc[frame].dropna().values
-
-            if len(x_coords) > 2:
-                tck = fit_spline(x_coords, y_coords, smoothing)
-                if tck is not None:
-                    u_fine = np.linspace(0, 1, num_sampled_points)
-                    fine_x, fine_y = splev(u_fine, tck)
-                    distances = np.sqrt(np.diff(fine_x) ** 2 + np.diff(fine_y) ** 2)
-                    curve_length = np.sum(distances)
-
-                    natural_points = int(curve_length / spacing) + 1
-                    max_natural_points = max(max_natural_points, natural_points)
-                    total_curve_length += curve_length
-                    frame_count += 1
-
-        # If max_points wasn't specified, use the natural maximum
-        actual_max_points = max_natural_points
-        print(f"Auto-determined maximum points: {actual_max_points}")
-    else:
-        # Use the specified max_points
-        actual_max_points = max_points
-        print(f"Using specified maximum points: {actual_max_points}")
-
-    # Second pass to actually resample the curves
-    for frame in tqdm(range(len(skel_x_df)), desc="Resampling curves"):
+    for frame in tqdm(range(len(skel_x_df))):
         x_coords = skel_x_df.iloc[frame].dropna().values
         y_coords = skel_y_df.iloc[frame].dropna().values
 
@@ -97,29 +65,59 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
         if isinstance(new_y, np.ndarray):
             new_y = new_y.tolist()
 
-        # If max_points is specified and we have valid points, interpolate to match exactly that number
-        if max_points is not None and len(new_x) > 1:
-            indices = np.linspace(0, len(new_x) - 1, actual_max_points)
-            new_x = np.interp(indices, range(len(new_x)), new_x).tolist()
-            new_y = np.interp(indices, range(len(new_y)), new_y).tolist()
-        elif len(new_x) == 1:  # Handle the case of a single point or NaN
-            new_x = [np.nan] * actual_max_points
-            new_y = [np.nan] * actual_max_points
-
+        max_points = max(max_points, len(new_x))
         all_new_x.append(new_x)
         all_new_y.append(new_y)
 
     print("\nCreating final DataFrames...")
-    # For consistency, ensure all rows have the same length
-    padded_x = [x + [np.nan] * (actual_max_points - len(x)) for x in all_new_x]
-    padded_y = [y + [np.nan] * (actual_max_points - len(y)) for y in all_new_y]
+    padded_x = [x + [np.nan] * (max_points - len(x)) for x in all_new_x]
+    padded_y = [y + [np.nan] * (max_points - len(y)) for y in all_new_y]
 
-    new_cols = [f'point_{i + 1}' for i in range(actual_max_points)]
+    new_cols = [f'point_{i + 1}' for i in range(max_points)]
 
     new_x_df = pd.DataFrame(padded_x, columns=new_cols)
     new_y_df = pd.DataFrame(padded_y, columns=new_cols)
-    print(f"Done! Points per frame: {actual_max_points}")
+    print(f"Done! Maximum points in any frame: {max_points}")
     return new_x_df, new_y_df
+
+
+def truncate_columns(df_x, df_y, max_columns):
+    """
+    Truncate DataFrames to a specified number of columns.
+
+    Parameters:
+    -----------
+    df_x : pandas.DataFrame
+        DataFrame with x-coordinates
+    df_y : pandas.DataFrame
+        DataFrame with y-coordinates
+    max_columns : int
+        Maximum number of columns to keep
+
+    Returns:
+    --------
+    truncated_x : pandas.DataFrame
+        Truncated x-coordinates
+    truncated_y : pandas.DataFrame
+        Truncated y-coordinates
+    """
+    orig_cols = df_x.shape[1]
+
+    if max_columns is None or orig_cols <= max_columns:
+        return df_x, df_y
+
+    print(f"Truncating from {orig_cols} columns to {max_columns} columns")
+
+    # Keep only the first max_columns
+    truncated_x = df_x.iloc[:, :max_columns].copy()
+    truncated_y = df_y.iloc[:, :max_columns].copy()
+
+    # Rename columns to maintain consistency
+    new_columns = [f'point_{i + 1}' for i in range(max_columns)]
+    truncated_x.columns = new_columns
+    truncated_y.columns = new_columns
+
+    return truncated_x, truncated_y
 
 
 def calculate_curvature(skeleton_x, skeleton_y):
@@ -180,8 +178,8 @@ def main(arg_list=None):
                         help='Time sigma for Gaussian smoothing (default: 2.0)')
     parser.add_argument('--spatial_sigma', type=float, default=1.0,
                         help='Spatial sigma for Gaussian smoothing (default: 1.0)')
-    parser.add_argument('--max_points', type=int, default=None,
-                        help='Maximum number of points in output skeleton (default: auto-determined)')
+    parser.add_argument('--max_columns', type=int, default=None,
+                        help='Maximum number of points to keep (default: no limit)')
     # Output files
     parser.add_argument('--output_x', type=str, required=True, help='Path to save output X coordinates')
     parser.add_argument('--output_y', type=str, required=True, help='Path to save output Y coordinates')
@@ -202,9 +200,13 @@ def main(arg_list=None):
         skeleton_y,
         spacing=args.spacing,
         num_sampled_points=args.num_sampled_points,
-        smoothing=args.smoothing,
-        max_points=args.max_points
+        smoothing=args.smoothing
     )
+
+    # Apply column truncation if specified
+    if args.max_columns is not None:
+        print(f"\nApplying column truncation to {args.max_columns} points...")
+        new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, args.max_columns)
 
     # Calculate curvature
     print("\nCalculating curvature...")
