@@ -41,15 +41,47 @@ def resample_skeleton(x_coords, y_coords, spacing=10, num_sampled_points=10000, 
     return new_x, new_y
 
 
-def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points=10000, smoothing=0.1):
+def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points=10000, smoothing=0.1, max_points=None):
     print(f"Processing {len(skel_x_df)} frames...")
-    print(f"Parameters: spacing={spacing}, sampling_points={num_sampled_points}, smoothing={smoothing}")
+    print(
+        f"Parameters: spacing={spacing}, sampling_points={num_sampled_points}, smoothing={smoothing}, max_points={max_points}")
 
     all_new_x = []
     all_new_y = []
-    max_points = 0
 
-    for frame in tqdm(range(len(skel_x_df))):
+    # First pass to determine natural max points and average curve length
+    if max_points is None:
+        max_natural_points = 0
+        total_curve_length = 0
+        frame_count = 0
+
+        for frame in tqdm(range(len(skel_x_df)), desc="Analyzing curves"):
+            x_coords = skel_x_df.iloc[frame].dropna().values
+            y_coords = skel_y_df.iloc[frame].dropna().values
+
+            if len(x_coords) > 2:
+                tck = fit_spline(x_coords, y_coords, smoothing)
+                if tck is not None:
+                    u_fine = np.linspace(0, 1, num_sampled_points)
+                    fine_x, fine_y = splev(u_fine, tck)
+                    distances = np.sqrt(np.diff(fine_x) ** 2 + np.diff(fine_y) ** 2)
+                    curve_length = np.sum(distances)
+
+                    natural_points = int(curve_length / spacing) + 1
+                    max_natural_points = max(max_natural_points, natural_points)
+                    total_curve_length += curve_length
+                    frame_count += 1
+
+        # If max_points wasn't specified, use the natural maximum
+        actual_max_points = max_natural_points
+        print(f"Auto-determined maximum points: {actual_max_points}")
+    else:
+        # Use the specified max_points
+        actual_max_points = max_points
+        print(f"Using specified maximum points: {actual_max_points}")
+
+    # Second pass to actually resample the curves
+    for frame in tqdm(range(len(skel_x_df)), desc="Resampling curves"):
         x_coords = skel_x_df.iloc[frame].dropna().values
         y_coords = skel_y_df.iloc[frame].dropna().values
 
@@ -65,19 +97,28 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
         if isinstance(new_y, np.ndarray):
             new_y = new_y.tolist()
 
-        max_points = max(max_points, len(new_x))
+        # If max_points is specified and we have valid points, interpolate to match exactly that number
+        if max_points is not None and len(new_x) > 1:
+            indices = np.linspace(0, len(new_x) - 1, actual_max_points)
+            new_x = np.interp(indices, range(len(new_x)), new_x).tolist()
+            new_y = np.interp(indices, range(len(new_y)), new_y).tolist()
+        elif len(new_x) == 1:  # Handle the case of a single point or NaN
+            new_x = [np.nan] * actual_max_points
+            new_y = [np.nan] * actual_max_points
+
         all_new_x.append(new_x)
         all_new_y.append(new_y)
 
     print("\nCreating final DataFrames...")
-    padded_x = [x + [np.nan] * (max_points - len(x)) for x in all_new_x]
-    padded_y = [y + [np.nan] * (max_points - len(y)) for y in all_new_y]
+    # For consistency, ensure all rows have the same length
+    padded_x = [x + [np.nan] * (actual_max_points - len(x)) for x in all_new_x]
+    padded_y = [y + [np.nan] * (actual_max_points - len(y)) for y in all_new_y]
 
-    new_cols = [f'point_{i + 1}' for i in range(max_points)]
+    new_cols = [f'point_{i + 1}' for i in range(actual_max_points)]
 
     new_x_df = pd.DataFrame(padded_x, columns=new_cols)
     new_y_df = pd.DataFrame(padded_y, columns=new_cols)
-    print(f"Done! Maximum points in any frame: {max_points}")
+    print(f"Done! Points per frame: {actual_max_points}")
     return new_x_df, new_y_df
 
 
@@ -139,6 +180,8 @@ def main(arg_list=None):
                         help='Time sigma for Gaussian smoothing (default: 2.0)')
     parser.add_argument('--spatial_sigma', type=float, default=1.0,
                         help='Spatial sigma for Gaussian smoothing (default: 1.0)')
+    parser.add_argument('--max_points', type=int, default=None,
+                        help='Maximum number of points in output skeleton (default: auto-determined)')
     # Output files
     parser.add_argument('--output_x', type=str, required=True, help='Path to save output X coordinates')
     parser.add_argument('--output_y', type=str, required=True, help='Path to save output Y coordinates')
@@ -150,8 +193,8 @@ def main(arg_list=None):
 
     # Load input data
     print("Loading input data...")
-    skeleton_x = pd.read_csv(args.skeleton_x)
-    skeleton_y = pd.read_csv(args.skeleton_y)
+    skeleton_x = pd.read_csv(args.skeleton_x, header=None)
+    skeleton_y = pd.read_csv(args.skeleton_y, header=None)
 
     # Process skeleton
     new_x_df, new_y_df = refine_skeleton_spacing(
@@ -159,7 +202,8 @@ def main(arg_list=None):
         skeleton_y,
         spacing=args.spacing,
         num_sampled_points=args.num_sampled_points,
-        smoothing=args.smoothing
+        smoothing=args.smoothing,
+        max_points=args.max_points
     )
 
     # Calculate curvature
@@ -181,75 +225,8 @@ def main(arg_list=None):
     curvature_df.to_csv(args.output_curvature, index=False, header=False)
     smoothed_curvature.to_csv(args.output_smoothed_curvature, index=False, header=False)
     print("All files saved successfully!")
+    print(f"Output dimensions: {len(new_x_df)} frames × {len(new_x_df.columns)} points")
 
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
-'''
-rule process_skeleton_curvature:
-    """
-    Process skeleton coordinate data to calculate curvature and perform smoothing
-    
-    Parameters:
-        spacing: Distance between resampled points along the skeleton curve (default: 5)
-        num_sampled_points: Number of points used for initial spline sampling (default: 10000)
-        smoothing: Spline smoothing factor - higher values create smoother curves (default: 0.1)
-        time_sigma: Temporal smoothing parameter for Gaussian filter (default: 2.0)
-        spatial_sigma: Spatial smoothing parameter for Gaussian filter (default: 1.0)
-    """
-    input:
-        skeleton_x = "{datasets_output}/skeleton_x.csv",
-        skeleton_y = "{datasets_output}/skeleton_y.csv"
-    output:
-        output_x = "{datasets_output}/processed_skeleton_x.csv",
-        output_y = "{datasets_output}/processed_skeleton_y.csv",
-        output_curvature = "{datasets_output}/curvature.csv",
-        output_smoothed_curvature = "{datasets_output}/smoothed_curvature.csv"
-    params:
-        # Distance between points after resampling the skeleton curve
-        spacing = config['spacing'],
-        
-        # Number of points to sample during initial spline fitting
-        # Higher values give more precise curve representation
-        num_sampled_points = config['num_sampled_points'],
-        
-        # Controls how closely the spline follows original points
-        # Lower values = closer fit, higher values = smoother curve
-        smoothing = config['smoothing'],
-        
-        # Controls smoothing along the time dimension
-        # Higher values reduce temporal noise but may blur rapid movements
-        time_sigma = config['time_sigma'],
-        
-        # Controls smoothing along the spatial dimension
-        # Higher values create smoother curves but may lose fine details
-        spatial_sigma = config['spatial_sigma']
-    run:
-        import sys
-        from path.to.script import main  # Adjust import path as needed
-
-        main([
-            '--skeleton_x', str(input.skeleton_x),
-            '--skeleton_y', str(input.skeleton_y),
-            '--spacing', str(params.spacing),
-            '--num_sampled_points', str(params.num_sampled_points),
-            '--smoothing', str(params.smoothing),
-            '--time_sigma', str(params.time_sigma),
-            '--spatial_sigma', str(params.spatial_sigma),
-            '--output_x', str(output.output_x),
-            '--output_y', str(output.output_y),
-            '--output_curvature', str(output.output_curvature),
-            '--output_smoothed_curvature', str(output.output_smoothed_curvature)
-        ])
-
-
-config:
-
-    spacing: 5
-    num_sampled_points: 10000
-    smoothing: 0.1
-    time_sigma: 2.0
-    spatial_sigma: 1.0
-
-'''
