@@ -81,6 +81,45 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
     return new_x_df, new_y_df
 
 
+def truncate_columns(df_x, df_y, max_columns):
+    """
+    Truncate DataFrames to a specified number of columns.
+
+    Parameters:
+    -----------
+    df_x : pandas.DataFrame
+        DataFrame with x-coordinates
+    df_y : pandas.DataFrame
+        DataFrame with y-coordinates
+    max_columns : int
+        Maximum number of columns to keep
+
+    Returns:
+    --------
+    truncated_x : pandas.DataFrame
+        Truncated x-coordinates
+    truncated_y : pandas.DataFrame
+        Truncated y-coordinates
+    """
+    orig_cols = df_x.shape[1]
+
+    if max_columns is None or orig_cols <= max_columns:
+        return df_x, df_y
+
+    print(f"Truncating from {orig_cols} columns to {max_columns} columns")
+
+    # Keep only the first max_columns
+    truncated_x = df_x.iloc[:, :max_columns].copy()
+    truncated_y = df_y.iloc[:, :max_columns].copy()
+
+    # Rename columns to maintain consistency
+    new_columns = [f'point_{i + 1}' for i in range(max_columns)]
+    truncated_x.columns = new_columns
+    truncated_y.columns = new_columns
+
+    return truncated_x, truncated_y
+
+
 def calculate_curvature(skeleton_x, skeleton_y):
     """
     Calculates curvature K using first and second derivatives.
@@ -139,6 +178,8 @@ def main(arg_list=None):
                         help='Time sigma for Gaussian smoothing (default: 2.0)')
     parser.add_argument('--spatial_sigma', type=float, default=1.0,
                         help='Spatial sigma for Gaussian smoothing (default: 1.0)')
+    parser.add_argument('--max_columns', type=int, default=None,
+                        help='Maximum number of points to keep (default: no limit)')
     # Output files
     parser.add_argument('--output_x', type=str, required=True, help='Path to save output X coordinates')
     parser.add_argument('--output_y', type=str, required=True, help='Path to save output Y coordinates')
@@ -150,8 +191,8 @@ def main(arg_list=None):
 
     # Load input data
     print("Loading input data...")
-    skeleton_x = pd.read_csv(args.skeleton_x)
-    skeleton_y = pd.read_csv(args.skeleton_y)
+    skeleton_x = pd.read_csv(args.skeleton_x, header=None)
+    skeleton_y = pd.read_csv(args.skeleton_y, header=None)
 
     # Process skeleton
     new_x_df, new_y_df = refine_skeleton_spacing(
@@ -161,6 +202,11 @@ def main(arg_list=None):
         num_sampled_points=args.num_sampled_points,
         smoothing=args.smoothing
     )
+
+    # Apply column truncation if specified
+    if args.max_columns is not None:
+        print(f"\nApplying column truncation to {args.max_columns} points...")
+        new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, args.max_columns)
 
     # Calculate curvature
     print("\nCalculating curvature...")
@@ -181,75 +227,8 @@ def main(arg_list=None):
     curvature_df.to_csv(args.output_curvature, index=False, header=False)
     smoothed_curvature.to_csv(args.output_smoothed_curvature, index=False, header=False)
     print("All files saved successfully!")
+    print(f"Output dimensions: {len(new_x_df)} frames × {len(new_x_df.columns)} points")
 
 
 if __name__ == '__main__':
     main(sys.argv[1:])
-
-'''
-rule process_skeleton_curvature:
-    """
-    Process skeleton coordinate data to calculate curvature and perform smoothing
-    
-    Parameters:
-        spacing: Distance between resampled points along the skeleton curve (default: 5)
-        num_sampled_points: Number of points used for initial spline sampling (default: 10000)
-        smoothing: Spline smoothing factor - higher values create smoother curves (default: 0.1)
-        time_sigma: Temporal smoothing parameter for Gaussian filter (default: 2.0)
-        spatial_sigma: Spatial smoothing parameter for Gaussian filter (default: 1.0)
-    """
-    input:
-        skeleton_x = "{datasets_output}/skeleton_x.csv",
-        skeleton_y = "{datasets_output}/skeleton_y.csv"
-    output:
-        output_x = "{datasets_output}/processed_skeleton_x.csv",
-        output_y = "{datasets_output}/processed_skeleton_y.csv",
-        output_curvature = "{datasets_output}/curvature.csv",
-        output_smoothed_curvature = "{datasets_output}/smoothed_curvature.csv"
-    params:
-        # Distance between points after resampling the skeleton curve
-        spacing = config['spacing'],
-        
-        # Number of points to sample during initial spline fitting
-        # Higher values give more precise curve representation
-        num_sampled_points = config['num_sampled_points'],
-        
-        # Controls how closely the spline follows original points
-        # Lower values = closer fit, higher values = smoother curve
-        smoothing = config['smoothing'],
-        
-        # Controls smoothing along the time dimension
-        # Higher values reduce temporal noise but may blur rapid movements
-        time_sigma = config['time_sigma'],
-        
-        # Controls smoothing along the spatial dimension
-        # Higher values create smoother curves but may lose fine details
-        spatial_sigma = config['spatial_sigma']
-    run:
-        import sys
-        from path.to.script import main  # Adjust import path as needed
-
-        main([
-            '--skeleton_x', str(input.skeleton_x),
-            '--skeleton_y', str(input.skeleton_y),
-            '--spacing', str(params.spacing),
-            '--num_sampled_points', str(params.num_sampled_points),
-            '--smoothing', str(params.smoothing),
-            '--time_sigma', str(params.time_sigma),
-            '--spatial_sigma', str(params.spatial_sigma),
-            '--output_x', str(output.output_x),
-            '--output_y', str(output.output_y),
-            '--output_curvature', str(output.output_curvature),
-            '--output_smoothed_curvature', str(output.output_smoothed_curvature)
-        ])
-
-
-config:
-
-    spacing: 5
-    num_sampled_points: 10000
-    smoothing: 0.1
-    time_sigma: 2.0
-    spatial_sigma: 1.0
-
-'''
