@@ -96,7 +96,7 @@ Description: Determines periods of quiescence (inactivity) based on speed and pi
 
 - Frame Shift (frame_shift): controls how many frames apart the script compares when computing the pixel difference. This depends on the framerate of the video, the frameshift for fps 10 is 3. Since recordings differ in fps the script normalizes frame_shift. -> norm_frame_shift = int(round((frame_shift / 10) * fps)) 
 
-- Normalized Size Threshold (norm_size_threshold): Filters out small pixel changes caused by noise, keeping only meaningful differences relative to the object's size. Default is 0.4 % of the worm reference size.
+- Normalized Size Threshold (norm_size_threshold): Filters out small pixel changes caused by noise, keeping only meaningful differences relative to the object's size. Default is 0.4 % of the worm reference size for each detected connected pixel difference object.
   
 - Z-Score Threshold (zscore_threshold): filters frames based on the size of the object. It calculates how many standard deviations the object's area is from the reference size. If the z-score exceeds the threshold, the frame is skipped. Default is 1.5
   
