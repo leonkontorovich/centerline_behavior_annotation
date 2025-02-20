@@ -48,6 +48,7 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
     all_new_x = []
     all_new_y = []
     max_points = 0
+    point_counts = []
 
     for frame in tqdm(range(len(skel_x_df))):
         x_coords = skel_x_df.iloc[frame].dropna().values
@@ -65,9 +66,15 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
         if isinstance(new_y, np.ndarray):
             new_y = new_y.tolist()
 
-        max_points = max(max_points, len(new_x))
+        num_points = len(new_x)
+        point_counts.append(num_points)
+        max_points = max(max_points, num_points)
         all_new_x.append(new_x)
         all_new_y.append(new_y)
+
+    # Calculate statistics
+    min_points = min(point_counts) if point_counts else 0
+    avg_points = sum(point_counts) / len(point_counts) if point_counts else 0
 
     print("\nCreating final DataFrames...")
     padded_x = [x + [np.nan] * (max_points - len(x)) for x in all_new_x]
@@ -77,7 +84,12 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
 
     new_x_df = pd.DataFrame(padded_x, columns=new_cols)
     new_y_df = pd.DataFrame(padded_y, columns=new_cols)
-    print(f"Done! Maximum points in any frame: {max_points}")
+
+    print(f"Points statistics:")
+    print(f"  Minimum points in any frame: {min_points}")
+    print(f"  Average points per frame: {avg_points:.2f}")
+    print(f"  Maximum points in any frame: {max_points}")
+
     return new_x_df, new_y_df
 
 
@@ -179,16 +191,17 @@ def calculate_optimal_point_count(skel_x_df, skel_y_df, spacing):
     return optimal_points
 
 
-def find_optimal_column_crop(df, col_threshold=70):
+def find_optimal_column_crop(df, change_threshold=0.5):
     """
-    Find optimal column crop point to remove mostly-empty columns.
+    Find optimal column crop point to remove mostly-empty columns
+    using rate of change detection.
 
     Parameters:
     -----------
     df : pandas.DataFrame
         DataFrame to analyze
-    col_threshold : int
-        Percentage of occupancy required to keep a column
+    change_threshold : float
+        Rate of change threshold to identify significant drops (0-1)
 
     Returns:
     --------
@@ -197,10 +210,17 @@ def find_optimal_column_crop(df, col_threshold=70):
     # Calculate column occupancy (non-NaN percentage)
     col_occupancy = df.notna().mean(axis=0) * 100
 
-    # Find where occupancy drops significantly
-    col_drops = []
+    # Calculate rate of change between adjacent columns
+    occupancy_changes = np.zeros(len(col_occupancy))
     for i in range(1, len(col_occupancy)):
-        if col_occupancy.iloc[i] < col_threshold and col_occupancy.iloc[i - 1] >= col_threshold:
+        if col_occupancy.iloc[i - 1] > 0:  # Avoid division by zero
+            relative_change = (col_occupancy.iloc[i] - col_occupancy.iloc[i - 1]) / col_occupancy.iloc[i - 1]
+            occupancy_changes[i] = relative_change
+
+    # Find points with significant negative changes (drops)
+    col_drops = []
+    for i in range(1, len(occupancy_changes)):
+        if occupancy_changes[i] < -change_threshold:
             col_drops.append(i)
 
     # If no clear drop found, keep all columns
@@ -213,9 +233,13 @@ def find_optimal_column_crop(df, col_threshold=70):
     print(f"Column occupancy analysis:")
     print(f"  Original columns: {len(df.columns)}")
     print(f"  Columns to keep: {len(cols_to_keep)}")
+
+    # Print occupancy at cutoff point if applicable
     if col_drops:
+        cutoff_idx = col_drops[0]
         print(
-            f"  Occupancy at cutoff: {col_occupancy.iloc[col_drops[0] - 1]:.1f}% → {col_occupancy.iloc[col_drops[0]]:.1f}%")
+            f"  Occupancy at cutoff: {col_occupancy.iloc[cutoff_idx - 1]:.1f}% → {col_occupancy.iloc[cutoff_idx]:.1f}%")
+        print(f"  Rate of change at cutoff: {occupancy_changes[cutoff_idx]:.1%}")
 
     return cols_to_keep
 
@@ -314,10 +338,10 @@ def main(arg_list=None):
                         help='Time sigma for Gaussian smoothing (default: 2.0)')
     parser.add_argument('--spatial_sigma', type=float, default=1.0,
                         help='Spatial sigma for Gaussian smoothing (default: 1.0)')
-    parser.add_argument('--max_columns', type=int, default=None,
+    parser.add_argument('--max_columns', type=int, default=0,
                         help='Maximum number of points to keep (default: auto-detect). Set to 0 for dynamic mode.')
-    parser.add_argument('--col_threshold', type=int, default=70,
-                        help='Column occupancy threshold percentage (default: 70)')
+    parser.add_argument('--change_threshold', type=float, default=0.5,
+                        help='Rate of change threshold for column cropping (default: 0.5)')
     # Output files
     parser.add_argument('--output_x', type=str, required=True, help='Path to save output X coordinates')
     parser.add_argument('--output_y', type=str, required=True, help='Path to save output Y coordinates')
@@ -341,36 +365,57 @@ def main(arg_list=None):
         smoothing=args.smoothing
     )
 
+    # Determine final column count for all outputs
+    final_columns = None
+
     # Dynamic mode: calculate optimal number of points based on average length
     if args.max_columns == 0:
         print("\nUsing dynamic mode to determine optimal point count...")
         optimal_points = calculate_optimal_point_count(new_x_df, new_y_df, args.spacing)
 
-        # Find optimal column crop point based on occupancy
-        print("\nAnalyzing column occupancy...")
-        cols_to_keep = find_optimal_column_crop(new_x_df, args.col_threshold)
+        # Find optimal column crop point using rate of change detection
+        print("\nAnalyzing column occupancy using rate of change detection...")
+        cols_to_keep = find_optimal_column_crop(new_x_df, change_threshold=args.change_threshold)
 
         # Use the smaller of the two values (optimal or occupancy-based)
         final_columns = min(optimal_points, len(cols_to_keep))
         print(f"\nFinal column count: {final_columns}")
-        new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, final_columns)
-    # Fixed mode: apply column truncation if specified
+    # Fixed mode: use specified column count
     elif args.max_columns is not None:
         print(f"\nApplying fixed column truncation to {args.max_columns} points...")
-        new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, args.max_columns)
+        final_columns = args.max_columns
 
-    # Calculate curvature
+    # Apply column truncation to coordinate data
+    new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, final_columns)
+
+    # Calculate curvature with truncated coordinates
     print("\nCalculating curvature...")
     curvature_df = calculate_curvature(new_x_df, new_y_df)
 
     # Apply smoothing to curvature
     print("\nApplying Gaussian smoothing...")
-    # Add improved smoothing that preserves all data points
     smoothed_curvature = smooth_2d_data(
         curvature_df,
         time_sigma=args.time_sigma,
         spatial_sigma=args.spatial_sigma
     )
+
+    # Ensure all outputs have the same column count
+    print(f"\nEnsuring all output files have {new_x_df.shape[1]} columns...")
+
+    # Verify column counts match
+    if (new_x_df.shape[1] != new_y_df.shape[1] or
+            new_x_df.shape[1] != curvature_df.shape[1] or
+            new_x_df.shape[1] != smoothed_curvature.shape[1]):
+        print("Warning: Column counts don't match, enforcing consistency...")
+
+        # Ensure all DataFrames have the same columns
+        column_count = new_x_df.shape[1]
+
+        new_x_df = new_x_df.iloc[:, :column_count]
+        new_y_df = new_y_df.iloc[:, :column_count]
+        curvature_df = curvature_df.iloc[:, :column_count]
+        smoothed_curvature = smoothed_curvature.iloc[:, :column_count]
 
     # Save results
     print("\nSaving results...")
