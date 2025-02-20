@@ -120,48 +120,184 @@ def truncate_columns(df_x, df_y, max_columns):
     return truncated_x, truncated_y
 
 
+def calculate_optimal_point_count(skel_x_df, skel_y_df, spacing):
+    """
+    Calculate the optimal number of points based on average skeleton length.
+
+    Parameters:
+    -----------
+    skel_x_df : pandas.DataFrame
+        DataFrame with x coordinates
+    skel_y_df : pandas.DataFrame
+        DataFrame with y coordinates
+    spacing : float
+        Desired spacing between points in pixels
+
+    Returns:
+    --------
+    optimal_points : int
+        Optimal number of points to represent the skeleton
+    """
+    # Calculate path lengths for each frame
+    path_lengths = []
+
+    for idx in range(len(skel_x_df)):
+        # Skip if row contains all NaN
+        if skel_x_df.iloc[idx].isna().all() or skel_y_df.iloc[idx].isna().all():
+            continue
+
+        # Get non-NaN coordinates
+        mask = ~(skel_x_df.iloc[idx].isna() | skel_y_df.iloc[idx].isna())
+        if mask.sum() < 2:
+            continue
+
+        x = skel_x_df.iloc[idx][mask].values
+        y = skel_y_df.iloc[idx][mask].values
+
+        # Calculate path length
+        total_length = 0
+        for i in range(len(x) - 1):
+            segment_length = np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2)
+            total_length += segment_length
+
+        if total_length > 0:
+            path_lengths.append(total_length)
+
+    if not path_lengths:
+        print("Warning: Could not calculate any valid path lengths. Using default count of 20.")
+        return 20
+
+    # Use median for robustness against outliers
+    median_length = np.median(path_lengths)
+    optimal_points = int(median_length / spacing) + 1
+
+    print(f"Dynamic point calculation:")
+    print(f"  Median skeleton length: {median_length:.2f} pixels")
+    print(f"  With spacing of {spacing:.2f} pixels")
+    print(f"  Optimal point count: {optimal_points}")
+
+    return optimal_points
+
+
+def find_optimal_column_crop(df, col_threshold=70):
+    """
+    Find optimal column crop point to remove mostly-empty columns.
+
+    Parameters:
+    -----------
+    df : pandas.DataFrame
+        DataFrame to analyze
+    col_threshold : int
+        Percentage of occupancy required to keep a column
+
+    Returns:
+    --------
+    list : Columns to keep
+    """
+    # Calculate column occupancy (non-NaN percentage)
+    col_occupancy = df.notna().mean(axis=0) * 100
+
+    # Find where occupancy drops significantly
+    col_drops = []
+    for i in range(1, len(col_occupancy)):
+        if col_occupancy.iloc[i] < col_threshold and col_occupancy.iloc[i - 1] >= col_threshold:
+            col_drops.append(i)
+
+    # If no clear drop found, keep all columns
+    if not col_drops:
+        cols_to_keep = df.columns
+    else:
+        # Keep columns up to first significant drop
+        cols_to_keep = df.columns[:col_drops[0]]
+
+    print(f"Column occupancy analysis:")
+    print(f"  Original columns: {len(df.columns)}")
+    print(f"  Columns to keep: {len(cols_to_keep)}")
+    if col_drops:
+        print(
+            f"  Occupancy at cutoff: {col_occupancy.iloc[col_drops[0] - 1]:.1f}% → {col_occupancy.iloc[col_drops[0]]:.1f}%")
+
+    return cols_to_keep
+
+
 def calculate_curvature(skeleton_x, skeleton_y):
     """
-    Calculates curvature K using first and second derivatives.
+    Calculates curvature K using first and second derivatives with improved handling of valid points.
     """
     K_df = pd.DataFrame(index=range(len(skeleton_x)),
                         columns=skeleton_x.columns,
                         dtype=float)
 
     for idx in range(len(skeleton_x)):
+        # Skip if row contains all NaN
         if skeleton_x.iloc[idx].isna().all() or skeleton_y.iloc[idx].isna().all():
             K_df.iloc[idx] = np.nan
             continue
 
-        x = skeleton_x.iloc[idx].values
-        y = skeleton_y.iloc[idx].values
+        # Get non-NaN coordinates
+        valid_mask = ~(skeleton_x.iloc[idx].isna() | skeleton_y.iloc[idx].isna())
+        x = skeleton_x.iloc[idx][valid_mask].values
+        y = skeleton_y.iloc[idx][valid_mask].values
+        valid_cols = skeleton_x.columns[valid_mask]
 
+        # Need at least 3 points for derivatives
         if len(x) < 3:
             K_df.iloc[idx] = np.nan
             continue
 
+        # Calculate first derivatives using central differences
         x_der = np.gradient(x)
         y_der = np.gradient(y)
 
+        # Calculate second derivatives
         x_der2 = np.gradient(x_der)
         y_der2 = np.gradient(y_der)
 
+        # Calculate curvature K
         denominator = (x_der ** 2 + y_der ** 2) ** 1.5
-        denominator = np.where(denominator == 0, np.nan, denominator)
+        denominator = np.where(denominator < 1e-10, np.nan, denominator)
         K = (x_der * y_der2 - y_der * x_der2) / denominator
 
-        K_df.iloc[idx] = K
+        # Assign values only to valid columns
+        for i, col in enumerate(valid_cols):
+            if i < len(K):
+                K_df.loc[idx, col] = K[i]
 
     return K_df
 
 
 def smooth_2d_data(data, time_sigma=2, spatial_sigma=1):
     """
-    Smooth 2D data using Gaussian filtering
+    Smooth 2D data using Gaussian filtering while preserving NaN values
+    and maintaining boundary information
     """
+    # Convert to numpy array for smoothing
     values = data.values
-    smoothed = gaussian_filter(values, sigma=[time_sigma, spatial_sigma])
-    return pd.DataFrame(smoothed, index=data.index, columns=data.columns)
+
+    # Create a mask for NaN values
+    nan_mask = np.isnan(values)
+
+    # Replace NaNs with zeros for filtering
+    filled_values = np.nan_to_num(values, nan=0.0)
+
+    # Apply 2D Gaussian smoothing
+    smoothed = gaussian_filter(filled_values, sigma=[time_sigma, spatial_sigma], mode='nearest')
+
+    # Create a weight array (1 for data, 0 for NaN)
+    weights = ~nan_mask
+    weight_smoothed = gaussian_filter(weights.astype(float), sigma=[time_sigma, spatial_sigma], mode='nearest')
+
+    # Avoid division by zero
+    weight_smoothed[weight_smoothed < 1e-10] = 1
+
+    # Normalize the result
+    result = smoothed / weight_smoothed
+
+    # Restore NaN values where they were before
+    result[nan_mask] = np.nan
+
+    # Convert back to DataFrame with same structure
+    return pd.DataFrame(result, index=data.index, columns=data.columns)
 
 
 def main(arg_list=None):
@@ -179,7 +315,9 @@ def main(arg_list=None):
     parser.add_argument('--spatial_sigma', type=float, default=1.0,
                         help='Spatial sigma for Gaussian smoothing (default: 1.0)')
     parser.add_argument('--max_columns', type=int, default=None,
-                        help='Maximum number of points to keep (default: no limit)')
+                        help='Maximum number of points to keep (default: auto-detect). Set to 0 for dynamic mode.')
+    parser.add_argument('--col_threshold', type=int, default=70,
+                        help='Column occupancy threshold percentage (default: 70)')
     # Output files
     parser.add_argument('--output_x', type=str, required=True, help='Path to save output X coordinates')
     parser.add_argument('--output_y', type=str, required=True, help='Path to save output Y coordinates')
@@ -203,9 +341,22 @@ def main(arg_list=None):
         smoothing=args.smoothing
     )
 
-    # Apply column truncation if specified
-    if args.max_columns is not None:
-        print(f"\nApplying column truncation to {args.max_columns} points...")
+    # Dynamic mode: calculate optimal number of points based on average length
+    if args.max_columns == 0:
+        print("\nUsing dynamic mode to determine optimal point count...")
+        optimal_points = calculate_optimal_point_count(new_x_df, new_y_df, args.spacing)
+
+        # Find optimal column crop point based on occupancy
+        print("\nAnalyzing column occupancy...")
+        cols_to_keep = find_optimal_column_crop(new_x_df, args.col_threshold)
+
+        # Use the smaller of the two values (optimal or occupancy-based)
+        final_columns = min(optimal_points, len(cols_to_keep))
+        print(f"\nFinal column count: {final_columns}")
+        new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, final_columns)
+    # Fixed mode: apply column truncation if specified
+    elif args.max_columns is not None:
+        print(f"\nApplying fixed column truncation to {args.max_columns} points...")
         new_x_df, new_y_df = truncate_columns(new_x_df, new_y_df, args.max_columns)
 
     # Calculate curvature
@@ -214,6 +365,7 @@ def main(arg_list=None):
 
     # Apply smoothing to curvature
     print("\nApplying Gaussian smoothing...")
+    # Add improved smoothing that preserves all data points
     smoothed_curvature = smooth_2d_data(
         curvature_df,
         time_sigma=args.time_sigma,
