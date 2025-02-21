@@ -448,9 +448,9 @@ rule process_skeleton_curvature:
         spline_K_new = "{datasets_output}skeleton_spline_K_new.csv",
         spline_K_new_smooth = "{datasets_output}skeleton_spline_K_new_smoothed.csv"
     run:
-        from centerline_behavior_annotation.centerline.dev import centerline_even_distance_2d_smoothing
+        from centerline_behavior_annotation.centerline.dev import centerline_equi_distance_2d_smoothing
         
-        centerline_even_distance_2d_smoothing.main([
+        centerline_equi_distance_2d_smoothing.main([
             '--skeleton_x', str(input.spline_X),
             '--skeleton_y', str(input.spline_Y),
             '--spacing', str(params.spacing),
