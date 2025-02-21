@@ -429,3 +429,48 @@ def main(arg_list=None):
 
 if __name__ == '__main__':
     main(sys.argv[1:])
+
+'''
+rule process_skeleton_curvature:
+    input:
+        spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
+        spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv"
+    params:
+        spacing = config['spacing'],
+        num_sampled_points = config['num_sampled_points'],
+        smoothing = config['smoothing'],
+        time_sigma = config['time_sigma'],
+        spatial_sigma = config['spatial_sigma'],
+        max_columns = config['max_columns']
+    output:
+        spline_X_new = "{datasets_output}skeleton_spline_X_coords_new.csv",
+        spline_Y_new = "{datasets_output}skeleton_spline_Y_coords_new.csv",
+        spline_K_new = "{datasets_output}skeleton_spline_K_new.csv",
+        spline_K_new_smooth = "{datasets_output}skeleton_spline_K_new_smoothed.csv"
+    run:
+        from centerline_behavior_annotation.centerline.dev import centerline_even_distance_2d_smoothing
+        
+        centerline_even_distance_2d_smoothing.main([
+            '--skeleton_x', str(input.spline_X),
+            '--skeleton_y', str(input.spline_Y),
+            '--spacing', str(params.spacing),
+            '--num_sampled_points', str(params.num_sampled_points),
+            '--smoothing', str(params.smoothing),
+            '--time_sigma', str(params.time_sigma),
+            '--spatial_sigma', str(params.spatial_sigma),
+            '--max_columns', str(params.max_columns), 
+            '--output_x', str(output.spline_X_new),
+            '--output_y', str(output.spline_Y_new),
+            '--output_curvature', str(output.spline_K_new),
+            '--output_smoothed_curvature', str(output.spline_K_new_smooth)
+        ])
+
+#preprocess spline
+spacing: 2
+num_sampled_points: 10000
+smoothing: 0.1
+time_sigma: 2.0
+spatial_sigma: 1.0
+max_columns: 0 #dynamic mode - cuts skelleton where nan content increases 50%+
+
+'''
