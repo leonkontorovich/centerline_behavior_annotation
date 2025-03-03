@@ -40,7 +40,6 @@ def resample_skeleton(x_coords, y_coords, spacing=10, num_sampled_points=10000, 
     new_x, new_y = arc_length_resampling(tck, num_sampled_points, spacing)
     return new_x, new_y
 
-
 def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points=10000, smoothing=0.1):
     print(f"Processing {len(skel_x_df)} frames...")
     print(f"Parameters: spacing={spacing}, sampling_points={num_sampled_points}, smoothing={smoothing}")
@@ -82,8 +81,9 @@ def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points
 
     new_cols = [f'point_{i + 1}' for i in range(max_points)]
 
-    new_x_df = pd.DataFrame(padded_x, columns=new_cols)
-    new_y_df = pd.DataFrame(padded_y, columns=new_cols)
+    # Modified lines to preserve the original indices:
+    new_x_df = pd.DataFrame(padded_x, columns=new_cols, index=skel_x_df.index)
+    new_y_df = pd.DataFrame(padded_y, columns=new_cols, index=skel_y_df.index)
 
     print(f"Points statistics:")
     print(f"  Minimum points in any frame: {min_points}")
@@ -364,6 +364,13 @@ def main(arg_list=None):
         num_sampled_points=args.num_sampled_points,
         smoothing=args.smoothing
     )
+
+    # Add this check after loading the data
+    original_frame_count = len(skeleton_x)
+
+    # Add this check after processing
+    if len(new_x_df) != original_frame_count:
+        print(f"WARNING: Frame count mismatch! Original: {original_frame_count}, New: {len(new_x_df)}")
 
     # Determine final column count for all outputs
     final_columns = None
