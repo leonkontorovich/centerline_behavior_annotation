@@ -203,6 +203,8 @@ rule delete_temp_data:
         output_spline_K = "{datasets_output}skeleton_spline_K.csv",
         output_spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
         output_spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv",
+        # Add dependency on basic_analysis completion
+        basic_analysis_done = "{datasets_output}chemotaxis_analysis.done"
     output:
         # This is a dummy output to ensure the rule is executed
         temp_cleanup = temp("{datasets_output}temp_cleanup.done")
@@ -292,7 +294,8 @@ rule basic_analysis:
         top_left_pos = config["top_left"],
         tif_path = "{datasets_output}../track.tif"
     output:
-        chemotaxis_params = "{datasets_output}basic_params.csv"
+        chemotaxis_params = "{datasets_output}basic_params.csv",
+        done = touch("{datasets_output}chemotaxis_analysis.done")
     run:
         from chemotaxis_analysis_high_res import initialize_load_files_high_res_basic_all
         import tifffile as tiff
