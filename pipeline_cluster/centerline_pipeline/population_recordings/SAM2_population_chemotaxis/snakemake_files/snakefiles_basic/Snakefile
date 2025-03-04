@@ -293,7 +293,7 @@ rule basic_analysis:
     output:
         chemotaxis_params = "{datasets_output}basic_params.csv"
     run:
-        from chemotaxis_analysis_high_res import initialize_load_files_population_basic
+        from chemotaxis_analysis_high_res import initialize_load_files_high_res_basic_all
         import tifffile as tiff
         from imutils import MicroscopeDataReader
         import dask.array as da
@@ -313,7 +313,9 @@ rule basic_analysis:
         tif_path = str(params.tif_path)
         video_resolution_x, video_resolution_y = get_video_resolution(tif_path)
 
-        initialize_load_files_population_basic.main([
+        print(video_resolution_x, video_resolution_y)
+
+        initialize_load_files_high_res_basic_all.main([
             '--reversal_annotation', str(input.reversal_annotation),
             '--skeleton_spline', str(input.spline_K),
             '--worm_pos', str(params.worm_pos),
@@ -323,6 +325,11 @@ rule basic_analysis:
             '--video_resolution_x', str(video_resolution_x),
             '--video_resolution_y', str(video_resolution_y),
             '--fps', str(params.fps),
+            '--conc_gradient_array', str(input.conc_gradient_array),
+            '--distance_array', str(input.distance_array),
             '--turn_annotation', str(input.turn_annotation),
-            '--top_left_pos', str(params.top_left_pos)
+            '--top_left_pos', str(params.top_left_pos),
+            '--odor_pos', str(params.odor_pos),
+            '--diffusion_time_offset', str(3600),
+            '--img_type', str('crop'),
         ])
