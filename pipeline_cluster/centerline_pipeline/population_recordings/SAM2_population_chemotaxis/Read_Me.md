@@ -2,40 +2,40 @@
 
 ## Initial Setup
 
-1. Navigate to the experiment folder:
-   ```bash
-   cd "path/to/folder/of/cropped/recordings"
-   ```
-
-2. Load the conda module (first-time setup only):
+1. Load the conda module (first-time setup only):
    ```bash
    module load conda
    ```
 
-3. Configure conda on LISC login (first-time setup only):
+2. Configure conda on LISC login (first-time setup only):
    ```bash
    conda config --append envs_dirs /lisc/scratch/neurobiology/zimmer/.conda/envs
    ```
    This tells conda to look for shared environments located in the specified folder.
 
-4. List available environments:
+3. List available environments:
    ```bash
    conda env list
    ```
 
    ## RUN
-5. Activate the centerline environment:
+1. Navigate to the experiment folder:
+   ```bash
+   cd "path/to/folder/of/cropped/recordings"
+   ```
+   
+2. Activate the centerline environment:
    ```bash
    conda activate autoscope_behaviour_shared
    ```
 
-6. Rename TIFF files in the experiment folder:
+3. Rename TIFF files in the experiment folder:
    ```bash
    python /lisc/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py /lisc/scratch/neurobiology/zimmer/Bin/path_to_the_experimentfolder
    ```
    This script renames the TIFF files to fit the pipeline's needs.
 
-7. Create folder structures and copy pipeline files:
+4. Create folder structures and copy pipeline files:
    ```bash
    # For chemotaxis pipeline files:
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh chemotaxis
@@ -44,13 +44,13 @@
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh basic
    ```
 
-8. Start a new tmux session:
+5. Start a new tmux session:
    ```bash
    tmux new -s analysis
    ```
    This allows the analysis to continue running even if you get disconnected.
 
-9. Run the analysis:
+6. Run the analysis:
    ```bash
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
    ```
