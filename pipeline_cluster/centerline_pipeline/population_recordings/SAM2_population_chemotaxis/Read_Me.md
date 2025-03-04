@@ -31,7 +31,7 @@
 
 3. Rename TIFF files in the experiment folder:
    ```bash
-   python /lisc/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py .
+   python /lisc/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
    ```
    This script renames the TIFF files to fit the pipeline's needs.
 
