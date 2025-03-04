@@ -333,7 +333,7 @@ rule chemotaxis_analysis:
         chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
         chemotaxis_params = "{datasets_output}chemotaxis_params.csv",
     run:
-        from chemotaxis_analysis_high_res import initialize_load_files_population
+        from chemotaxis_analysis_high_res import initialize_load_files_high_res_all
         import tifffile as tiff
         from imutils import MicroscopeDataReader
         import dask.array as da
@@ -355,7 +355,7 @@ rule chemotaxis_analysis:
 
         print(video_resolution_x, video_resolution_y)
 
-        initialize_load_files_population.main([
+        initialize_load_files_high_res_all.main([
             '--reversal_annotation', str(input.reversal_annotation),
             '--skeleton_spline', str(input.spline_K),
             '--worm_pos', str(params.worm_pos),
@@ -370,4 +370,6 @@ rule chemotaxis_analysis:
             '--turn_annotation', str(input.turn_annotation),
             '--top_left_pos', str(params.top_left_pos),
             '--odor_pos', str(params.odor_pos),
+            '--diffusion_time_offset', str(3600),
+            '--img_type', str('crop'),
         ])
