@@ -23,6 +23,7 @@
    conda env list
    ```
 
+   ## RUN
 5. Activate the centerline environment:
    ```bash
    conda activate autoscope_behaviour_shared
