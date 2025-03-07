@@ -14,7 +14,6 @@ def worm_speed(df):
 
     # tdelta = df.index[1] - df.index[0]  # units = nanoseconds
     tdelta = pd.Series(df.index).diff().mean()
-    tdelta = pd.Series(df.index).diff().mean()
     try:
         tdelta_s = tdelta.delta / 1e9
     except AttributeError:
