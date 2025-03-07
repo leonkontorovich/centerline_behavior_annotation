@@ -24,7 +24,7 @@ rule targets:
         output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
         output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
         # No expand() needed for temp_cleanup
-        #temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
+        temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
 
 rule tiff2avi:
     input:
@@ -138,7 +138,7 @@ rule dlc_analyze_videos:
         csv= "{datasets_output}track"+config["network_string"]+".csv"
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/app/conda/miniconda3/envs/deeplabcut-2.3.10 
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/app/conda/miniforge3/envs/deeplabcut-2.3.10 
         python -c "import deeplabcut; deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', ['{input.avi}'], shuffle={params.shuffle}, videotype='avi', gputouse=0, save_as_csv=True)"
         """
 
@@ -157,7 +157,7 @@ rule dlc_filter_predictions_arima:
         filtered_csv = "{datasets_output}track"+config["network_string"]+"_filtered.csv"
     shell:
         """
-        source /lisc/app/conda/miniconda3/bin/activate /lisc/app/conda/miniconda3/envs/deeplabcut-2.3.10
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/app/conda/miniforge3/envs/deeplabcut-2.3.10
         python -c "import deeplabcut; deeplabcut.filterpredictions('{params.dlc_model_configfile_path}', ['{input.avi}'], shuffle={params.shuffle}, filtertype='arima', windowlength={params.window_length}, p_bound={params.p_bound}, save_as_csv=True)"
         """
 
@@ -188,15 +188,58 @@ rule create_centerline:
             '--min_worm_length', str(params.min_worm_length)
         ])
 
+rule process_skeleton_curvature:
+    input:
+        skeleton_x = "{datasets_output}skeleton_spline_X_coords.csv",
+        skeleton_y = "{datasets_output}skeleton_spline_Y_coords.csv"
+    output:
+        output_x = "{datasets_output}skeleton_spline_smoothed_X_coords.csv",
+        output_y = "{datasets_output}skeleton_spline_smoothed_Y_coords.csv",
+        output_curvature = "{datasets_output}skeleton_spline_K.csv",
+        output_smoothed_curvature = "{datasets_output}skeleton_spline_smoothed_K.csv"
+    params:
+        # Distance between points after resampling the skeleton curve
+        spacing = config['spacing'],
+        
+        # Number of points to sample during initial spline fitting
+        # Higher values give more precise curve representation
+        num_sampled_points = config['num_sampled_points'],
+        
+        # Controls how closely the spline follows original points
+        # Lower values = closer fit, higher values = smoother curve
+        smoothing = config['smoothing'],
+        
+        # Controls smoothing along the time dimension
+        # Higher values reduce temporal noise but may blur rapid movements
+        time_sigma = config['time_sigma'],
+        
+        # Controls smoothing along the spatial dimension
+        # Higher values create smoother curves but may lose fine details
+        spatial_sigma = config['spatial_sigma']
+    run:
+        import sys
+        from centerline_behavior_annotation.centerline.dev import centerline_even_distance_2d_smoothing
+
+        centerline_even_distance_2d_smoothing.main([
+            '--skeleton_x', str(input.skeleton_x),
+            '--skeleton_y', str(input.skeleton_y),
+            '--spacing', str(params.spacing),
+            '--num_sampled_points', str(params.num_sampled_points),
+            '--smoothing', str(params.smoothing),
+            '--time_sigma', str(params.time_sigma),
+            '--spatial_sigma', str(params.spatial_sigma),
+            '--output_x', str(output.output_x),
+            '--output_y', str(output.output_y),
+            '--output_curvature', str(output.output_curvature),
+            '--output_smoothed_curvature', str(output.output_smoothed_curvature)
+        ])
+
 
 rule delete_temp_data:
     input:
         avi = "{datasets_output}track.avi",
         processed_stack = "{datasets_output}track_mask_corrected.btf",
         output_file = "{datasets_output}track_mask.btf",
-        output_spline_K = "{datasets_output}skeleton_spline_K.csv",
-        output_spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
-        output_spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv",
     output:
         # This is a dummy output to ensure the rule is executed
         temp_cleanup = temp("{datasets_output}temp_cleanup.done")
@@ -220,7 +263,7 @@ rule delete_temp_data:
 
 rule annotate_reversals:
     input:
-        curvature_file = "{datasets_output}skeleton_spline_K.csv"
+        curvature_file = "{datasets_output}skeleton_spline_smoothed_K.csv"
     params:
         pca_model_path = config["pca_model_path"],
         initial_segment = config["initial_segment"],
@@ -231,7 +274,6 @@ rule annotate_reversals:
     output:
         principal_components = "{datasets_output}principal_components.csv",
         behaviour_annotation = "{datasets_output}reversal_annotation.csv"
-
     run:
         from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
         
@@ -256,8 +298,8 @@ rule calc_turns_by_roundness:
        min_round_threshold = config['min_round_threshold'],
        max_round_threshold = config['max_round_threshold'],
        smoothing_window = config['fps'],
-        min_worm_area = config["min_worm_area"], 
-        max_worm_area = config["max_worm_area"],
+       min_worm_area = config["min_worm_area"], 
+       max_worm_area = config["max_worm_area"],
    run:
        from centerline_behavior_annotation.curvature.src import annotate_turns_coils_by_mask_roundness_snakemake
 
@@ -275,9 +317,9 @@ rule chemotaxis_analysis:
     input:
         reversal_annotation="{datasets_output}reversal_annotation.csv",
         turn_annotation="{datasets_output}turn_annotation_by_roundness.csv",
-        spline_K= "{datasets_output}skeleton_spline_K.csv",
-        skeleton_spline_X_coords= "{datasets_output}skeleton_spline_X_coords.csv",
-        skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_Y_coords.csv",
+        spline_K= "{datasets_output}skeleton_spline_smoothed_K.csv",
+        skeleton_spline_X_coords= "{datasets_output}skeleton_spline_smoothed_X_coords.csv",
+        skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_smoothed_Y_coords.csv",
         conc_gradient_array= config["conc_gradient_array"],
         distance_array= config["distance_array"]
     params:
@@ -288,33 +330,23 @@ rule chemotaxis_analysis:
         odor_pos  = config["odor_pos"],
         tif_path = "{datasets_output}../track.tif",
     output:
-        #angle_animation= "{datasets_output}angle_animation.avi",
         chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
         chemotaxis_params = "{datasets_output}chemotaxis_params.csv",
-        #worm_movie = "{datasets_output}worm_movie.avi",
     run:
-        from chemotaxis_analysis_high_res import initialize_load_files_population
+        from chemotaxis_analysis_high_res import initialize_load_files_high_res_all
         import tifffile as tiff
         from imutils import MicroscopeDataReader
         import dask.array as da
         import numpy as np
 
         def get_video_resolution(tif_path):
-            
-            # List all files in the directory
             reader_obj = MicroscopeDataReader(tif_path, as_raw_tiff=True, raw_tiff_num_slices=1)
             tif = da.squeeze(reader_obj.dask_array)
             
             for i, img in enumerate(tif):
-                # Read the first frame
-                
                 first_frame = np.array(img)
-                
-                # Get the x and y dimensions
                 video_resolution_y, video_resolution_x = first_frame.shape
-
                 break
-
             
             return video_resolution_x, video_resolution_y
 
@@ -322,9 +354,8 @@ rule chemotaxis_analysis:
         video_resolution_x, video_resolution_y = get_video_resolution(tif_path)
 
         print(video_resolution_x, video_resolution_y)
-        
 
-        initialize_load_files_population.main([
+        initialize_load_files_high_res_all.main([
             '--reversal_annotation', str(input.reversal_annotation),
             '--skeleton_spline', str(input.spline_K),
             '--worm_pos', str(params.worm_pos),
@@ -339,4 +370,6 @@ rule chemotaxis_analysis:
             '--turn_annotation', str(input.turn_annotation),
             '--top_left_pos', str(params.top_left_pos),
             '--odor_pos', str(params.odor_pos),
+            '--diffusion_time_offset', str(3600),
+            '--img_type', str('crop'),
         ])
