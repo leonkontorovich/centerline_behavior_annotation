@@ -234,12 +234,16 @@ rule process_skeleton_curvature:
             '--output_smoothed_curvature', str(output.output_smoothed_curvature)
         ])
 
-
 rule delete_temp_data:
     input:
         avi = "{datasets_output}track.avi",
         processed_stack = "{datasets_output}track_mask_corrected.btf",
         output_file = "{datasets_output}track_mask.btf",
+        output_spline_K = "{datasets_output}skeleton_spline_K.csv",
+        output_spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
+        output_spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv",
+        # Add dependency on basic_analysis completion
+        chemotaxis_analysis_done = "{datasets_output}chemotaxis_analysis.done"
     output:
         # This is a dummy output to ensure the rule is executed
         temp_cleanup = temp("{datasets_output}temp_cleanup.done")
@@ -315,23 +319,24 @@ rule calc_turns_by_roundness:
 
 rule chemotaxis_analysis:
     input:
-        reversal_annotation="{datasets_output}reversal_annotation.csv",
-        turn_annotation="{datasets_output}turn_annotation_by_roundness.csv",
-        spline_K= "{datasets_output}skeleton_spline_smoothed_K.csv",
-        skeleton_spline_X_coords= "{datasets_output}skeleton_spline_smoothed_X_coords.csv",
-        skeleton_spline_Y_coords= "{datasets_output}skeleton_spline_smoothed_Y_coords.csv",
-        conc_gradient_array= config["conc_gradient_array"],
-        distance_array= config["distance_array"]
+        reversal_annotation = "{datasets_output}reversal_annotation.csv",
+        turn_annotation = "{datasets_output}turn_annotation_by_roundness.csv",
+        spline_K = "{datasets_output}skeleton_spline_K_new_smoothed.csv",  # Updated
+        skeleton_spline_X_coords = "{datasets_output}skeleton_spline_X_coords_new.csv",  # Updated 
+        skeleton_spline_Y_coords = "{datasets_output}skeleton_spline_Y_coords_new.csv",  # Updated
+        conc_gradient_array = config["conc_gradient_array"],
+        distance_array = config["distance_array"]
     params:
         factor_px_to_mm = config["factor_px_to_mm"],
         fps = config["fps"],
-        worm_pos= "{datasets_output}../track.txt",
+        worm_pos = "{datasets_output}../track.txt",
         top_left_pos = config["top_left"],
-        odor_pos  = config["odor_pos"],
+        odor_pos = config["odor_pos"],
         tif_path = "{datasets_output}../track.tif",
     output:
-        chemotaxis_overview= "{datasets_output}chemotaxis_overview.png",
+        chemotaxis_overview = "{datasets_output}chemotaxis_overview.png",
         chemotaxis_params = "{datasets_output}chemotaxis_params.csv",
+        done = touch("{datasets_output}chemotaxis_analysis.done")
     run:
         from chemotaxis_analysis_high_res import initialize_load_files_high_res_all
         import tifffile as tiff

@@ -25,11 +25,12 @@ initial_segment: 4
 final_segment: 14
 
 #preprocess spline
-spacing: 5
+spacing: 2
 num_sampled_points: 10000
 smoothing: 0.1
 time_sigma: 2.0
 spatial_sigma: 1.0
+max_columns: 0 #dynamic mode
 
 window: 10
 min_round_threshold: 0.55
