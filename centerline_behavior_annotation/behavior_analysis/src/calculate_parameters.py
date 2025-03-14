@@ -14,7 +14,11 @@ def worm_speed(df):
 
     # tdelta = df.index[1] - df.index[0]  # units = nanoseconds
     tdelta = pd.Series(df.index).diff().mean()
-    tdelta_s = tdelta.delta / 1e9
+    try:
+        tdelta_s = tdelta.delta / 1e9
+    except AttributeError:
+        # Newer pandas versions have a different way of calculating the timedelta
+        tdelta_s = pd.Timedelta(tdelta).total_seconds()
     speed_mm_per_s = speed / tdelta_s
 
     return speed_mm_per_s
