@@ -187,34 +187,20 @@ rule create_centerline:
             '--number_of_spline', str(params.number_of_spline),
             '--min_worm_length', str(params.min_worm_length)
         ])
-
 rule process_skeleton_curvature:
     input:
         skeleton_x = "{datasets_output}skeleton_spline_X_coords.csv",
         skeleton_y = "{datasets_output}skeleton_spline_Y_coords.csv"
     output:
-        output_x = "{datasets_output}skeleton_spline_smoothed_X_coords.csv",
-        output_y = "{datasets_output}skeleton_spline_smoothed_Y_coords.csv",
-        output_curvature = "{datasets_output}skeleton_spline_K.csv",
-        output_smoothed_curvature = "{datasets_output}skeleton_spline_smoothed_K.csv"
+        output_x = "{datasets_output}skeleton_spline_X_coords_new.csv",
+        output_y = "{datasets_output}skeleton_spline_Y_coords_new.csv",
+        output_curvature = "{datasets_output}skeleton_spline_K_new.csv",
+        output_smoothed_curvature = "{datasets_output}skeleton_spline_K_new_smoothed.csv"
     params:
-        # Distance between points after resampling the skeleton curve
         spacing = config['spacing'],
-        
-        # Number of points to sample during initial spline fitting
-        # Higher values give more precise curve representation
         num_sampled_points = config['num_sampled_points'],
-        
-        # Controls how closely the spline follows original points
-        # Lower values = closer fit, higher values = smoother curve
         smoothing = config['smoothing'],
-        
-        # Controls smoothing along the time dimension
-        # Higher values reduce temporal noise but may blur rapid movements
         time_sigma = config['time_sigma'],
-        
-        # Controls smoothing along the spatial dimension
-        # Higher values create smoother curves but may lose fine details
         spatial_sigma = config['spatial_sigma']
     run:
         import sys
@@ -267,7 +253,7 @@ rule delete_temp_data:
 
 rule annotate_reversals:
     input:
-        curvature_file = "{datasets_output}skeleton_spline_smoothed_K.csv"
+        curvature_file = "{datasets_output}skeleton_spline_K_new_smoothed.csv"
     params:
         pca_model_path = config["pca_model_path"],
         initial_segment = config["initial_segment"],
