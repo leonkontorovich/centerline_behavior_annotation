@@ -40,6 +40,75 @@ def resample_skeleton(x_coords, y_coords, spacing=10, num_sampled_points=10000, 
     new_x, new_y = arc_length_resampling(tck, num_sampled_points, spacing)
     return new_x, new_y
 
+
+def calculate_skeleton_length_statistics(skel_x_df, skel_y_df):
+    """
+    Calculate skeleton length statistics across all frames and return a representative length.
+    Uses the 60th percentile as the representative length, which is slightly above average.
+
+    Parameters:
+    -----------
+    skel_x_df : pandas.DataFrame
+        DataFrame with x coordinates
+    skel_y_df : pandas.DataFrame
+        DataFrame with y coordinates
+
+    Returns:
+    --------
+    tuple : (representative_length, length_statistics_dict)
+    """
+    # Calculate path lengths for each frame
+    path_lengths = []
+
+    for idx in range(len(skel_x_df)):
+        # Skip if row contains all NaN
+        if skel_x_df.iloc[idx].isna().all() or skel_y_df.iloc[idx].isna().all():
+            continue
+
+        # Get non-NaN coordinates
+        mask = ~(skel_x_df.iloc[idx].isna() | skel_y_df.iloc[idx].isna())
+        if mask.sum() < 2:
+            continue
+
+        x = skel_x_df.iloc[idx][mask].values
+        y = skel_y_df.iloc[idx][mask].values
+
+        # Calculate path length
+        total_length = 0
+        for i in range(len(x) - 1):
+            segment_length = np.sqrt((x[i + 1] - x[i]) ** 2 + (y[i + 1] - y[i]) ** 2)
+            total_length += segment_length
+
+        if total_length > 0:
+            path_lengths.append(total_length)
+
+    if not path_lengths:
+        print("Warning: Could not calculate any valid path lengths. Using default length of 100.")
+        return 100, {"min": 0, "mean": 100, "median": 100, "percentile_60": 100, "max": 100}
+
+    # Calculate statistics
+    percentile_60 = np.percentile(path_lengths, 60)
+    stats = {
+        "min": np.min(path_lengths),
+        "mean": np.mean(path_lengths),
+        "median": np.median(path_lengths),
+        "percentile_60": percentile_60,
+        "max": np.max(path_lengths)
+    }
+
+    representative_length = percentile_60
+
+    print(f"Skeleton length statistics:")
+    print(f"  Minimum length: {stats['min']:.2f} pixels")
+    print(f"  Mean length: {stats['mean']:.2f} pixels")
+    print(f"  Median length: {stats['median']:.2f} pixels")
+    print(f"  60th percentile: {stats['percentile_60']:.2f} pixels")
+    print(f"  Maximum length: {stats['max']:.2f} pixels")
+    print(f"  Using 60th percentile ({representative_length:.2f} pixels) as reference length")
+
+    return representative_length, stats
+
+
 def refine_skeleton_spacing(skel_x_df, skel_y_df, spacing=10, num_sampled_points=10000, smoothing=0.1):
     print(f"Processing {len(skel_x_df)} frames...")
     print(f"Parameters: spacing={spacing}, sampling_points={num_sampled_points}, smoothing={smoothing}")
@@ -329,8 +398,14 @@ def main(arg_list=None):
     # Input files
     parser.add_argument('--skeleton_x', type=str, required=True, help='Path to skeleton X coordinates CSV')
     parser.add_argument('--skeleton_y', type=str, required=True, help='Path to skeleton Y coordinates CSV')
-    # Parameters
-    parser.add_argument('--spacing', type=float, default=5, help='Spacing between points (default: 5)')
+
+    # Spacing parameters - users can provide either absolute or relative spacing
+    parser.add_argument('--spacing', type=float, default=None,
+                        help='Absolute spacing between points in pixels (if provided, overrides relative_spacing)')
+    parser.add_argument('--relative_spacing', type=float, default=2.0,
+                        help='Spacing between points as percentage of skeleton length (default: 2.0, ignored if --spacing is provided)')
+
+    # Other parameters
     parser.add_argument('--num_sampled_points', type=int, default=10000,
                         help='Number of sampling points (default: 10000)')
     parser.add_argument('--smoothing', type=float, default=0.1, help='Smoothing factor (default: 0.1)')
@@ -356,11 +431,26 @@ def main(arg_list=None):
     skeleton_x = pd.read_csv(args.skeleton_x, header=None)
     skeleton_y = pd.read_csv(args.skeleton_y, header=None)
 
-    # Process skeleton
+    # Calculate skeleton length statistics if using relative spacing
+    if args.spacing is None:
+        print("\nAnalyzing skeleton length across all frames...")
+        representative_length, length_stats = calculate_skeleton_length_statistics(
+            skeleton_x, skeleton_y
+        )
+
+        # Calculate absolute spacing from relative spacing
+        spacing = (args.relative_spacing / 100.0) * representative_length
+        print(f"\nConverting relative spacing {args.relative_spacing}% to absolute: {spacing:.2f} pixels")
+    else:
+        # Use absolute spacing if provided
+        spacing = args.spacing
+        print(f"\nUsing provided absolute spacing: {spacing} pixels")
+
+    # Process skeleton with the calculated spacing
     new_x_df, new_y_df = refine_skeleton_spacing(
         skeleton_x,
         skeleton_y,
-        spacing=args.spacing,
+        spacing=spacing,
         num_sampled_points=args.num_sampled_points,
         smoothing=args.smoothing
     )
@@ -378,7 +468,7 @@ def main(arg_list=None):
     # Dynamic mode: calculate optimal number of points based on average length
     if args.max_columns == 0:
         print("\nUsing dynamic mode to determine optimal point count...")
-        optimal_points = calculate_optimal_point_count(new_x_df, new_y_df, args.spacing)
+        optimal_points = calculate_optimal_point_count(new_x_df, new_y_df, spacing)
 
         # Find optimal column crop point using rate of change detection
         print("\nAnalyzing column occupancy using rate of change detection...")
@@ -443,7 +533,7 @@ rule process_skeleton_curvature:
         spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
         spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv"
     params:
-        spacing = config['spacing'],
+        relative_spacing = config['relative_spacing'],
         num_sampled_points = config['num_sampled_points'],
         smoothing = config['smoothing'],
         time_sigma = config['time_sigma'],
@@ -456,11 +546,11 @@ rule process_skeleton_curvature:
         spline_K_new_smooth = "{datasets_output}skeleton_spline_K_new_smoothed.csv"
     run:
         from centerline_behavior_annotation.centerline.dev import centerline_equi_distance_2d_smoothing
-        
+
         centerline_equi_distance_2d_smoothing.main([
             '--skeleton_x', str(input.spline_X),
             '--skeleton_y', str(input.spline_Y),
-            '--spacing', str(params.spacing),
+            '--relative_spacing', str(params.relative_spacing),
             '--num_sampled_points', str(params.num_sampled_points),
             '--smoothing', str(params.smoothing),
             '--time_sigma', str(params.time_sigma),
@@ -473,11 +563,10 @@ rule process_skeleton_curvature:
         ])
 
 #preprocess spline
-spacing: 2
+relative_spacing: 2.0  # 2% of skeleton length
 num_sampled_points: 10000
 smoothing: 0.1
 time_sigma: 2.0
 spatial_sigma: 1.0
 max_columns: 0 #dynamic mode - cuts skelleton where nan content increases 50%+
-
 '''
