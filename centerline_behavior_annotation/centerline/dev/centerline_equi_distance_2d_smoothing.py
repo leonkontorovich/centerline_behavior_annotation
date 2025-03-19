@@ -562,6 +562,7 @@ rule process_skeleton_curvature:
             '--output_smoothed_curvature', str(output.spline_K_new_smooth)
         ])
 
+
 #preprocess spline
 relative_spacing: 2.0  # 2% of skeleton length
 num_sampled_points: 10000

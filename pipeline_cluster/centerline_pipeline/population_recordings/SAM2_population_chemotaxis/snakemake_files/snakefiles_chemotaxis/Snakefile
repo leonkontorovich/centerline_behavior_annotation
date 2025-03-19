@@ -18,13 +18,14 @@ print(DATASETS)
 
 rule targets:
     input:
+        # List temp_cleanup as the first target
+        temp_cleanup = expand("{datasets_output}temp_cleanup.done", datasets_output=DATASETS_OUTPUT),
+        # Then list all other targets
         chemotaxis_overview = expand("{datasets_output}chemotaxis_overview.png", datasets_output=DATASETS_OUTPUT),
         chemotaxis_params = expand("{datasets_output}chemotaxis_params.csv", datasets_output=DATASETS_OUTPUT),
-        principal_components=expand("{datasets_output}principal_components.csv",datasets_output=DATASETS_OUTPUT),
-        output_spline_X=expand("{datasets_output}skeleton_spline_X_coords.csv",datasets_output=DATASETS_OUTPUT),
-        output_spline_Y=expand("{datasets_output}skeleton_spline_Y_coords.csv",datasets_output=DATASETS_OUTPUT),
-        # No expand() needed for temp_cleanup
-        temp_cleanup = expand("{datasets_output}temp_cleanup.done",datasets_output=DATASETS_OUTPUT),
+        principal_components = expand("{datasets_output}principal_components.csv", datasets_output=DATASETS_OUTPUT),
+        output_spline_X = expand("{datasets_output}skeleton_spline_X_coords.csv", datasets_output=DATASETS_OUTPUT),
+        output_spline_Y = expand("{datasets_output}skeleton_spline_Y_coords.csv", datasets_output=DATASETS_OUTPUT),
 
 rule tiff2avi:
     input:
@@ -53,15 +54,17 @@ rule sam2_segment:
     output:
         output_file = "{datasets_output}track_mask.btf"
     params:
-        script_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/sam2-video-processing_from_jpeg_batch_pipeline.py",
         column_names = ["neck"],
         model_path = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
         downsample_factor = config["downsample_factor"],
         batch_size = config["batch_size"],
     shell:
         """
+        # Load CUDA toolkit module first
+        module load cuda-toolkit/12.6.3
+
         # Activate the environment
-        source /lisc/app/conda/miniforge3/bin/activate  /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared
 
         # Display the temporary directory being used
         echo "Using temporary directory: $TMPDIR"
@@ -82,8 +85,8 @@ rule sam2_segment:
         # Add a small delay to ensure filesystem sync
         sleep 2
 
-        # Run the script within the temporary directory
-        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import main; main(['-video_path', '$TMPDIR/track.avi', '-output_file_path', '$TMPDIR/track_mask.btf', '-DLC_csv_file_path', '$TMPDIR/track_dlc.csv', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}'])"
+        # Run the script within the temporary directory (fixed syntax)
+        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import main; main(['-video_path', '$TMPDIR/track.avi', '-output_file_path', '$TMPDIR/track_mask.btf', '-DLC_csv_file_path', '$TMPDIR/track_dlc.csv', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
 
         # Verify output file exists and wait for it to be fully written
         while [ ! -f $TMPDIR/track_mask.btf ] || [ ! -s $TMPDIR/track_mask.btf ]; do
@@ -132,14 +135,15 @@ rule dlc_analyze_videos:
     params:
         dlc_model_configfile_path = config["dlc_model_configfile_path"],
         network_string = config["network_string"],
-        shuffle=2,
+        shuffle = 2
     output:
         hdf5_file = "{datasets_output}track"+config["network_string"]+".h5",
-        csv= "{datasets_output}track"+config["network_string"]+".csv"
+        csv_file = "{datasets_output}track"+config["network_string"]+".csv",
     shell:
         """
-        source /lisc/app/conda/miniforge3/bin/activate /lisc/app/conda/miniforge3/envs/deeplabcut-2.3.10 
-        python -c "import deeplabcut; deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', ['{input.avi}'], shuffle={params.shuffle}, videotype='avi', gputouse=0, save_as_csv=True)"
+        source /lisc/app/conda/miniforge3/bin/activate /lisc/app/conda/miniforge3/envs/deeplabcut-2.3.10
+        module load cuda-toolkit/12.6.3
+        python -c "import deeplabcut, os; fname = deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', '{input.avi}', videotype='avi', gputouse=${{CUDA_VISIBLE_DEVICES:-0}}, save_as_csv=True, shuffle={params.shuffle})"
         """
 
 rule dlc_filter_predictions_arima:
@@ -187,6 +191,8 @@ rule create_centerline:
             '--number_of_spline', str(params.number_of_spline),
             '--min_worm_length', str(params.min_worm_length)
         ])
+        
+        
 rule process_skeleton_curvature:
     input:
         skeleton_x = "{datasets_output}skeleton_spline_X_coords.csv",
@@ -197,23 +203,25 @@ rule process_skeleton_curvature:
         output_curvature = "{datasets_output}skeleton_spline_K_new.csv",
         output_smoothed_curvature = "{datasets_output}skeleton_spline_K_new_smoothed.csv"
     params:
-        spacing = config['spacing'],
+        spacing = config['relative_spacing'],
         num_sampled_points = config['num_sampled_points'],
         smoothing = config['smoothing'],
         time_sigma = config['time_sigma'],
-        spatial_sigma = config['spatial_sigma']
+        spatial_sigma = config['spatial_sigma'],
+        max_columns = config['max_columns'],
     run:
         import sys
-        from centerline_behavior_annotation.centerline.dev import centerline_even_distance_2d_smoothing
+        from centerline_behavior_annotation.centerline.dev import centerline_equi_distance_2d_smoothing
 
-        centerline_even_distance_2d_smoothing.main([
+        centerline_equi_distance_2d_smoothing.main([
             '--skeleton_x', str(input.skeleton_x),
             '--skeleton_y', str(input.skeleton_y),
-            '--spacing', str(params.spacing),
+            '--relative_spacing', str(params.spacing),
             '--num_sampled_points', str(params.num_sampled_points),
             '--smoothing', str(params.smoothing),
             '--time_sigma', str(params.time_sigma),
             '--spatial_sigma', str(params.spatial_sigma),
+            '--max_columns', str(params.max_columns),
             '--output_x', str(output.output_x),
             '--output_y', str(output.output_y),
             '--output_curvature', str(output.output_curvature),
@@ -222,34 +230,43 @@ rule process_skeleton_curvature:
 
 rule delete_temp_data:
     input:
+        # Include ALL final output files here, not just intermediate files
         avi = "{datasets_output}track.avi",
         processed_stack = "{datasets_output}track_mask_corrected.btf",
         output_file = "{datasets_output}track_mask.btf",
         output_spline_K = "{datasets_output}skeleton_spline_K.csv",
         output_spline_X = "{datasets_output}skeleton_spline_X_coords.csv",
         output_spline_Y = "{datasets_output}skeleton_spline_Y_coords.csv",
-        # Add dependency on basic_analysis completion
-        chemotaxis_analysis_done = "{datasets_output}chemotaxis_analysis.done"
+        # Final outputs
+        chemotaxis_overview = "{datasets_output}chemotaxis_overview.png",
+        chemotaxis_params = "{datasets_output}chemotaxis_params.csv",
+        principal_components = "{datasets_output}principal_components.csv"
     output:
-        # This is a dummy output to ensure the rule is executed
-        temp_cleanup = temp("{datasets_output}temp_cleanup.done")
+        # Remove the temp() directive as this is a target file
+        temp_cleanup = "{datasets_output}temp_cleanup.done"
     run:
         import os
+        import time
+        
+        # Add a small delay to ensure all files are completely written
+        time.sleep(5)
 
-        # List of files to delete
+        # List of files to delete (only temporary/intermediate files)
         files_to_delete = [input.avi, input.processed_stack, input.output_file]
 
         for file in files_to_delete:
             if os.path.exists(file):
-                os.remove(file)
-                print(f"Deleted: {file}")
+                try:
+                    os.remove(file)
+                    print(f"Deleted: {file}")
+                except Exception as e:
+                    print(f"Could not delete {file}: {e}")
             else:
                 print(f"File not found: {file}")
 
         # Create a dummy file to mark completion
         with open(output.temp_cleanup, 'w') as f:
             f.write("Temporary files cleaned up")
-
 
 rule annotate_reversals:
     input:
