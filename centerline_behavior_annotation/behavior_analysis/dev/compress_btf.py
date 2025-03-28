@@ -1,0 +1,64 @@
+from imutils import MicroscopeDataReader
+import zarr
+
+# Load the data
+data_path = r"C:\Data\ZimmerLab\test_centerline\raw_stack_AVG_background_subtracted_normalised_worm_segmented_mask_coil_segmented_mask.btf"
+
+mask_data = MicroscopeDataReader(data_path)
+
+import os
+import shutil
+import subprocess
+from pathlib import Path
+import zarr
+
+
+def zip_raw_data_zarr(raw_fname, delete_original=True, verbose=1):
+    out_fname_zip = Path(raw_fname).with_suffix('.zarr.zip')
+    assert os.path.exists(raw_fname), f"Did not find original zarr at {raw_fname}"
+    if verbose >= 1:
+        print(f"Zipping zarr file {raw_fname} to {out_fname_zip}")
+
+    cmd = ['7z', 'a', '-tzip']
+    cmd.extend([str(out_fname_zip), os.path.join(str(raw_fname), '.')])
+
+    subprocess.run(cmd)
+
+    if delete_original:
+        if verbose >= 1:
+            print(f"Deleting original: {raw_fname}")
+        shutil.rmtree(raw_fname)
+
+    return out_fname_zip
+
+
+def zarr_reader_folder_or_zipstore(fname: str, depth: int = 0):
+    """Enforces readonly access"""
+    try:
+        if Path(fname).is_dir():
+            dat = zarr.open(fname, mode='r')
+        elif fname.endswith('.zarr.zip'):
+            store = zarr.ZipStore(fname, mode='r')
+            dat = zarr.open(store)
+        else:
+            raise NotImplementedError(f"Not a zarr directory or zip store: {fname}")
+    except OSError as e:
+        if depth > 0:
+            raise e
+        # On Windows, if the path contains a special character, zarr.open() will fail. Retry with raw string
+        dat = zarr_reader_folder_or_zipstore(rf"{fname}", depth=depth + 1)
+
+    return dat
+
+
+# def save_compressed_mask(mask_fname, num_frames):
+import logging
+from tqdm import tqdm
+import numpy as np
+
+raw_data = zarr_reader_folder_or_zipstore(mask_fname)
+background_video_list = mask_data
+fname_compressed_mask = mask_fname.replace('.btf', '_compressed_mask.zarr.zip')
+logging.info(f"Creating mask data copy at {fname_compressed_mask}")
+store = zarr.DirectoryStore(fname_compressed_mask)
+compressed_mask = zarr.zeros_like(raw_data, store=store)
