@@ -48,30 +48,31 @@ def main(arg_list):
     parser = argparse.ArgumentParser(description='Description of your program')
     parser.add_argument('-i', '--input_path', help='folder of wbfm dataset', required=True)
     parser.add_argument('-r', '--raw_data_path', help='folder of raw dataset', required=True)
-
+    parser.add_argument('-c', '--config_file', help='config file that defines vulva side', required=True)
     args = vars(parser.parse_args(arg_list))
     project = args['input_path']
     raw_data_path = args['raw_data_path']
+    config_yaml_path = args['config_file']
 
-    logging.info(f"Output folder: {project}, raw data folder: {raw_data_path}")
+    logging.info(f"Output folder: {project}, raw data folder: {raw_data_path}, config file: {config_yaml_path}")
 
     input_path = glob.glob(os.path.join(project, "skeleton_spline_K.csv"))[0]
     output_path = os.path.splitext(input_path)[0]+"_signed.csv"
 
     # Get config file
-    config_yaml_path = glob.glob(os.path.join(raw_data_path, "config.yaml"))
-    if len(config_yaml_path) == 1:
-        config_yaml_path = config_yaml_path[0]
-    elif len(config_yaml_path) == 0:
-        logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        logging.warning(f"No config file found in {raw_data_path}; SKIPPING THIS STEP!!!!!!!!")
-        logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        ventral = 'right'  # Doesn't change anything
-        invert_df_based_on_ventral(input_path, output_path, ventral)
-        return
-        # raise FileNotFoundError(f"No config file found in {raw_data_path}")
-    else:
-        raise FileNotFoundError(f"More than one config file found in {raw_data_path}")
+    # config_yaml_path = glob.glob(os.path.join(raw_data_path, "config.yaml"))
+    # if len(config_yaml_path) == 1:
+    #     config_yaml_path = config_yaml_path[0]
+    # elif len(config_yaml_path) == 0:
+    #     logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #     logging.warning(f"No config file found in {raw_data_path}; SKIPPING THIS STEP!!!!!!!!")
+    #     logging.warning(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    #     ventral = 'right'  # Doesn't change anything
+    #     invert_df_based_on_ventral(input_path, output_path, ventral)
+    #     return
+    #     # raise FileNotFoundError(f"No config file found in {raw_data_path}")
+    # else:
+    #     raise FileNotFoundError(f"More than one config file found in {raw_data_path}")
 
     # Read yaml file and get ventral parameter (only one needed)
     with open(config_yaml_path, 'r') as f:
