@@ -15,7 +15,7 @@ batch_size: 200
 # Worm detection parameters
 min_worm_area: 400
 max_worm_area: 1000
-min_worm_lenght: 60  # Note: there's a typo in 'length'
+min_worm_lenght: 83  # Note: there's a typo in 'length'
 
 # Annotation parameters
 nose: head
@@ -23,16 +23,17 @@ tail: tail
 num_splines: 20
 initial_segment: 4
 final_segment: 14
+
+#preprocess spline
+relative_spacing: 2.0  # 2% of skeleton length
+num_sampled_points: 10000
+smoothing: 0.1
+time_sigma: 2.0
+spatial_sigma: 1.0
+max_columns: 0 #dynamic mode - cuts skelleton where nan content increases 50%+
+
 window: 10
 min_round_threshold: 0.55
 max_round_threshold: 0.99
 upper_threshold: '0.000001'
 lower_threshold: '-0.00001'
-
-# Position parameters
-top_left: x=496, y=211
-odor_pos: x=2288, y=3721
-
-# Data file paths
-conc_gradient_array: /lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_concentration_array.npy
-distance_array: /lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_distance_array.npy
