@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# Check if -c flag is provided
+RUN_LOCAL=false
+while getopts "c" opt; do
+  case ${opt} in
+    c ) RUN_LOCAL=true ;;
+    * ) echo "Usage: $0 [-c]" >&2
+        echo "  -c  Run locally instead of on cluster" >&2
+        exit 1 ;;
+  esac
+done
+
 # Maximum parallel jobs
 MAX_JOBS=4
 
@@ -15,19 +26,32 @@ fi
 # Improved print statement
 echo "=========================================="
 echo "🔍 Found $NUM_TRACKS track directories"
-echo "🚀 Submitting up to $JOBS parallel jobs"
+if $RUN_LOCAL; then
+  echo "🖥️  Running locally with $JOBS cores"
+else
+  echo "🚀 Submitting up to $JOBS parallel jobs to cluster"
+fi
 echo "=========================================="
-
-OPT="sbatch -t {cluster.time} -p {cluster.partition} --cpus-per-task {cluster.cpus_per_task} \
---mem {cluster.mem} --output {cluster.output} --gres {cluster.gres} --nice=0"
 
 # First unlock the workflow (in case it was locked from a previous failed run)
 echo "Unlocking workflow..."
 snakemake --unlock --configfile config.yaml
 
-# Then run the workflow with at most $JOBS parallel submissions
+# Run the workflow
 echo "Starting workflow execution..."
-snakemake \
+if $RUN_LOCAL; then
+  # Run locally with specified number of cores
+  snakemake \
+    --configfile config.yaml \
+    --cores $JOBS \
+    --keep-going \
+    --rerun-incomplete
+else
+  # Run on cluster
+  OPT="sbatch -t {cluster.time} -p {cluster.partition} --cpus-per-task {cluster.cpus_per_task} \
+  --mem {cluster.mem} --output {cluster.output} --gres {cluster.gres} --nice=0"
+  
+  snakemake \
     --configfile config.yaml \
     --latency-wait 500 \
     --cluster "$OPT" \
@@ -35,3 +59,4 @@ snakemake \
     --jobs $JOBS \
     --keep-going \
     --rerun-incomplete
+fi

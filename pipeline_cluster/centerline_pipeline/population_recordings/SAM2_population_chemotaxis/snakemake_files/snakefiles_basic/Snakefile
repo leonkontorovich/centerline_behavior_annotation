@@ -9,7 +9,12 @@ rule all:
             [
                 "{dataset}/{track_dir}/output/chemotaxis_analysis.pdf",
                 "{dataset}/{track_dir}/output/chemotaxis_params.csv",
-                "{dataset}/{track_dir}/output/worm_movie.avi"
+                "{dataset}/{track_dir}/output/worm_movie.avi",
+                # Add the Hilbert transform outputs
+                "{dataset}/{track_dir}/output/hilbert_regenerated_carrier.csv",
+                "{dataset}/{track_dir}/output/hilbert_inst_freq.csv",
+                "{dataset}/{track_dir}/output/hilbert_inst_phase.csv",
+                "{dataset}/{track_dir}/output/hilbert_inst_amplitude.csv"
             ],
             zip,
             dataset=DATASETS.dataset,
@@ -253,6 +258,30 @@ rule calc_turns_by_roundness:
             '-max_worm_area', str(params.max_worm_area),
             '-window',        str(params.smoothing_window),
             '-output_file',   str(output.turn_annotation)
+        ])
+
+# Added rule: Hilbert transform on kymogram
+rule hilbert_transform_on_kymogram:
+    input:
+        spline_K = "{dataset}/{track_dir}/output/skeleton_spline_K_new_smoothed.csv"
+    output:
+        # Outputs as final results (not temp)
+        hilbert_regenerated_carrier = "{dataset}/{track_dir}/output/hilbert_regenerated_carrier.csv",
+        hilbert_inst_freq = "{dataset}/{track_dir}/output/hilbert_inst_freq.csv",
+        hilbert_inst_phase = "{dataset}/{track_dir}/output/hilbert_inst_phase.csv",
+        hilbert_inst_amplitude = "{dataset}/{track_dir}/output/hilbert_inst_amplitude.csv"
+    params:
+        output_path = "{dataset}/{track_dir}/output/", # Ulises' functions expect the final slash
+        fs = config["fps"],
+        window = config["fps"]
+    run:
+        from centerline_behavior_annotation.behavior_analysis.src import hilbert_transform
+
+        hilbert_transform.main([
+            '-i', str(params.output_path),
+            '-kp', str(input.spline_K),
+            '-fs', str(params.fs),
+            '-w', str(params.window),
         ])
 
 rule chemotaxis_analysis:
