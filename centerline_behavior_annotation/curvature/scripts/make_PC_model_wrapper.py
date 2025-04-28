@@ -1,8 +1,8 @@
 from centerline_behavior_annotation.curvature.src.make_PCA import make_pc_model_wrapper
 import argparse
 
-make_pc_model_wrapper(root_folder=r"C:\Data\ZimmerLab\develop_new_PC_model")
-# make_pc_model_wrapper(root_folder=r"Z:\neurobiology\zimmer\ItamarLev\feedback_story\WBFM\1per_barlow")
+# make_pc_model_wrapper(root_folder=r"C:\Data\ZimmerLab\develop_new_PC_model")
+make_pc_model_wrapper(root_folder=r"Z:\neurobiology\zimmer\ItamarLev\feedback_story\WBFM\1per_barlow")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Make PC model wrapper")

@@ -311,30 +311,37 @@ def pca_transform_data(pca_path, data):
 
 
 
-def make_cross_product_histogram(cross_product_values:list)->tuple:
+def make_cross_product_histogram(cross_product_values:list, iqr_scalar:float = 3)->tuple:
     """
     make a histogram of the cross-product values
     :param cross_product_values: cross-product value list
-    :return:
+    :param iqr_scalar: float, IQR scalar for filtering
+    :return: tuple
     """
     # plot histogram of the cross-product values
     fig, ax = plt.subplots(figsize=(10, 10))
 
-    # remove outliers with Q1 and Q3
-    q1 = np.nanquantile(cross_product_values, 0.25)
-    q3 = np.nanquantile(cross_product_values, 0.75)
+    # calculate quantiles and IQR based on absolute values
+    abs_cross_product_values = np.abs(cross_product_values)
+    q1 = np.nanquantile(abs_cross_product_values, 0.25)
+    q3 = np.nanquantile(abs_cross_product_values, 0.75)
     iqr = q3 - q1
-    lower_bound = q1 - 1.5 * iqr
-    upper_bound = q3 + 1.5 * iqr
-    cross_product_values = [value for value in cross_product_values if value >= lower_bound and value <= upper_bound]
+
+    # define bounds based on absolute values
+    lower_bound = q1 - iqr_scalar * iqr
+    upper_bound = q3 + iqr_scalar * iqr
+
+    # filter original values based on absolute value bounds
+    filtered_values = [value for value in cross_product_values if
+                       np.abs(value) >= lower_bound and np.abs(value) <= upper_bound]
 
     #plot histogram of the cross-product values
-    ax.hist(cross_product_values, bins=50, color='blue', alpha=0.5)
+    ax.hist(filtered_values, bins=50, color='blue', alpha=0.5)
     plt.xlabel('Cross Product Values')
     plt.ylabel('Number of Occurrences')
     plt.title('Histogram of Cross Product Values')
     # add a red-dashed line at the median
-    median = np.nanmedian(cross_product_values)
+    median = np.nanmedian(filtered_values)
     ax.axvline(median, color='red', linestyle='dashed', linewidth=1, label=f"Median(={round(median,4)})")
     ax.axvline(0, color='black', linestyle='dashed', linewidth=1, label="0")
     # add a legend
@@ -349,11 +356,10 @@ def estimate_cross_product_directionality(cross_product_values:list)->str:
     :return: str, directionality of the cross-product values
     """
     median = round(np.nanmedian(cross_product_values), 4)
-    direction = "forward" if median > 0 else "backward"
     threshold = "< 0" if median > 0 else "> 0"
     report_text = (f"\n===================================================\n"
                    f"Median of cross product values: {median}."
-            f"\nAssuming worms are mostly moving {direction}\n"
+            f"\nAssuming worms are mostly moving forward\n"
             f"use a threshold of {threshold} to annotate reversals.")
     return report_text
 
