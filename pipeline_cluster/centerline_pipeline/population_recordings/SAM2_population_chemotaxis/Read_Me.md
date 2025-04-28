@@ -1,6 +1,6 @@
 # Protocols for running chemotaxis assay analysis on population data 
 
-## Initial Setup
+## Initial Setup (for first time users of conda)
 
 1. Load the conda module (first-time setup only):
    ```bash
@@ -17,25 +17,29 @@
    ```bash
    conda env list
    ```
+______________________________________________________________________________________________
+## Start here if you already did set up your conda on user login!
 
    ## RUN
 1. Navigate to the experiment folder:
    ```bash
    cd "path/to/folder/of/cropped/recordings"
    ```
+   For this pipeline run everything from within the dataset working directory!
+      e.g type PWD in shell -> should show
    
-2. Activate the centerline environment:
+3. Activate the centerline environment:
    ```bash
    conda activate autoscope_behaviour_shared
    ```
 
-3. Rename TIFF files in the experiment folder:
+4. Rename TIFF files in the experiment folder:
    ```bash
    python /lisc/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
    ```
    This script renames the TIFF files to fit the pipeline's needs.
 
-4. Create folder structures and copy pipeline files:
+5. Create folder structures and copy pipeline files:
    ```bash
    # For chemotaxis pipeline files:
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh chemotaxis
@@ -44,17 +48,17 @@
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh basic
    ```
 
-5. Use annotate_odor_pos gui to annotate top_left and odor_pos
+6. Use annotate_odor_pos gui to annotate top_left and odor_pos
    -> if no odor uses just annotate top_left position with the gui.
    -> a config file will be created in the dataset folder that saves the positions and snakemake will acces this positions automatically for the corresponding experiments.
 
-6. Start a new tmux session:
+7. Start a new tmux session:
    ```bash
    tmux new -s analysis
    ```
    This allows the analysis to continue running even if you get disconnected.
 
-7. Run the analysis:
+8. Run the analysis:
    ```bash
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
    ```
