@@ -57,6 +57,10 @@ def concatenate_dataframes_behavior_specific(dataframe_path_list: list, behavior
     """
     Concatenate dataframes from a list of dataframe paths only if a specific behavior is true
     :param dataframe_path_list:
+     :param behavior_specific: str, name of the behavior, in case you want to make the PCA-model only from
+            specific timepoints in a recording. Default is None: the whole recording will be used
+    :param behavior_file_name: str, name of the behavior file eg. manual_annotation.csv, has to be located in the same
+            folder as the curvature file
     :return: concatenated_df
     """
 
