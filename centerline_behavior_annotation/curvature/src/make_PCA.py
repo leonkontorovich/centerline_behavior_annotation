@@ -4,8 +4,8 @@ from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 # adjust matplotlib tkinter backend
-import matplotlib
-matplotlib.use('TkAgg') #TODO: delete
+# import matplotlib
+# matplotlib.use('TkAgg') #TODO: uncomment when debugging on a local machine
 
 import pickle
 import numpy as np
