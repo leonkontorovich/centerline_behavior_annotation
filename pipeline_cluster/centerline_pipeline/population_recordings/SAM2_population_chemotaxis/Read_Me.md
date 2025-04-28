@@ -27,7 +27,7 @@ ________________________________________________________________________________
    ```
 
    Important: for this pipeline run every command from within the dataset working directory (path/to/folder/of/cropped/recordings) !
-      e.g type PWD in shell -> should show
+      e.g type PWD in shell
    
 3. Activate the centerline environment:
    ```bash
