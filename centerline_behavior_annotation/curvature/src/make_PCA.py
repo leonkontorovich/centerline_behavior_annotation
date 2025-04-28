@@ -52,6 +52,58 @@ def concatenate_dataframes(dataframe_path_list: list):
     concatenated_df = pd.concat(dfs)
     return concatenated_df
 
+
+def concatenate_dataframes_behavior_specific(dataframe_path_list: list, behavior_specific: str, behavior_file_name: str):
+    """
+    Concatenate dataframes from a list of dataframe paths only if a specific behavior is true
+    :param dataframe_path_list:
+     :param behavior_specific: str, name of the behavior, in case you want to make the PCA-model only from
+            specific timepoints in a recording. Default is None: the whole recording will be used
+    :param behavior_file_name: str, name of the behavior file eg. manual_annotation.csv, has to be located in the same
+            folder as the curvature file
+    :return: concatenated_df
+    """
+
+    if behavior_file_name is None:
+        raise ValueError("behavior_file_name cannot be None.")
+
+    dfs = []
+
+    for p in dataframe_path_list:
+        try:
+            df_new = pd.read_csv(p, encoding='utf8', header=None)
+
+            behavior_path = os.path.join(os.path.dirname(p), behavior_file_name)
+            behavior = pd.read_csv(behavior_path, encoding='utf8')
+
+            # Select the specific behavior column
+            if behavior_specific not in behavior.columns:
+                print(f"Warning: Behavior column '{behavior_specific}' not found in {behavior_path}. Skipping.")
+                continue
+            behavior_column = behavior[behavior_specific]
+
+            # Check if lengths match
+            if len(df_new) != len(behavior_column):
+                print(
+                    f"Warning: Length mismatch between data ({len(df_new)}) and behavior ({len(behavior_column)}) in {p}. Skipping.")
+                continue
+
+            # Now, select only the rows where behavior == 1
+            filtered_df = df_new[behavior_column == 1]
+
+            dfs.append(filtered_df)
+
+        except FileNotFoundError as e:
+            print(f"Warning: File not found: {p} or its behavior file. Skipping. ({e})")
+            continue
+        except Exception as e:
+            print(f"Warning: Error processing file {p}. Skipping. ({e})")
+            continue
+
+    concatenated_df = pd.concat(dfs, ignore_index=True)
+    return concatenated_df
+
+
 def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
     """
     get a list of curvature files from the wbfm projects folder
@@ -194,7 +246,9 @@ def make_pc_model_wrapper(root_folder: str,
                           initial_segment: int = 30,
                           end_segment: int = 80,
                           n_components: int = 5,
-                          zscore_filter: bool = True):
+                          zscore_filter: bool = True,
+                          behavior_specific: str = None,
+                          behavior_file_name: str = None):
     """
     wrapper function to make the PC model from curvature data in wbfm projects
     it saves a pickle file with the PCA model and the principal components
@@ -218,7 +272,10 @@ def make_pc_model_wrapper(root_folder: str,
             however, after checking histogram of values, and comparing it seems to not disturb much.
             Itamar: I know from experience it makes the PC model more stable and better in quality
             this is because PC is very sensitive to outliers
-    :return:
+    :param behavior_specific: str, name of the behavior, in case you want to make the PCA-model only from
+            specific timepoints in a recording. Default is None: the whole recording will be used
+    :param behavior_file_name: str, name of the behavior file eg. manual_annotation.csv, has to be located in the same
+            folder as the curvature file
     """
 
     if output_folder is None:
@@ -231,9 +288,16 @@ def make_pc_model_wrapper(root_folder: str,
     curvature_files = get_curvature_filelist_from_wbfm_projects(root_folder)
 
     # concatenate curvature dataframes
-    print(f"concatenating curvature files, it will take a while...")
-    df = concatenate_dataframes(curvature_files)
 
+
+    if behavior_specific is None:
+        print(f"concatenating curvature files, it will take a while...")
+        df = concatenate_dataframes(curvature_files)
+    else:
+        print(f"concatenating curvature files when behavior {behavior_specific} is True, it will take a while...")
+        df = concatenate_dataframes_behavior_specific(curvature_files, behavior_file_name)
+
+#
     if zscore_filter:
         df_filtered = filter_curvature_data_zscore(df)
         df_interpolated = interpolate_curvature_data(df_filtered, seg_frac_to_interp=0.1, interp_method='linear')
