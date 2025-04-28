@@ -49,7 +49,7 @@ if $RUN_LOCAL; then
 else
   # Run on cluster
   OPT="sbatch -t {cluster.time} -p {cluster.partition} --cpus-per-task {cluster.cpus_per_task} \
-  --mem {cluster.mem} --output {cluster.output} --gres {cluster.gres} --nice=0"
+  --mem {cluster.mem} --output {cluster.output} --gres {cluster.gres} --job-name={rule} --nice=0"
   
   snakemake \
     --configfile config.yaml \
