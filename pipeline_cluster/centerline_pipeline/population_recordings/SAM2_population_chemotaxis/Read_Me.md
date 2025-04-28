@@ -25,7 +25,8 @@ ________________________________________________________________________________
    ```bash
    cd "path/to/folder/of/cropped/recordings"
    ```
-   For this pipeline run everything from within the dataset working directory!
+
+   Important: for this pipeline run every command from within the dataset working directory (path/to/folder/of/cropped/recordings) !
       e.g type PWD in shell -> should show
    
 3. Activate the centerline environment:
