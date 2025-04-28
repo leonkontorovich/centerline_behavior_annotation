@@ -40,7 +40,7 @@ ________________________________________________________________________________
    ```
    This script renames the TIFF files to fit the pipeline's needs.
 
-5. Create folder structures and copy pipeline files:
+5. Create folder structures and copy pipeline files (don't run this if folderstructure already exists, but use alternative that just copys!):
    ```bash
    # For chemotaxis pipeline files:
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh chemotaxis
