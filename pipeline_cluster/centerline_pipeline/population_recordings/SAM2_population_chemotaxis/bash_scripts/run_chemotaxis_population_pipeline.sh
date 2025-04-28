@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 
-# Cluster Script Runner with Console Output & Parallel Cap and Snakemake Unlock
-# This script checks each subfolder in the current directory for the presence
-# of 'RUNME_cluster.sh', unlocks any existing Snakemake workflow, and executes
-# up to MAX_JOBS of them in parallel, printing progress to the console.
+#SBATCH --job-name=snake_controller
+#SBATCH --output=controller_%j.log
+#SBATCH --time=20-00:00:00
+#SBATCH --nodes=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=4G
+#SBATCH --mail-type=END,FAIL
+
+# This script manages the submission of multiple Snakemake workflows
+# with controlled overall parallelism
 
 # Parse command line arguments
 RUN_LOCAL=false
@@ -17,7 +23,10 @@ while getopts "c" opt; do
 done
 
 current_dir="$PWD"
-MAX_JOBS=4
+# Control how many Snakemake workflows can run simultaneously
+MAX_CONCURRENT_WORKFLOWS=4
+# Each workflow will submit up to 4 jobs in parallel (as defined in RUNME_cluster.sh)
+# This means a maximum of ~40 concurrent jobs at any time
 
 # Gather all subfolders containing RUNME_cluster.sh
 mapfile -t folders < <(
@@ -27,63 +36,63 @@ mapfile -t folders < <(
 
 NUM_FOLDERS=${#folders[@]}
 
-# Header
-echo
 echo "=========================================="
 echo "🔍 Found ${NUM_FOLDERS} subfolders with RUNME_cluster.sh"
-if $RUN_LOCAL; then
-  echo "🖥️  Running locally with up to ${MAX_JOBS} parallel jobs"
-else
-  echo "🚀 Dispatching up to ${MAX_JOBS} parallel jobs to cluster"
-fi
+echo "🚀 Will run up to ${MAX_CONCURRENT_WORKFLOWS} workflows simultaneously"
 echo "=========================================="
-echo
 
-running=0
+# Array to store job IDs
+declare -a job_ids
 
 for subfolder in "${folders[@]}"; do
     name=$(basename "$subfolder")
-    echo "→ Preparing: $name"
-
-    (
-        cd "$subfolder" || exit 1
-
-        # Unlock previous Snakemake run
-        echo "🔓 Unlocking Snakemake in $name"
-        if [[ -f config.yaml ]]; then
-            snakemake --unlock --configfile config.yaml &>> runme.log
-        fi
-
-        # Execute the pipeline
-        echo "🏃 Running RUNME_cluster.sh in $name"
-        if $RUN_LOCAL; then
-            # Pass the -c flag to the RUNME_cluster.sh script
-            bash RUNME_cluster.sh -c &>> runme.log
-        else
-            bash RUNME_cluster.sh &>> runme.log
-        fi
-
-        exitcode=$?
-        if (( exitcode == 0 )); then
-            echo "✅ Completed: $name"
-        else
-            echo "❌ Failed:    $name (exit $exitcode)"
-        fi
-    ) &
-
-    (( running++ ))
-    # throttle parallel jobs
-    if (( running >= MAX_JOBS )); then
-        wait -n
-        (( running-- ))
+    echo "→ Preparing: $name at $(date)"
+    
+    # Build the sbatch command for this workflow
+    if $RUN_LOCAL; then
+        cmd="cd $subfolder && bash RUNME_cluster.sh -c"
+    else
+        cmd="cd $subfolder && bash RUNME_cluster.sh"
     fi
-
+    
+    # Submit the job and capture its ID
+    job_id=$(sbatch --parsable \
+        --job-name="snake_${name}" \
+        --output="${subfolder}/workflow_%j.log" \
+        --time=5-00:00:00 \
+        --cpus-per-task=1 \
+        --mem=4G \
+        --wrap="$cmd")
+    
+    echo "📋 Submitted job ${job_id} for ${name}"
+    job_ids+=("$job_id")
+    
+    # If we've reached the maximum number of concurrent workflows,
+    # wait for one to finish before submitting more
+    if [ ${#job_ids[@]} -ge $MAX_CONCURRENT_WORKFLOWS ]; then
+        echo "⏳ Reached maximum concurrent workflows, waiting for one to complete..."
+        # Wait for any job to complete
+        srun --dependency=afterany:$(IFS=:; echo "${job_ids[*]}") --cpus-per-task=1 --mem=100M --time=0:01:00 /bin/true
+        
+        # Remove completed jobs from our tracking array
+        new_job_ids=()
+        for jid in "${job_ids[@]}"; do
+            if squeue -j "$jid" &>/dev/null; then
+                new_job_ids+=("$jid")
+            fi
+        done
+        job_ids=("${new_job_ids[@]}")
+        
+        echo "✅ Slot available, continuing submission (${#job_ids[@]}/${MAX_CONCURRENT_WORKFLOWS} workflows running)"
+    fi
 done
 
-# Wait for any remaining background jobs
-wait
+# Wait for all remaining jobs to complete
+if [ ${#job_ids[@]} -gt 0 ]; then
+    echo "⏳ Waiting for all remaining workflows to complete..."
+    srun --dependency=afterany:$(IFS=:; echo "${job_ids[*]}") --cpus-per-task=1 --mem=100M --time=0:01:00 /bin/true
+fi
 
-echo
 echo "=========================================="
-echo "✅ All dispatched jobs have completed"
+echo "✅ All workflow submissions completed at $(date)"
 echo "=========================================="
