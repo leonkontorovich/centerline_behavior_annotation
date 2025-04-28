@@ -12,6 +12,7 @@ However, depending on where the vulva is on each recording, a positive curvature
 
 ### Use a Wrapper to create a PCA model ###
 The wrapper does the following:
+https://github.com/Zimmer-lab/centerline_behavior_annotation/blob/main/centerline_behavior_annotation/curvature/scripts/make_PC_model_wrapper.py
 
 - finds all the curvature files of all projects inside a root folder
 
