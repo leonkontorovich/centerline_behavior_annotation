@@ -5,8 +5,11 @@ There are two subfolders, for the two main starting points:
 2. WBFM (behavior + traces)
 
 High-level pipeline to extract behavioural parameters from Open Autoscope (OA) and wbfm recordings.
-Important: this repository only contains organizational scripts (using snakemake) for running the pipeline, not the actual pipeline code itself.
+Important: these folders only contain organizational scripts (using snakemake) for running the pipeline, not the actual pipeline code itself.
 See [[## Code repos]] for more details.
+
+Note: the wbfm pipeline snakemake and other files have been moved to the wbfm repository.
+Check "new_project_defaults" for more information, specifically the snakemake folder.
 
 ## Tutorial
 On 25th of July 2023 Ulises gave a presentation about the pipeline, the slides are not self-explanatory but they can be checked under:

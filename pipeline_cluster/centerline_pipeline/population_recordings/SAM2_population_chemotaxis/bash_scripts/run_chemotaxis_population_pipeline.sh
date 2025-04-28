@@ -1,49 +1,69 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Cluster Script Runner
-# This script checks each subfolder in the current directory for the presence of 'RUNME_cluster.sh'
-# and executes it in parallel by sending each to the server via sbatch.
+# Cluster Script Runner with Console Output & Parallel Cap and Snakemake Unlock
+# This script checks each subfolder in the current directory for the presence
+# of 'RUNME_cluster.sh', unlocks any existing Snakemake workflow, and executes
+# up to MAX_JOBS of them in parallel, printing progress to the console.
 
-# Usage:
-#   Run this script from the directory containing the subfolders.
-#   Example:
-#   bash /lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/population_centerline/run_chemotaxis_population_pipeline.sh
-
-# Get current directory
 current_dir="$PWD"
+MAX_JOBS=4
 
-# Define log file
-log_file="${current_dir}/cluster_run_log.txt"
+# Gather all subfolders containing RUNME_cluster.sh
+mapfile -t folders < <(
+    find "$current_dir" -maxdepth 1 -type d \( ! -path "$current_dir" \) \
+         -exec test -f "{}/RUNME_cluster.sh" \; -print
+)
 
-# Function to log messages with timestamp
-log_message() {
-    echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "$log_file"
-}
+NUM_FOLDERS=${#folders[@]}
 
-# Initialize log
-log_message "Cluster script runner started."
+# Header
+echo
+ echo "=========================================="
+ echo "🔍 Found ${NUM_FOLDERS} subfolders with RUNME_cluster.sh"
+ echo "🚀 Dispatching up to ${MAX_JOBS} parallel jobs"
+ echo "=========================================="
+ echo
 
-# Main loop to execute RUNME_cluster.sh in each subfolder in parallel
-for subfolder in "${current_dir}"/*/ ; do
-    if [ -d "$subfolder" ]; then
-        runme_script="${subfolder}RUNME_cluster.sh"
-        if [ -f "$runme_script" ]; then
-            log_message "Dispatching RUNME_cluster.sh in $subfolder"
-            (
-                cd "$subfolder" && bash RUNME_cluster.sh
-                if [ $? -eq 0 ]; then
-                    log_message "Successfully dispatched RUNME_cluster.sh in $subfolder"
-                else
-                    log_message "Error dispatching RUNME_cluster.sh in $subfolder"
-                fi
-            ) &
-        else
-            log_message "RUNME_cluster.sh not found in $subfolder"
+running=0
+
+for subfolder in "${folders[@]}"; do
+    name=$(basename "$subfolder")
+    echo "→ Preparing: $name"
+
+    (
+        cd "$subfolder" || exit 1
+
+        # Unlock previous Snakemake run
+        echo "🔓 Unlocking Snakemake in $name"
+        if [[ -f config.yaml ]]; then
+            snakemake --unlock --configfile config.yaml &>> runme.log
         fi
+
+        # Execute the pipeline
+        echo "🏃 Running RUNME_cluster.sh in $name"
+        bash RUNME_cluster.sh &>> runme.log
+
+        exitcode=$?
+        if (( exitcode == 0 )); then
+            echo "✅ Completed: $name"
+        else
+            echo "❌ Failed:    $name (exit $exitcode)"
+        fi
+    ) &
+
+    (( running++ ))
+    # throttle parallel jobs
+    if (( running >= MAX_JOBS )); then
+        wait -n
+        (( running-- ))
     fi
+
 done
 
-# Wait for all background processes to finish
+# Wait for any remaining background jobs
 wait
 
-log_message "Cluster script runner completed."
+echo
+ echo "=========================================="
+ echo "✅ All dispatched jobs have completed"
+ echo "=========================================="
