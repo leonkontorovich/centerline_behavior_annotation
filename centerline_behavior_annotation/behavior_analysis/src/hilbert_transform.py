@@ -52,27 +52,53 @@ def tutorial_example():
     plt.show()
     return
 
+
 def hilbert_transform_on_kymogram(df, fs):
     """
-
-    :param path:
-    :param fs:
-    :return:
+    Apply Hilbert transform on data while handling NaN values and preserving them in output.
+    :param df: pandas DataFrame containing the data
+    :param fs: sampling frequency
+    :return: instantaneous amplitude, phase, frequency, and regenerated carrier
     """
-
-    #df = pd.read_csv(path) #Not sure if I should load the df instead
     x = df.values
-    z = hilbert(x, axis=0)
 
-    # envelope extraction
-    inst_amplitude = np.abs(z)
-    inst_phase = np.unwrap(np.angle(z), axis=0)
+    # Save indices of nan values
+    nan_indices = np.isnan(x)
 
-    # inst frequency
-    inst_freq = np.diff(inst_phase, axis=0)/(2*np.pi)*fs
+    # Interpolate to create clean data for Hilbert transform
+    df_clean = df.interpolate(method='linear', axis=0).fillna(method='bfill').fillna(method='ffill')
+    x_clean = df_clean.values
 
-    #Regenerate the carrier from the instantaneous phase
-    regenerated_carrier = np.cos(inst_phase)
+    # Apply Hilbert transform
+    z = hilbert(x_clean, axis=0)
+
+    # Calculate instantaneous amplitude and phase
+    inst_amplitude_clean = np.abs(z)
+    inst_phase_clean = np.unwrap(np.angle(z), axis=0)
+
+    # Calculate instantaneous frequency
+    inst_freq_clean = np.diff(inst_phase_clean, axis=0) / (2 * np.pi) * fs
+
+    # Regenerate carrier
+    regenerated_carrier_clean = np.cos(inst_phase_clean)
+
+    # Initialize output arrays with NaNs
+    inst_amplitude = np.full(x.shape, np.nan)
+    inst_phase = np.full(x.shape, np.nan)
+    inst_freq = np.full(x.shape[0] - 1 if len(x.shape) == 1 else (x.shape[0] - 1, x.shape[1]), np.nan)
+    regenerated_carrier = np.full(x.shape, np.nan)
+
+    # Fill in non-NaN positions with calculated values
+    inst_amplitude[~nan_indices] = inst_amplitude_clean[~nan_indices]
+    inst_phase[~nan_indices] = inst_phase_clean[~nan_indices]
+
+    # For frequency, we need to handle the dimension reduction from diff()
+    if len(x.shape) == 1:
+        inst_freq[~nan_indices[:-1]] = inst_freq_clean[~nan_indices[:-1]]
+    else:
+        inst_freq[~nan_indices[:-1, :]] = inst_freq_clean[~nan_indices[:-1, :]]
+
+    regenerated_carrier[~nan_indices] = regenerated_carrier_clean[~nan_indices]
 
     return inst_amplitude, inst_phase, inst_freq, regenerated_carrier
 
