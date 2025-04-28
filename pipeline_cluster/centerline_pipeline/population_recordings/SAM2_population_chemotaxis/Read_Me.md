@@ -49,9 +49,9 @@ ________________________________________________________________________________
    bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh basic
    ```
 
-6. Use annotate_odor_pos gui to annotate top_left and odor_pos
-   -> if no odor uses just annotate top_left position with the gui.
-   -> a config file will be created in the dataset folder that saves the positions and snakemake will acces this positions automatically for the corresponding experiments.
+6. **Use `annotate_odor_pos` GUI to annotate `top_left` and `odor_pos`**  
+   - If no odor is used, only annotate the `top_left` position with the GUI.  
+   - A config file will be created in the dataset folder that saves the positions, and Snakemake will access these positions automatically for the corresponding experiments.
 
 7. Start a new tmux session:
    ```bash
