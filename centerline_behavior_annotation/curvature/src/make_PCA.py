@@ -116,27 +116,38 @@ def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
     --- behavior
     ---- skeleton_spline_K_signed_avg.csv
 
-    :param root_folder: path to the folder containing the wbfm projects
+    :param root_folder: path to the folder containing the wbfm projects, or a list of paths containing folders with
+    wbfm projects
     :return: list of curvature files
     """
+    # checks if input is one directory or list of directories, if singular directory transforms it into list
+    if isinstance(root_folder, str):
+        root_folders = [root_folder]
+    elif isinstance(root_folder, list):
+        root_folders = root_folder
+    else:
+        raise ValueError("root_folder must be a string or list of strings")
+
     curvature_file_list = []
 
-    project_behavior_dirs = [os.path.join(root_folder, folder, 'behavior') for folder in os.listdir(root_folder)]
-    project_behavior_dirs = [folder for folder in project_behavior_dirs if os.path.exists(folder)]
+    # loop through the list of root folders
+    for root in root_folders:
+        if not os.path.isdir(root):
+            continue
 
-    print(f"looking for skeleton_spline_K_signed_avg.csv files in the {len(project_behavior_dirs)} projects")
+        # loop through projects in root folder
+        for project in os.listdir(root):
+            behavior_path = os.path.join(root, project, 'behavior')
+            curvature_file = os.path.join(behavior_path, 'skeleton_spline_K_signed_avg.csv')
 
-    # the curvature files are found inside each project folder,
-    # inside a behavior folder, and they are called
-    # skeleton_spline_K_signed_avg.csv
-    for behavior_folder in project_behavior_dirs:
-            curvature_file = os.path.join(behavior_folder, 'skeleton_spline_K_signed_avg.csv')
-            if os.path.exists(curvature_file):
+            # add to curvature file to curvature file list
+            if os.path.isfile(curvature_file):
                 curvature_file_list.append(curvature_file)
 
-    print(f"found {len(curvature_file_list)} curvature files in {len(project_behavior_dirs)} projects")
+    print(f"Found {len(curvature_file_list)} curvature files in {len(curvature_file_list)} projects.")
 
     return curvature_file_list
+
 
 def filter_curvature_data_zscore(curvature_df: pd.DataFrame, zscore_threshold: float = 3) -> pd.DataFrame:
     """
