@@ -14,6 +14,8 @@ if __name__ == "__main__":
     parser.add_argument("--end_segment", type=int, help="End segment", required=False)
     parser.add_argument("--n_components", type=int, help="Number of components", required=False)
     parser.add_argument("--zscore_filter", type=bool, help="Z-score filter", required=False)
+    parser.add_argument("--behavior_specific", type=str, help="name of behavior, if behavior specific PCA", required=False)
+    parser.add_argument("--behavior_file_name", type=bool, help="file name including file extension of behavior annotation", required=False)
 
     args = parser.parse_args()
 
@@ -24,6 +26,9 @@ if __name__ == "__main__":
     end_segment = int(args.end_segment)
     n_components = int(args.n_components)
     zscore_filter = True if args.zscore_filter.lower() in ['true', '1'] else False
+    behavior_specific = args.behavior_specific
+    behavior_file_name = args.behavior_file_name
+
 
     print(f"calling make_pc_model_wrapper, with the following parameters: {root_folder=}, {pc_model_name=}, {output_folder=}, {initial_segment=}, {end_segment=}, {n_components=}, {zscore_filter=}")
 
@@ -33,5 +38,8 @@ if __name__ == "__main__":
                           initial_segment=initial_segment,
                           end_segment=end_segment,
                           n_components=n_components,
-                          zscore_filter=zscore_filter)
+                          zscore_filter=zscore_filter,
+                          behavior_specific=behavior_specific,
+                          behavior_file_name=behavior_file_name
+                          )
 
