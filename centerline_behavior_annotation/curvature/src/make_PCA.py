@@ -144,7 +144,7 @@ def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
             if os.path.isfile(curvature_file):
                 curvature_file_list.append(curvature_file)
 
-    print(f"Found {len(curvature_file_list)} curvature files.")
+    print(f"Found {len(curvature_file_list)} curvature files in {len(curvature_file_list)} projects.")
 
     return curvature_file_list
 
