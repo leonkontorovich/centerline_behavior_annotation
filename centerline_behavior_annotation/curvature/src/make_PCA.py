@@ -304,14 +304,12 @@ def make_pc_model_wrapper(root_folder: str,
     curvature_files = get_curvature_filelist_from_wbfm_projects(root_folder)
 
     # concatenate curvature dataframes
-
-
     if behavior_specific is None:
         print(f"concatenating curvature files, it will take a while...")
         df = concatenate_dataframes(curvature_files)
     else:
         print(f"concatenating curvature files when behavior {behavior_specific} is True, it will take a while...")
-        df = concatenate_dataframes_behavior_specific(curvature_files, behavior_file_name)
+        df = concatenate_dataframes_behavior_specific(curvature_files,behavior_specific, behavior_file_name)
 
 #
     if zscore_filter:
