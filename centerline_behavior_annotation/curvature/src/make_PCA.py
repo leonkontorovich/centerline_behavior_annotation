@@ -277,16 +277,21 @@ def make_pc_model_wrapper(root_folder: str,
     :param output_folder: folder to save the model and components, defaults to root_folder
     :param initial_segment: int, initial segment
     :param end_segment: int, end segment
-    :param n_components: number of PC components
+    :param n_components: number of PC components. for usual reversal annotation PC1 and 2 are used, and for other things sometimes we used PC3 and 4
     :param zscore_filter: boolean, whether to apply z-score filtering
             it is not necessary to filter the curvature data.
             however, after checking histogram of values, and comparing it seems to not disturb much.
             Itamar: I know from experience it makes the PC model more stable and better in quality
             this is because PC is very sensitive to outliers
+<<<<<<< Updated upstream
     :param behavior_specific: str, name of the behavior, in case you want to make the PCA-model only from
             specific timepoints in a recording. Default is None: the whole recording will be used
     :param behavior_file_name: str, name of the behavior file eg. manual_annotation.csv, has to be located in the same
             folder as the curvature file
+=======
+            the default is to remove any values that are more than 3 standard deviations away from the mean.
+    :return:
+>>>>>>> Stashed changes
     """
 
     if output_folder is None:

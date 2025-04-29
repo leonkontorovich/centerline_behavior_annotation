@@ -61,7 +61,7 @@ ________________________________________________________________________________
 
 8. Run the analysis:
    ```bash
-   bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
+   sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
    ```
 
 ## Additional Commands for the Experiment Folder
@@ -86,6 +86,31 @@ Unlock Snakemake directories:
 ```bash
 bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/unlock_snakemake_directories.sh
 ```
+
+### Essential Shell Count Commands
+run all from dataset cirectory
+
+Count files by exact name:
+```bash
+# Count files named "chemotaxis_overview.png"
+ls | grep -c chemotaxis_overview.png
+```
+
+Count folders by exact name:
+```bash
+# Count directories named "output"
+find . -type d -name "output" | wc -l
+```
+
+Count folders by pattern in name:
+```bash
+# Count directories with "track" in their name
+find . -type d -name "*track*" | wc -l
+```
+
+> **Note:**  
+> All commands above are read-only and won't delete or modify any files or directories.
+
 
 ### Cleanup Commands
 Delete specific output files:
