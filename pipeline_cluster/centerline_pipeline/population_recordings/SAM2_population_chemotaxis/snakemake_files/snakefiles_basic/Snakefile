@@ -340,7 +340,7 @@ rule chemotaxis_analysis:
         video_resolution_x, video_resolution_y = get_video_resolution(tif_path)
 
         # Extract top left coordinate only
-        track_id = wildcards.track_dir
+        track_id = wildcards.dataset
         top_left_x, top_left_y = get_top_left_position(track_id)
         top_left_pos_str = f"x={top_left_x}, y={top_left_y}"
 
