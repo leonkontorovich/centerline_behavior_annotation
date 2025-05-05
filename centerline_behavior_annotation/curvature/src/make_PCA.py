@@ -116,27 +116,38 @@ def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
     --- behavior
     ---- skeleton_spline_K_signed_avg.csv
 
-    :param root_folder: path to the folder containing the wbfm projects
+    :param root_folder: path to the folder containing the wbfm projects, or a list of paths containing folders with
+    wbfm projects
     :return: list of curvature files
     """
+    # checks if input is one directory or list of directories, if singular directory transforms it into list
+    if isinstance(root_folder, str):
+        root_folders = [root_folder]
+    elif isinstance(root_folder, list):
+        root_folders = root_folder
+    else:
+        raise ValueError("root_folder must be a string or list of strings")
+
     curvature_file_list = []
 
-    project_behavior_dirs = [os.path.join(root_folder, folder, 'behavior') for folder in os.listdir(root_folder)]
-    project_behavior_dirs = [folder for folder in project_behavior_dirs if os.path.exists(folder)]
+    # loop through the list of root folders
+    for root in root_folders:
+        if not os.path.isdir(root):
+            continue
 
-    print(f"looking for skeleton_spline_K_signed_avg.csv files in the {len(project_behavior_dirs)} projects")
+        # loop through projects in root folder
+        for project in os.listdir(root):
+            behavior_path = os.path.join(root, project, 'behavior')
+            curvature_file = os.path.join(behavior_path, 'skeleton_spline_K_signed_avg.csv')
 
-    # the curvature files are found inside each project folder,
-    # inside a behavior folder, and they are called
-    # skeleton_spline_K_signed_avg.csv
-    for behavior_folder in project_behavior_dirs:
-            curvature_file = os.path.join(behavior_folder, 'skeleton_spline_K_signed_avg.csv')
-            if os.path.exists(curvature_file):
+            # add to curvature file to curvature file list
+            if os.path.isfile(curvature_file):
                 curvature_file_list.append(curvature_file)
 
-    print(f"found {len(curvature_file_list)} curvature files in {len(project_behavior_dirs)} projects")
+    print(f"Found {len(curvature_file_list)} curvature files in {len(curvature_file_list)} projects.")
 
     return curvature_file_list
+
 
 def filter_curvature_data_zscore(curvature_df: pd.DataFrame, zscore_threshold: float = 3) -> pd.DataFrame:
     """
@@ -266,16 +277,19 @@ def make_pc_model_wrapper(root_folder: str,
     :param output_folder: folder to save the model and components, defaults to root_folder
     :param initial_segment: int, initial segment
     :param end_segment: int, end segment
-    :param n_components: number of PC components
+    :param n_components: number of PC components. for usual reversal annotation PC1 and 2 are used, and for other things sometimes we used PC3 and 4
     :param zscore_filter: boolean, whether to apply z-score filtering
             it is not necessary to filter the curvature data.
             however, after checking histogram of values, and comparing it seems to not disturb much.
             Itamar: I know from experience it makes the PC model more stable and better in quality
-            this is because PC is very sensitive to outliers
+            this is because PC is very sensitive to outliers the default is to remove any values that 
+            are more than 3 standard deviations away from the mean.
     :param behavior_specific: str, name of the behavior, in case you want to make the PCA-model only from
             specific timepoints in a recording. Default is None: the whole recording will be used
     :param behavior_file_name: str, name of the behavior file eg. manual_annotation.csv, has to be located in the same
             folder as the curvature file
+    :return:
+
     """
 
     if output_folder is None:
@@ -288,21 +302,33 @@ def make_pc_model_wrapper(root_folder: str,
     curvature_files = get_curvature_filelist_from_wbfm_projects(root_folder)
 
     # concatenate curvature dataframes
-
-
     if behavior_specific is None:
         print(f"concatenating curvature files, it will take a while...")
         df = concatenate_dataframes(curvature_files)
     else:
         print(f"concatenating curvature files when behavior {behavior_specific} is True, it will take a while...")
-        df = concatenate_dataframes_behavior_specific(curvature_files, behavior_file_name)
+        df = concatenate_dataframes_behavior_specific(curvature_files,behavior_specific, behavior_file_name)
 
-#
     if zscore_filter:
         df_filtered = filter_curvature_data_zscore(df)
+
+        # remove timepoints (rows that are fully NaN)
+        num_fully_nan = df_filtered.isna().all(axis=1).sum()
+        print(f"Removing {num_fully_nan} fully-NaN timepoints")
+        df_filtered = df_filtered.dropna(how='all')
+
         df_interpolated = interpolate_curvature_data(df_filtered, seg_frac_to_interp=0.1, interp_method='linear')
+
+        # remove timepoints that still have any NaNs
+        num_with_remaining_nans = df_interpolated.isna().any(axis=1).sum()
+        print(f"Removing {num_with_remaining_nans} timepoints that still contain NaNs after interpolation")
+        df_interpolated = df_interpolated.dropna(how='any')
+
     else:
-        df_interpolated = df
+        print("Z-score filtering disabled. Dropping all timepoints with any NaNs...")
+        num_with_any_nans = df.isna().any(axis=1).sum()
+        print(f"Removing {num_with_any_nans} timepoints with any NaNs")
+        df_interpolated = df.dropna(how='any')
 
     # do PCA
     print(f"calculating PC model on data from {len(curvature_files)} files")
@@ -362,7 +388,7 @@ def make_pc_model_wrapper(root_folder: str,
     report += estimate_cross_product_directionality(cross_product_values)
     # save the quality control report to file
     report_filename = os.path.join(final_output_folder, pc_model_name + "_quality_report.txt")
-    with open(report_filename, 'w') as f:
+    with open(report_filename, 'w',  encoding='utf-8') as f:
         f.write(report)
     print(f"saved report to {report_filename}")
 
