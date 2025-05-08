@@ -285,6 +285,7 @@ rule hilbert_transform_on_kymogram:
             '-w', str(params.window),
         ])
 
+#chemotaxis_rule
 rule chemotaxis_analysis:
     input:
         reversal_annotation      = "{dataset}/{track_dir}/output/reversal_annotation.csv",
@@ -293,13 +294,16 @@ rule chemotaxis_analysis:
         skeleton_spline_X_coords = "{dataset}/{track_dir}/output/skeleton_spline_X_coords_new.csv",
         skeleton_spline_Y_coords = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords_new.csv",
         conc_gradient_array      = config["conc_gradient_array"],
-        distance_array           = config["distance_array"]
+        distance_array           = config["distance_array"],
+        DLC_filtered  = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.h5",
     params:
         factor_px_to_mm = config["factor_px_to_mm"],
         fps             = config["fps"],
         diffusion_time_offset = config["diffusion_time_offset"],
         worm_pos        = "{dataset}/{track_dir}/track.txt",
         tif_path        = "{dataset}/{track_dir}/track.tif",
+        dlc_nose_label  = config["nose"],
+        dlc_tail_label  = config["tail"],
     output:
         chemotaxis_visualisation = "{dataset}/{track_dir}/output/chemotaxis_analysis.pdf",
         chemotaxis_params        = "{dataset}/{track_dir}/output/chemotaxis_params.csv",
@@ -365,4 +369,7 @@ rule chemotaxis_analysis:
             '--odor_pos',                odor_pos_str,
             '--diffusion_time_offset',   str(params.diffusion_time_offset),
             '--img_type',                str('crop'),
+            '--DLC_coords',              str(input.DLC_filtered),
+            '--DLC_nose',                str(params.dlc_nose_label),
+            '--DLC_tail',                str(params.dlc_tail_label)
         ])
