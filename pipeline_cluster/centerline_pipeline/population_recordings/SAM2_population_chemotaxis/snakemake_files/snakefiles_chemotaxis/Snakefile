@@ -285,6 +285,7 @@ rule hilbert_transform_on_kymogram:
             '-w', str(params.window),
         ])
 
+#chemotaxis_rule
 rule chemotaxis_analysis:
     input:
         reversal_annotation      = "{dataset}/{track_dir}/output/reversal_annotation.csv",
