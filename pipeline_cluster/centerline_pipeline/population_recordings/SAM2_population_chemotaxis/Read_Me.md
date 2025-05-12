@@ -92,8 +92,8 @@ run all from dataset cirectory
 
 Count files by exact name:
 ```bash
-# Count files named "chemotaxis_overview.png"
-ls | grep -c chemotaxis_overview.png
+# Count files named "chemotaxis_params.csv"
+find . -type f -name "chemotaxis_params.csv" | wc -l
 ```
 
 Count folders by exact name:
