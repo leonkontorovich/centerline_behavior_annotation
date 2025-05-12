@@ -50,10 +50,10 @@ def main(arg_list):
     dorsal_curvature = dorsal_data.sum(axis=1)
 
     # add a column in the dataframe which contains 1 if another column is higher than 0.05, -1 if lower than -0.05, and 0 if in between -0.5 and 0.5
-    turns_df = pd.DataFrame({'turns': pd.Series(dtype='int')})
+    turns_df = pd.DataFrame({'turn': pd.Series(dtype='int')})
     #turns_df.index.name = 'index'
     # Compute the conditional values and force the type to int
-    turns_df['turns'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0)).astype(int)
+    turns_df['turn'] = np.where(ventral_curvature > threshold, 1, np.where(dorsal_curvature < -threshold, -1, 0)).astype(int)
 
     # Writing the DataFrame to a CSV file with UTF-8 encoding
     turns_df.to_csv(turns_annotation_path, encoding='utf-8')
