@@ -293,13 +293,14 @@ def make_pc_model_wrapper(root_folder: str,
             it is not necessary to filter the curvature data.
             however, after checking histogram of values, and comparing it seems to not disturb much.
             Itamar: I know from experience it makes the PC model more stable and better in quality
-            this is because PC is very sensitive to outliers
-            the default is to remove any values that are more than 3 standard deviations away from the mean.
+            this is because PC is very sensitive to outliers the default is to remove any values that 
+            are more than 3 standard deviations away from the mean.
     :param behavior_specific: str, name of the behavior, in case you want to make the PCA-model only from
             specific timepoints in a recording. Default is None: the whole recording will be used
     :param behavior_file_name: str, name of the behavior file eg. manual_annotation.csv, has to be located in the same
             folder as the curvature file
     :return:
+
     """
 
     if output_folder is None:
@@ -320,12 +321,26 @@ def make_pc_model_wrapper(root_folder: str,
     else:
         df = concatenate_dataframes_behavior_specific(curvature_files,behavior_specific, behavior_file_name)
 
-    # filter curvature data
     if zscore_filter:
         df_filtered = filter_curvature_data_zscore(df)
+
+        # remove timepoints (rows that are fully NaN)
+        num_fully_nan = df_filtered.isna().all(axis=1).sum()
+        print(f"Removing {num_fully_nan} fully-NaN timepoints")
+        df_filtered = df_filtered.dropna(how='all')
+
         df_interpolated = interpolate_curvature_data(df_filtered, seg_frac_to_interp=0.1, interp_method='linear')
+
+        # remove timepoints that still have any NaNs
+        num_with_remaining_nans = df_interpolated.isna().any(axis=1).sum()
+        print(f"Removing {num_with_remaining_nans} timepoints that still contain NaNs after interpolation")
+        df_interpolated = df_interpolated.dropna(how='any')
+
     else:
-        df_interpolated = df
+        print("Z-score filtering disabled. Dropping all timepoints with any NaNs...")
+        num_with_any_nans = df.isna().any(axis=1).sum()
+        print(f"Removing {num_with_any_nans} timepoints with any NaNs")
+        df_interpolated = df.dropna(how='any')
 
     # do PCA
     print(f"calculating PC model on data from {len(curvature_files)} files")
@@ -385,7 +400,7 @@ def make_pc_model_wrapper(root_folder: str,
     report += estimate_cross_product_directionality(cross_product_values)
     # save the quality control report to file
     report_filename = os.path.join(final_output_folder, pc_model_name + "_quality_report.txt")
-    with open(report_filename, 'w') as f:
+    with open(report_filename, 'w',  encoding='utf-8') as f:
         f.write(report)
     print(f"saved report to {report_filename}")
 
