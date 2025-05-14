@@ -104,7 +104,7 @@ def concatenate_dataframes_behavior_specific(dataframe_path_list: list, behavior
     return concatenated_df
 
 
-def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
+def get_curvature_filelist_from_wbfm_projects(root_folder, equi_distant=False) -> list:
     """
     get a list of curvature files from the wbfm projects folder
     the code assumes the following structure:
@@ -116,10 +116,14 @@ def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
     --- behavior
     ---- skeleton_spline_K_signed_avg.csv
 
+    -> if equi_distant is True, it will look for skeleton_spline_K__equi_dist_segment_2D_smoothed_signed.csv files
+
     :param root_folder: path to the folder containing the wbfm projects, or a list of paths containing folders with
     wbfm projects
+    :param equi_distant: boolean, whether to look for equi-distant curvature files
     :return: list of curvature files
     """
+
     # checks if input is one directory or list of directories, if singular directory transforms it into list
     if isinstance(root_folder, str):
         root_folders = [root_folder]
@@ -127,6 +131,9 @@ def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
         root_folders = root_folder
     else:
         raise ValueError("root_folder must be a string or list of strings")
+
+    # adapt skeleton file name structure to datatype
+    skeleton_file_name = 'skeleton_spline_K_signed_avg.csv' if not equi_distant else 'skeleton_spline_K__equi_dist_segment_2D_smoothed_signed.csv'
 
     curvature_file_list = []
 
@@ -138,13 +145,13 @@ def get_curvature_filelist_from_wbfm_projects(root_folder) -> list:
         # loop through projects in root folder
         for project in os.listdir(root):
             behavior_path = os.path.join(root, project, 'behavior')
-            curvature_file = os.path.join(behavior_path, 'skeleton_spline_K_signed_avg.csv')
+            curvature_file = os.path.join(behavior_path, skeleton_file_name)
 
             # add to curvature file to curvature file list
             if os.path.isfile(curvature_file):
                 curvature_file_list.append(curvature_file)
 
-    print(f"Found {len(curvature_file_list)} curvature files in {len(curvature_file_list)} projects.")
+    print(f"Found {len(curvature_file_list)} {skeleton_file_name} curvature files in {len(curvature_file_list)} projects.")
 
     return curvature_file_list
 
@@ -259,7 +266,8 @@ def make_pc_model_wrapper(root_folder: str,
                           n_components: int = 5,
                           zscore_filter: bool = True,
                           behavior_specific: str = None,
-                          behavior_file_name: str = None):
+                          behavior_file_name: str = None,
+                          equi_distant_curvature: bool = False):
     """
     wrapper function to make the PC model from curvature data in wbfm projects
     it saves a pickle file with the PCA model and the principal components
@@ -269,10 +277,13 @@ def make_pc_model_wrapper(root_folder: str,
             - root_folder should contain folders with the project names
             -- project_folder_1
             --- behavior
-            ---- skeleton_spline_K_signed_avg.csv
+            ---- skeleton_file
             -- project_folder_2
             --- behavior
-            ---- skeleton_spline_K_signed_avg.csv
+            ---- skeleton_file
+    :param equi_distant_curvature: boolean, whether to look for equi-distant curvature files
+        if True, it will look for skeleton_spline_K__equi_dist_segment_2D_smoothed_signed.csv files
+        if False, it will look for skeleton_spline_K_signed_avg.csv files
     :param pc_model_name: name of the PCA model, defaults to main folder name
     :param output_folder: folder to save the model and components, defaults to root_folder
     :param initial_segment: int, initial segment
@@ -298,17 +309,18 @@ def make_pc_model_wrapper(root_folder: str,
     os.makedirs(final_output_folder, exist_ok=True)
 
     # find all curvature files in the wbfm projects
-    curvature_files = get_curvature_filelist_from_wbfm_projects(root_folder)
+    curvature_files = get_curvature_filelist_from_wbfm_projects(root_folder, equi_distant=equi_distant_curvature)
+
+    print(f"concatenating curvature files, equidistant files is {equi_distant_curvature}, and behavior-specific is {behavior_specific}.\n"
+          f"...it will take a while...")
 
     # concatenate curvature dataframes
     if behavior_specific is None:
-        print(f"concatenating curvature files, it will take a while...")
         df = concatenate_dataframes(curvature_files)
     else:
-        print(f"concatenating curvature files when behavior {behavior_specific} is True, it will take a while...")
         df = concatenate_dataframes_behavior_specific(curvature_files,behavior_specific, behavior_file_name)
 
-#
+    # filter curvature data
     if zscore_filter:
         df_filtered = filter_curvature_data_zscore(df)
         df_interpolated = interpolate_curvature_data(df_filtered, seg_frac_to_interp=0.1, interp_method='linear')
