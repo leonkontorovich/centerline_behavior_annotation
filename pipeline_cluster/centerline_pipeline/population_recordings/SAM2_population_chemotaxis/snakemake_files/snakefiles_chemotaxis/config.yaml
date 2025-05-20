@@ -38,9 +38,7 @@ max_round_threshold: 0.99
 upper_threshold: '0.000001'
 lower_threshold: '-0.00001'
 
-# Position parameters
-top_left: x=496, y=211
-odor_pos: x=2288, y=3721
+diffusion_time_offset: 3600 #3600 seconds = default of 1 hour
 
 # Data file paths
 conc_gradient_array: /lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_concentration_array.npy

@@ -10,8 +10,29 @@ If the anterior part of the worm is to the left, then a u curvature will be posi
 
 However, depending on where the vulva is on each recording, a positive curvature could mean ventral or dorsal. To standarize this and make that Red is always Ventral each recording has to be manually annotated the location of the vulva. This information should be stored in the config.yaml file.
 
+### Use a Wrapper to create a PCA model ###
+The wrapper does the following:
+https://github.com/Zimmer-lab/centerline_behavior_annotation/blob/main/centerline_behavior_annotation/curvature/scripts/make_PC_model_wrapper.py
 
-### Create a PCA model
+- finds all the curvature files of all projects inside a root folder
+
+- concatenates them to a huge curvature dataframe
+
+- uses predefined segments to focus on the relevant body segments (for wbfm its 30-80)
+
+- makes a PC model based on all that data and saves it
+
+- reports:
+
+-- how much variance does the model explains (especially PC1 and 2)
+
+-- for all provided curvature files: gives scatter plots of PC1 versus PC2, showing the circle of undulations (as quality control)
+
+-- a histogram of the cross product values from all data, to help you chose a threshold for reversal annotation
+
+-- tries to guess (based on what happens more) the directionality of the model, whether cross product > 0 or < 0 is reversal.
+
+### Manually Create a PCA model
 1. Run make_PCA.py
 
 It will generate a PCA model of your data. You can run it locally. Modify the part after the if __name__ = main to decide from which data to generate the PCA model, and where to save the model. It will also save the PCs as a .csv file.
