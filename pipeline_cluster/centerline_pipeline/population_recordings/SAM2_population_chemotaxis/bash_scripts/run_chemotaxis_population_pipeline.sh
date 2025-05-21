@@ -41,8 +41,11 @@ echo "🚀 Will run up to ${MAX_CONCURRENT_WORKFLOWS} workflows simultaneously"
 echo "=========================================="
 
 # Create an array of workflow folders for use with job arrays
+# First clear the file to ensure no previous content remains
+> workflow_folders.txt
 for i in "${!folders[@]}"; do
-    echo "$i ${folders[$i]}" >> workflow_folders.txt
+    # Use printf to avoid potential newline issues
+    printf "%d %s\n" "$i" "${folders[$i]}" >> workflow_folders.txt
 done
 
 # Submit job array with limited concurrency
@@ -59,18 +62,32 @@ RUN_OPTION="$1"
 FOLDER_FILE="$2"
 ARRAY_ID=$SLURM_ARRAY_TASK_ID
 
-# Get the folder for this array task
-FOLDER=$(awk -v id="$ARRAY_ID" '$1 == id {print $2}' "$FOLDER_FILE")
-FOLDER_NAME=$(basename "$FOLDER")
+# Get the folder for this array task - use only the first matching line
+FOLDER=$(awk -v id="$ARRAY_ID" '$1 == id {print $2; exit}' "$FOLDER_FILE")
 
-echo "→ Processing workflow in: $FOLDER_NAME at $(date)"
+# Debug information
+echo "Debug: Array ID: $ARRAY_ID"
+echo "Debug: Folder from file: $FOLDER"
+echo "Debug: Folder name: $(basename "$FOLDER")"
+
+if [ -z "$FOLDER" ]; then
+    echo "Error: Could not find folder for array ID $ARRAY_ID"
+    exit 1
+fi
+
+if [ ! -d "$FOLDER" ]; then
+    echo "Error: Directory does not exist: $FOLDER"
+    exit 1
+fi
+
+echo "→ Processing workflow in: $(basename "$FOLDER") at $(date)"
 cd "$FOLDER" || { echo "Failed to change directory to $FOLDER"; exit 1; }
 
 # Run the workflow script with the provided option
 bash RUNME_cluster.sh $RUN_OPTION
 EXIT_CODE=$?
 
-echo "✅ Completed workflow in: $FOLDER_NAME with exit code $EXIT_CODE at $(date)"
+echo "✅ Completed workflow in: $(basename "$FOLDER") with exit code $EXIT_CODE at $(date)"
 exit $EXIT_CODE
 EOF
 
