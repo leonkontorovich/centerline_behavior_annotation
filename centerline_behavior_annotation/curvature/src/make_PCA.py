@@ -258,6 +258,42 @@ def get_pc_scatter_plot(df:pd.DataFrame, title_name:str=""):
 
     return fig, ax
 
+def plot_pca_eigenvectors(pc_model_path:str, initial_segment:int, end_segment:int, save_path=None):
+    """
+    Loads a saved PCA model and plots each eigenvector (component loading) in a separate subplot.
+
+    :param pc_model_path: Path to the saved PCA model (.pkl)
+    :param initial_segment: Starting segment index (for labeling x-axis)
+    :param end_segment: Ending segment index (for labeling x-axis)
+    :param save_path: Optional path to save the figure
+    """
+    with open(pc_model_path, 'rb') as f:
+        pca = pickle.load(f)
+
+    eigenvectors = pca.components_
+    n_components = eigenvectors.shape[0]
+    segment_range = list(range(initial_segment, end_segment))
+
+    fig, axes = plt.subplots(n_components, 1, figsize=(10, 3 * n_components), sharex=True)
+    if n_components == 1:
+        axes = [axes]  # Ensure axes is iterable
+
+    for i, ax in enumerate(axes):
+        ax.plot(segment_range, eigenvectors[i], linewidth=2.5, color='tab:blue')
+        ax.set_title(f"PC{i + 1} Eigenvector")
+        ax.set_ylabel("Weight")
+        ax.grid(True)
+
+    axes[-1].set_xlabel("Segment Index")
+
+    plt.tight_layout()
+
+    if save_path:
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved eigenvector plot to {save_path}")
+    else:
+        plt.show()
+
 def make_pc_model_wrapper(root_folder: str,
                           pc_model_name: str = None,
                           output_folder: str = None,
@@ -359,6 +395,8 @@ def make_pc_model_wrapper(root_folder: str,
 
     # make quality control reports
     report = get_pca_variance_explained_report(pca_model_path)
+    plot_pca_eigenvectors(pc_model_path=pca_model_path, initial_segment=initial_segment, end_segment=end_segment,
+                           save_path=os.path.join(final_output_folder, "eigenvectors.png"))
 
     # calculate cross-product of the first two principal components
     cross_product_values = []
