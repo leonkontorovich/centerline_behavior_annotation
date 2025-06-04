@@ -6,7 +6,7 @@ factor_px_to_mm: '0.00962'
 # Model paths and settings
 dlc_model_configfile_path: /lisc/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml
 network_string: DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_itamarSep23shuffle2_1030000
-pca_model_path: /lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/population_centerline/models/pca_model_population_4to14.pkl
+pca_model_path: /lisc/scratch/neurobiology/zimmer/autoscope/trained_models/PCA_models/equi_distance_centerline_seg_10_40.pkl
 
 # SAM2 parameters
 downsample_factor: 0
@@ -21,8 +21,8 @@ min_worm_lenght: 83  # Note: there's a typo in 'length'
 nose: head
 tail: tail
 num_splines: 20
-initial_segment: 4
-final_segment: 14
+initial_segment: 9
+final_segment: 39
 
 #preprocess spline
 relative_spacing: 2.0  # 2% of skeleton length

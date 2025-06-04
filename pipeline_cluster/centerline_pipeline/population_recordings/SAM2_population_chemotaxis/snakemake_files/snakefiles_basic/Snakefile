@@ -291,8 +291,6 @@ rule chemotaxis_analysis:
         spline_K                 = "{dataset}/{track_dir}/output/skeleton_spline_K_new_smoothed.csv",
         skeleton_spline_X_coords = "{dataset}/{track_dir}/output/skeleton_spline_X_coords_new.csv",
         skeleton_spline_Y_coords = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords_new.csv",
-        conc_gradient_array      = config["conc_gradient_array"],
-        distance_array           = config["distance_array"]
     params:
         factor_px_to_mm         = config["factor_px_to_mm"],
         fps                     = config["fps"],
