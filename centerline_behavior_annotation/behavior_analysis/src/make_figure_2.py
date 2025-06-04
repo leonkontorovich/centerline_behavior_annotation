@@ -2,10 +2,13 @@ import matplotlib.cm as cm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+import matplotlib
+matplotlib.use('Agg')  # For cluster usage, to avoid GUI backend issues
+
 import pandas as pd
-import numpy as np
 import os
 import glob
+import argparse
 
 from centerline_behavior_annotation.centerline.dev.track_plotting_functions import plot_tracks
 from imutils.src.plotting import *
@@ -52,7 +55,6 @@ def plot_kymogram(kymo_path, axes):
 
 
 def main(arg_list):
-    import argparse
 
     # TODO: add beh annotation in speed plot
     # add head speed, total curvature, PC1, PC2, PC3, etc. See notebook wbfm_analysis
@@ -223,6 +225,9 @@ def main(arg_list):
     output_figure_path = os.path.join(input_path, 'behavioral_summary_figure.pdf')
     plt.savefig(output_figure_path, dpi=500)
     print(f"Figure saved to: {output_figure_path}")
+
+    # Close all figures
+    plt.close(fig)
 
     print('End of script')
 
