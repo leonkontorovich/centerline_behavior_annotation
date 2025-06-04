@@ -119,5 +119,10 @@ Delete specific output files:
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -delete
 
 # Delete all output folders
+
+#Dryrun
+find "$(pwd)" -type d -name "output" -exec echo "Would remove: {}" \;
+
+#Real command - use with care after DRYRUN!!
 find "$(pwd)" -type d -name "output" -exec rm -r {} +
 ```
