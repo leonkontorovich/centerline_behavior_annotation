@@ -112,12 +112,19 @@ find . -type d -name "*track*" | wc -l
 > All commands above are read-only and won't delete or modify any files or directories.
 
 Cleanup Commands
+
 Delete specific output files:
-bash# Dry-run: Show what would be deleted for chemotaxis_analysis rule outputs
+
+```bash
+# Dry-run: Show what would be deleted for chemotaxis_analysis rule outputs
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -print
-bash# Delete chemotaxis_analysis rule outputs
+
+# Delete chemotaxis_analysis rule outputs
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -delete
-bash# Dry-run: Show what output folders would be deleted
+
+# Dry-run: Show what output folders would be deleted
 find "$(pwd)" -type d -name "output" -print
-bash# Delete all output folders
+
+# Delete all output folders
 find "$(pwd)" -type d -name "output" -exec rm -r {} +
+```
