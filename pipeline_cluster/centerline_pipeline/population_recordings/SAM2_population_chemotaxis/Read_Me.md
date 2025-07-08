@@ -114,10 +114,15 @@ find . -type d -name "*track*" | wc -l
 
 ### Cleanup Commands
 Delete specific output files:
-```bash
+
+# Dry-run: Show what would be deleted for chemotaxis_analysis rule outputs
+find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -print
+
 # Delete chemotaxis_analysis rule outputs
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -delete
 
+# Dry-run: Show what output folders would be deleted
+find "$(pwd)" -type d -name "output" -print
+
 # Delete all output folders
 find "$(pwd)" -type d -name "output" -exec rm -r {} +
-```
