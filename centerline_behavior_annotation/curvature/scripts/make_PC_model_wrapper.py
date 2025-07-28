@@ -1,9 +1,12 @@
 from centerline_behavior_annotation.curvature.src.make_PCA import make_pc_model_wrapper
 import argparse
 
+from centerline_behavior_annotation.curvature.src.make_PCA import plot_pca_eigenvectors
+
+plot_pca_eigenvectors(pc_model_path=r"Z:\neurobiology\zimmer\wbfm\pca_models\2per\2per_segments_30_to_80_components_5_zscore_filtered.pkl",initial_segment=30,end_segment=80,save_path=r"Z:\neurobiology\zimmer\wbfm\pca_models\2per\eigenworms.png")
 # TODO: commented lines here just for debugging purposes delete whenever
 # make_pc_model_wrapper(root_folder=r"C:\Data\ZimmerLab\develop_new_PC_model")
-make_pc_model_wrapper(root_folder=r"Z:\neurobiology\zimmer\ItamarLev\feedback_story\WBFM\all\1per", equi_distant_curvature=True)
+make_pc_model_wrapper(root_folder=r"Z:\neurobiology\zimmer\ItamarLev\feedback_story\WBFM\all\3per", equi_distant_curvature=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Make PC model wrapper")
