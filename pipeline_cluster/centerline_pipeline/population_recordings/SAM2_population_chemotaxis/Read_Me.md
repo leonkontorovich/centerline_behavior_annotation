@@ -79,10 +79,10 @@ bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annota
 ### Pipeline Management
 Start the pipeline:
 ```bash
-bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
+sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
 ```
 
-Unlock Snakemake directories:
+Unlock Snakemake directories: (starting the pipeline also includes unlock step)
 ```bash
 bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/unlock_snakemake_directories.sh
 ```
@@ -111,12 +111,19 @@ find . -type d -name "*track*" | wc -l
 > **Note:**  
 > All commands above are read-only and won't delete or modify any files or directories.
 
+Cleanup Commands
 
-### Cleanup Commands
 Delete specific output files:
+
 ```bash
+# Dry-run: Show what would be deleted for chemotaxis_analysis rule outputs
+find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -print
+
 # Delete chemotaxis_analysis rule outputs
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -delete
+
+# Dry-run: Show what output folders would be deleted
+find "$(pwd)" -type d -name "output" -print
 
 # Delete all output folders
 find "$(pwd)" -type d -name "output" -exec rm -r {} +
