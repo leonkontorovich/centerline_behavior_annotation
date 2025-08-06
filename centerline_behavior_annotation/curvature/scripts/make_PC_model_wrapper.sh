@@ -19,7 +19,7 @@
 # ./run_make_pc_model.sh -r /data/project -n my_model
 
 # Default internal parameters
-OUTPUT_FOLDER="" # default to the same folder as the root folder
+OUTPUT_FOLDER="/lisc/data/scratch/neurobiology/zimmer/ItamarLev" # default to the same folder as the root folder
 INITIAL_SEGMENT=30 # default of wbfm pipline
 END_SEGMENT=80 # default of wbfm pipline
 N_COMPONENTS=5 # default of wbfm pipline
@@ -46,9 +46,6 @@ if [ -z "$ROOT_FOLDER" ] || [ -z "$PC_MODEL_NAME" ]; then
   echo "Usage: $0 -r <root_folder> -n <pc_model_name>"
   exit 1
 fi
-
-# Activate Conda environment
-conda activate wbfm
 
 # Run Python script
 python make_PC_model_wrapper.py \
