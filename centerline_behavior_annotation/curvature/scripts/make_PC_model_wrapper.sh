@@ -19,11 +19,12 @@
 # ./run_make_pc_model.sh -r /data/project -n my_model
 
 # Default internal parameters
-OUTPUT_FOLDER="" # default to the same folder as the root folder
+OUTPUT_FOLDER="/lisc/data/scratch/neurobiology/zimmer/ItamarLev" # default to the same folder as the root folder
 INITIAL_SEGMENT=30 # default of wbfm pipline
 END_SEGMENT=80 # default of wbfm pipline
 N_COMPONENTS=5 # default of wbfm pipline
 ZSCORE_FILTER=true # recommended by Itamar, but not a must
+EQUIDISTANT_CURVATURE=true # default of wbfm pipline, set to false if you want to use the original curvature data
 
 # Parse only root_folder and pc_model_name
 while getopts ":r:n:" opt; do
@@ -47,9 +48,6 @@ if [ -z "$ROOT_FOLDER" ] || [ -z "$PC_MODEL_NAME" ]; then
   exit 1
 fi
 
-# Activate Conda environment
-conda activate wbfm
-
 # Run Python script
 python make_PC_model_wrapper.py \
   --root_folder "$ROOT_FOLDER" \
@@ -58,4 +56,5 @@ python make_PC_model_wrapper.py \
   --initial_segment "$INITIAL_SEGMENT" \
   --end_segment "$END_SEGMENT" \
   --n_components "$N_COMPONENTS" \
-  --zscore_filter "$ZSCORE_FILTER"
+  --zscore_filter "$ZSCORE_FILTER" \
+  --equidistant_curv "$EQUIDISTANT_CURVATURE"
