@@ -126,5 +126,10 @@ find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_pa
 find "$(pwd)" -type d -name "output" -print
 
 # Delete all output folders
+
+#Dryrun
+find "$(pwd)" -type d -name "output" -exec echo "Would remove: {}" \;
+
+#Real command - use with care after DRYRUN!!
 find "$(pwd)" -type d -name "output" -exec rm -r {} +
 ```
