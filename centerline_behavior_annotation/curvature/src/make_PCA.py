@@ -350,6 +350,8 @@ def make_pc_model_wrapper(root_folder: str,
 
     print(f"concatenating curvature files, equidistant files is {equi_distant_curvature}, and behavior-specific is {behavior_specific}.\n"
           f"...it will take a while...")
+    if len(curvature_files) == 0:
+        raise ValueError(f"No curvature files found in {root_folder}. Please check the folder structure and file names.")
 
     # concatenate curvature dataframes
     if behavior_specific is None:
