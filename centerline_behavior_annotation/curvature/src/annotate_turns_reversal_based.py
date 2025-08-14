@@ -88,9 +88,9 @@ def extract_reversal_ends_from_behavioral_annotation(beh_annotation_df, reversal
     Extract reversal end points from behavioral annotation dataframe using contiguous blocks
     Similar to get_starts_and_ends_of_behavior method
     """
-    # Assuming first column contains behavior annotation
-    beh_values = beh_annotation_df.iloc[:, 0] if hasattr(beh_annotation_df.iloc[:, 0],
-                                                         'values') else beh_annotation_df.iloc[:, 0]
+    # Behavioral annotation is in the SECOND column (index 1), not the first
+    beh_values = beh_annotation_df.iloc[:, 1] if hasattr(beh_annotation_df.iloc[:, 1],
+                                                         'values') else beh_annotation_df.iloc[:, 1]
 
     # Create boolean series where behavior equals reversal state
     y_rev = (beh_values == reversal_state)
