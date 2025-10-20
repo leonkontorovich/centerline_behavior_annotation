@@ -10,6 +10,28 @@ If the anterior part of the worm is to the left, then a u curvature will be posi
 
 However, depending on where the vulva is on each recording, a positive curvature could mean ventral or dorsal. To standarize this and make that Red is always Ventral each recording has to be manually annotated the location of the vulva. This information should be stored in the config.yaml file.
 
+### Automatic Behavior Annotations
+Based on the output of the PCA model, behaviors are annotated automatically and is stored in the behavior folder in beh_annotation.csv (REV, FWD) and turns_annotation.csv (VENTRAL, DORSAL TURNS). The behavior is encoded with numbers -1, 0 and 1.
+
+
+**REV/FWD**
+
+1.......... REV
+
+-1......... FWD
+
+0.......... NaN
+
+
+**TURNS**
+
+1.......... VENTRAL
+
+-1......... DORSAL
+
+0.......... no turn/NaN
+
+
 ### Use a Wrapper to create a PCA model ###
 The wrapper does the following:
 https://github.com/Zimmer-lab/centerline_behavior_annotation/blob/main/centerline_behavior_annotation/curvature/scripts/make_PC_model_wrapper.py
