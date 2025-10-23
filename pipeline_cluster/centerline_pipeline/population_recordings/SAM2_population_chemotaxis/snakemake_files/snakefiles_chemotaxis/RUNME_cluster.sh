@@ -12,7 +12,7 @@ while getopts "c" opt; do
 done
 
 # Maximum parallel jobs
-MAX_JOBS=4
+MAX_JOBS=10
 
 # Count directories matching the specific pattern
 NUM_TRACKS=$(find "$PWD" -type d -name "*track*" | wc -l | tr -d ' ')
@@ -23,9 +23,8 @@ else
     JOBS=$MAX_JOBS
 fi
 
-# Improved print statement
 echo "=========================================="
-echo "🔍 Found $NUM_TRACKS track directories"
+echo "🎬 Found $NUM_TRACKS track directories"
 if $RUN_LOCAL; then
   echo "🖥️  Running locally with $JOBS cores"
 else
@@ -33,30 +32,52 @@ else
 fi
 echo "=========================================="
 
-# First unlock the workflow (in case it was locked from a previous failed run)
-echo "Unlocking workflow..."
+# STEP 1: Pre-generate all metadata for dynamic resources
+echo ""
+echo "📊 Step 1: Generating video metadata for resource scaling..."
+echo "----------------------------------------"
+python3 ./generate_metadata.py
+if [ $? -ne 0 ]; then
+    echo "❌ Metadata generation failed!"
+    exit 1
+fi
+
+# STEP 2: Unlock workflow
+echo ""
+echo "🔓 Step 2: Unlocking workflow..."
+echo "----------------------------------------"
 snakemake --unlock --configfile config.yaml
 
-# Run the workflow
-echo "Starting workflow execution..."
+# STEP 3: Run the workflow with dynamically scaled resources
+echo ""
+echo "⚙️  Step 3: Running pipeline with scaled resources..."
+echo "----------------------------------------"
 if $RUN_LOCAL; then
-  # Run locally with specified number of cores
   snakemake \
     --configfile config.yaml \
     --cores $JOBS \
     --keep-going \
     --rerun-incomplete
 else
-  # Run on cluster
-  OPT="sbatch -t {cluster.time} -p {cluster.partition} --cpus-per-task {cluster.cpus_per_task} \
-  --mem {cluster.mem} --output {cluster.output} --gres {cluster.gres} --job-name={rule} --nice=0"
+  # Check wrapper exists
+  if [ ! -f "./submit_wrapper.sh" ]; then
+    echo "❌ ERROR: submit_wrapper.sh not found!"
+    exit 1
+  fi
+  
+  chmod +x ./submit_wrapper.sh
   
   snakemake \
     --configfile config.yaml \
     --latency-wait 500 \
-    --cluster "$OPT" \
+    --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {cluster.gres} {rule}" \
     --cluster-config cluster_config.yaml \
     --jobs $JOBS \
     --keep-going \
     --rerun-incomplete
 fi
+
+echo ""
+echo "=========================================="
+echo "✅ Pipeline complete!"
+echo "=========================================="
