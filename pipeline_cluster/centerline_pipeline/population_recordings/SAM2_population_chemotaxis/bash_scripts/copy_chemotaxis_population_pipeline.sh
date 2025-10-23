@@ -1,36 +1,14 @@
 #!/bin/bash
 
 # Simple File Copy Script
-# This script copies specified files from source folder to each subfolder
+# This script copies all pipeline files to each subfolder
 #
 # Usage:
-#   ./script.sh [basic|chemotaxis]
+#   ./copy_chemotaxis_population_pipeline.sh
 #   Run this script from the directory containing the subfolders to process.
 
-# Check if argument is provided
-if [ $# -ne 1 ]; then
-    echo "Error: Please provide one argument: 'basic' or 'chemotaxis'"
-    echo "Usage: $0 [basic|chemotaxis]"
-    exit 1
-fi
-
-# Validate argument
-if [ "$1" != "basic" ] && [ "$1" != "chemotaxis" ]; then
-    echo "Error: Invalid argument. Please use 'basic' or 'chemotaxis'"
-    echo "Usage: $0 [basic|chemotaxis]"
-    exit 1
-fi
-
-# Define source folders
-src_folder_basic="/lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_basic"
-src_folder_chemotaxis="/lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis"
-
-# Select source folder based on argument
-if [ "$1" == "basic" ]; then
-    src_folder="$src_folder_basic"
-else
-    src_folder="$src_folder_chemotaxis"
-fi
+# Define source folder (universal pipeline)
+src_folder="/lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis"
 
 # Get current directory
 current_dir="$PWD"
@@ -40,21 +18,48 @@ log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" | tee -a "$log_file"
 }
 
-log_message "Script started with mode: $1"
+log_message "Script started - copying universal pipeline files"
 
+# Count folders to process
+folder_count=0
+for subfolder in "${current_dir}"/*/ ; do
+    if [ -d "$subfolder" ]; then
+        ((folder_count++))
+    fi
+done
+
+log_message "Found $folder_count folders to process"
+
+# Process each subfolder
+processed=0
 for subfolder in "${current_dir}"/*/ ; do
     if [ -d "$subfolder" ]; then
         folder_name=$(basename "${subfolder%/}")
         echo "Processing: $folder_name"
         
-        # Copy specific files
+        # Copy pipeline configuration files
         cp "${src_folder}/cluster_config.yaml" "$subfolder"
         cp "${src_folder}/config.yaml" "$subfolder"
-        cp "${src_folder}/RUNME_cluster.sh" "$subfolder"
         cp "${src_folder}/Snakefile" "$subfolder"
         
-        log_message "Processed $folder_name"
+        # Copy execution scripts
+        cp "${src_folder}/RUNME_cluster.sh" "$subfolder"
+        cp "${src_folder}/submit_wrapper.sh" "$subfolder"
+        cp "${src_folder}/generate_metadata.py" "$subfolder"
+        
+        # Copy documentation
+        cp "${src_folder}/README.md" "$subfolder"
+        
+        # Make scripts executable
+        chmod +x "${subfolder}/RUNME_cluster.sh"
+        chmod +x "${subfolder}/submit_wrapper.sh"
+        
+        ((processed++))
+        log_message "[$processed/$folder_count] Processed $folder_name - copied 7 files and set permissions"
     fi
 done
 
-log_message "Script completed."
+log_message "Script completed - processed $processed folders"
+echo ""
+echo "✅ Done! Copied pipeline files to $processed folders"
+echo "📝 Check $log_file for details"
