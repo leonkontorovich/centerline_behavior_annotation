@@ -62,17 +62,6 @@ To copy files into an existing folder structure:
 bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
 ```
 
-### Pipeline Management
-Start the pipeline:
-```bash
-sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
-```
-
-Unlock Snakemake directories: (starting the pipeline also includes unlock step)
-```bash
-bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/unlock_snakemake_directories.sh
-```
-
 ### Essential Shell Count Commands
 run all from dataset directory
 
