@@ -536,7 +536,6 @@ rule chemotaxis_analysis:
         chemotaxis_visualisation = "{dataset}/{track_dir}/output/chemotaxis_analysis.pdf",
         chemotaxis_params        = "{dataset}/{track_dir}/output/chemotaxis_params.csv",
         chemotaxis_h5            = "{dataset}/{track_dir}/output/chemotaxis_analysis_complete.h5",
-        worm_movie               = "{dataset}/{track_dir}/output/worm_movie.avi",
         done = touch("{dataset}/{track_dir}/output/chemotaxis_analysis.done")
     threads: create_scaled_threads_function("chemotaxis_analysis")
     resources:
