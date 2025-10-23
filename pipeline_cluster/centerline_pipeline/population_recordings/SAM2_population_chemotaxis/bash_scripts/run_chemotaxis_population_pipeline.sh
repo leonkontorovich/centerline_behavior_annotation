@@ -11,108 +11,104 @@
 # This script manages the submission of multiple Snakemake workflows
 # with controlled overall parallelism
 
-# Parse command line arguments
-RUN_LOCAL=false
-while getopts "c" opt; do
-  case ${opt} in
-    c ) RUN_LOCAL=true ;;
-    * ) echo "Usage: $0 [-c]" >&2
-        echo "  -c  Run locally instead of on cluster" >&2
-        exit 1 ;;
-  esac
-done
-
 current_dir="$PWD"
+
 # Control how many Snakemake workflows can run simultaneously
 MAX_CONCURRENT_WORKFLOWS=4
-# Each workflow submits up to 4 jobs (as defined in RUNME_cluster.sh)
 
-# Gather all subfolders containing RUNME_cluster.sh
+echo "=========================================="
+echo "🔍 Scanning for workflows in: $current_dir"
+echo "=========================================="
+
+# Find all subfolders containing RUNME_cluster.sh
 mapfile -t folders < <(
     find "$current_dir" -maxdepth 1 -type d \( ! -path "$current_dir" \) \
-         -exec test -f "{}/RUNME_cluster.sh" \; -print
+         -exec test -f "{}/RUNME_cluster.sh" \; -print | sort
 )
 
 NUM_FOLDERS=${#folders[@]}
 
-echo "=========================================="
-echo "🔍 Found ${NUM_FOLDERS} subfolders with RUNME_cluster.sh"
-echo "🚀 Will run up to ${MAX_CONCURRENT_WORKFLOWS} workflows simultaneously"
-echo "=========================================="
+if [ $NUM_FOLDERS -eq 0 ]; then
+    echo "❌ Error: No subfolders with RUNME_cluster.sh found!"
+    exit 1
+fi
 
-# Create an array of workflow folders for use with job arrays
-# First clear the file to ensure no previous content remains
+echo "📁 Found ${NUM_FOLDERS} workflow folders"
+echo "🚀 Max concurrent workflows: ${MAX_CONCURRENT_WORKFLOWS}"
+echo "⏱️  Started at: $(date)"
+echo "=========================================="
+echo ""
+
+# Create list of workflow folders for job array
 > workflow_folders.txt
 for i in "${!folders[@]}"; do
-    # Use printf to avoid potential newline issues
-    printf "%d %s\n" "$i" "${folders[$i]}" >> workflow_folders.txt
+    echo "${folders[$i]}" >> workflow_folders.txt
+    echo "  [$i] $(basename "${folders[$i]}")"
 done
 
-# Submit job array with limited concurrency
-if $RUN_LOCAL; then
-    RUN_OPTION="-c"
-else
-    RUN_OPTION=""
-fi
+echo ""
+echo "=========================================="
 
-# Create workflow runner script
-cat > workflow_runner.sh << 'EOF'
+# Create the workflow runner script
+cat > workflow_runner.sh << 'RUNNER_EOF'
 #!/usr/bin/env bash
-RUN_OPTION="$1"
-FOLDER_FILE="$2"
-ARRAY_ID=$SLURM_ARRAY_TASK_ID
+set -e
 
-# Get the folder for this array task - use only the first matching line
-FOLDER=$(awk -v id="$ARRAY_ID" '$1 == id {print $2; exit}' "$FOLDER_FILE")
+ARRAY_ID=${SLURM_ARRAY_TASK_ID}
+FOLDER=$(sed -n "$((ARRAY_ID + 1))p" workflow_folders.txt)
 
-# Debug information
-echo "Debug: Array ID: $ARRAY_ID"
-echo "Debug: Folder from file: $FOLDER"
-echo "Debug: Folder name: $(basename "$FOLDER")"
-
-if [ -z "$FOLDER" ]; then
-    echo "Error: Could not find folder for array ID $ARRAY_ID"
+if [ -z "$FOLDER" ] || [ ! -d "$FOLDER" ]; then
+    echo "❌ Error: Invalid folder for array ID $ARRAY_ID"
     exit 1
 fi
 
-if [ ! -d "$FOLDER" ]; then
-    echo "Error: Directory does not exist: $FOLDER"
-    exit 1
-fi
+FOLDER_NAME=$(basename "$FOLDER")
+echo "=========================================="
+echo "🎬 Starting: $FOLDER_NAME"
+echo "⏰ Time: $(date)"
+echo "=========================================="
 
-echo "→ Processing workflow in: $(basename "$FOLDER") at $(date)"
-cd "$FOLDER" || { echo "Failed to change directory to $FOLDER"; exit 1; }
+cd "$FOLDER" || exit 1
 
-# Run the workflow script with the provided option
-bash RUNME_cluster.sh $RUN_OPTION
+# Run the workflow
+bash RUNME_cluster.sh
 EXIT_CODE=$?
 
-echo "✅ Completed workflow in: $(basename "$FOLDER") with exit code $EXIT_CODE at $(date)"
+if [ $EXIT_CODE -eq 0 ]; then
+    echo "✅ Completed: $FOLDER_NAME"
+else
+    echo "❌ Failed: $FOLDER_NAME (exit code: $EXIT_CODE)"
+fi
+
+echo "⏰ Finished at: $(date)"
+echo "=========================================="
 exit $EXIT_CODE
-EOF
+RUNNER_EOF
 
 chmod +x workflow_runner.sh
 
-# Submit the job array with limited concurrent jobs
-job_array_id=$(sbatch --parsable \
-    --job-name="snake_workflows" \
+# Submit job array
+echo "Submitting job array..."
+job_id=$(sbatch --parsable \
+    --job-name="snake_workflow" \
     --output="workflow_%A_%a.log" \
     --time=5-00:00:00 \
     --cpus-per-task=1 \
     --mem=4G \
     --array="0-$((NUM_FOLDERS-1))%${MAX_CONCURRENT_WORKFLOWS}" \
-    ./workflow_runner.sh "$RUN_OPTION" workflow_folders.txt)
+    workflow_runner.sh)
 
+echo ""
 echo "=========================================="
-echo "🚀 Submitted job array ${job_array_id} to process all workflows"
-echo "👥 Maximum of ${MAX_CONCURRENT_WORKFLOWS} workflows will run concurrently"
-echo "⏳ Waiting for all workflows to complete..."
-echo "=========================================="
-
-# Wait for the job array to complete
-srun --dependency=afterok:${job_array_id} --cpus-per-task=1 --mem=100M --time=0:01:00 \
-    /bin/bash -c "echo '✅ All workflows completed successfully at $(date)'"
-
-echo "=========================================="
-echo "🏁 Controller script finished at $(date)"
+echo "🚀 Submitted job array: $job_id"
+echo "📊 Total workflows: $NUM_FOLDERS"
+echo "💥 Concurrent workflows: $MAX_CONCURRENT_WORKFLOWS"
+echo ""
+echo "Monitor with:"
+echo "  squeue -j $job_id"
+echo "  watch 'squeue -j $job_id'"
+echo ""
+echo "Check logs:"
+echo "  tail -f workflow_${job_id}_*.log"
+echo "  ls -ltr workflow_${job_id}_*.log"
 echo "=========================================="
