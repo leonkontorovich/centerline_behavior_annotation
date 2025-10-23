@@ -76,6 +76,48 @@ class ImagePointDetector:
         print(f"Search finished. Total occurrences found: {len(self.image_paths)}")
         self.result_label.config(text=f"Found {len(self.image_paths)} occurrences.")
 
+    def load_from_yaml(self):
+        """Load existing coordinates from the YAML file"""
+        config_path = os.path.join(self.folder_path, "dataset_coordinates.yaml")
+        
+        if not os.path.exists(config_path):
+            print("No existing dataset_coordinates.yaml found.")
+            return
+        
+        try:
+            with open(config_path, 'r') as file:
+                config = yaml.safe_load(file) or {}
+            
+            print(f"Loading coordinates from {config_path}")
+            
+            # Match YAML entries to image paths
+            for image_path in self.image_paths:
+                subfolder_key = os.path.basename(os.path.dirname(image_path))
+                
+                if subfolder_key in config:
+                    coords_data = config[subfolder_key]
+                    self.points[image_path] = {}
+                    
+                    # Load top_left coordinates if they exist
+                    if 'top_left_x' in coords_data and 'top_left_y' in coords_data:
+                        x = coords_data['top_left_x']
+                        y = coords_data['top_left_y']
+                        self.points[image_path]['top_left'] = (x, y)
+                        print(f"Loaded top_left for {subfolder_key}: ({x}, {y})")
+                    
+                    # Load odor_pos coordinates if they exist
+                    if 'odor_x' in coords_data and 'odor_y' in coords_data:
+                        x = coords_data['odor_x']
+                        y = coords_data['odor_y']
+                        self.points[image_path]['odor_pos'] = (x, y)
+                        print(f"Loaded odor_pos for {subfolder_key}: ({x}, {y})")
+            
+            print(f"Successfully loaded coordinates for {len(self.points)} images.")
+            
+        except Exception as e:
+            print(f"Error loading from {config_path}: {e}")
+            messagebox.showwarning("Warning", f"Could not load existing coordinates: {e}")
+
     def confirm_detect_points(self):
         if not self.detect_button["state"] == "disabled":
             confirm = messagebox.askyesno("Confirm Restart", "You have already started point detection. Restarting will lose all current progress. Do you want to continue?")
@@ -92,6 +134,10 @@ class ImagePointDetector:
 
         self.current_image_index = 0
         self.points = {}
+        
+        # Load existing coordinates from YAML
+        self.load_from_yaml()
+        
         self.show_image()
 
     def load_image_stack(self, image_path):
