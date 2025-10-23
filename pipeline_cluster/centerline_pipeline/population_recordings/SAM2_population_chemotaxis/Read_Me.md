@@ -49,13 +49,7 @@ ________________________________________________________________________________
    - If no odor is used, only annotate the `top_left` position with the GUI.  
    - A config file will be created in the dataset folder that saves the positions, and Snakemake will access these positions automatically for the corresponding experiments.
 
-6. Start a new tmux session:
-   ```bash
-   tmux new -s analysis
-   ```
-   This allows the analysis to continue running even if you get disconnected.
-
-7. Run the analysis:
+6. Run the analysis:
    ```bash
    sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
    ```
