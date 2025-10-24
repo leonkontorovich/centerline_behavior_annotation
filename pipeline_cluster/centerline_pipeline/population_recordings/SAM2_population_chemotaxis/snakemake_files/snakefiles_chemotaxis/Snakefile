@@ -61,7 +61,7 @@ def format_seconds_to_slurm_time(seconds):
     d, r = divmod(seconds, 86400)
     h, r = divmod(r, 3600)
     m, s = divmod(r, 60)
-    return f"{d}-{h:02d}:{m:02d}:{s:02d}" if d else f"{h}-{m:02d}:{s:02d}"
+    return f"{d}-{h:02d}:{m:02d}:{s:02d}" if d else f"{h:02d}:{m:02d}:{s:02d}"
 
 @lru_cache(None)
 def get_video_metadata(dataset, track_dir):
@@ -175,7 +175,7 @@ rule tiff2avi:
     threads: create_scaled_threads_function("tiff2avi")
     resources:
         mem_mb=create_scaled_memory_function("tiff2avi"),
-        time=create_scaled_time_function("tiff2avi"),
+        time=create_static_time_function("tiff2avi"),
         partition=create_partition_function("tiff2avi"),
         gres=create_gres_function("tiff2avi")
     params:
