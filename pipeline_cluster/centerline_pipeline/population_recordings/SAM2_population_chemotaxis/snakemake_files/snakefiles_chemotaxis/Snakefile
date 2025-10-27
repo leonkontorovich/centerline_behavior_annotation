@@ -61,7 +61,7 @@ def format_seconds_to_slurm_time(seconds):
     d, r = divmod(seconds, 86400)
     h, r = divmod(r, 3600)
     m, s = divmod(r, 60)
-    return f"{d}-{h:02d}:{m:02d}:{s:02d}" if d else f"{h:02d}:{m:02d}:{s:02d}"
+    return f"{d}-{h:02d}:{m:02d}:{s:02d}" if d else f"{h}-{m:02d}:{s:02d}"
 
 @lru_cache(None)
 def get_video_metadata(dataset, track_dir):
@@ -175,7 +175,7 @@ rule tiff2avi:
     threads: create_scaled_threads_function("tiff2avi")
     resources:
         mem_mb=create_scaled_memory_function("tiff2avi"),
-        time=create_static_time_function("tiff2avi"),
+        time=create_scaled_time_function("tiff2avi"),
         partition=create_partition_function("tiff2avi"),
         gres=create_gres_function("tiff2avi")
     params:
@@ -208,64 +208,22 @@ rule sam2_segment:
     params:
         column_names      = ["neck"],
         model_path        = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
-        sam2_conda_env    = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
-        downsample_factor = config["downsample_factor"],
+        sam2_conda_env_name = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
         batch_size        = config["batch_size"]
     shell:
         """
-        # Fix xml_catalog_files_libxml2 issue
+        # I started getting an error with the xml_catalog_files_libxml2 variable, so check if it is set
         if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
             export xml_catalog_files_libxml2=""
         fi
 
-        # Load CUDA toolkit module
         module load cuda-toolkit/12.9.0
+        
+        # Activate the environment and the correct cuda
+        source /lisc/app/conda/miniforge3/bin/activate {params.sam2_conda_env_name}
 
-        # Activate the SAM2 environment
-        source /lisc/app/conda/miniforge3/bin/activate {params.sam2_conda_env}
-
-        # Display the temporary directory being used
-        echo "Using temporary directory: $TMPDIR"
-
-        # Copy input files to the temporary directory with verification
-        cp {input.avi} $TMPDIR/track.avi
-        while [ ! -f $TMPDIR/track.avi ] || [ ! -s $TMPDIR/track.avi ]; do
-            sleep 1
-            echo "Waiting for avi file to be fully copied..."
-        done
-
-        cp {input.dlc_csv} $TMPDIR/track_dlc.csv
-        while [ ! -f $TMPDIR/track_dlc.csv ] || [ ! -s $TMPDIR/track_dlc.csv ]; do
-            sleep 1
-            echo "Waiting for CSV file to be fully copied..."
-        done
-
-        # Add a small delay to ensure filesystem sync
-        sleep 2
-
-        # Run the script within the temporary directory with device parameter
-        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import main; main(['-video_path', '$TMPDIR/track.avi', '-output_file_path', '$TMPDIR/track_mask.btf', '-DLC_csv_file_path', '$TMPDIR/track_dlc.csv', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
-
-        # Verify output file exists and wait for it to be fully written
-        while [ ! -f $TMPDIR/track_mask.btf ] || [ ! -s $TMPDIR/track_mask.btf ]; do
-            sleep 1
-            echo "Waiting for output file to be fully written..."
-        done
-
-        # Add a small delay before moving
-        sleep 2
-
-        # Move the output file back to the final output path
-        mv $TMPDIR/track_mask.btf {output.mask}
-
-        # Verify the move completed successfully
-        while [ ! -f {output.mask} ] || [ ! -s {output.mask} ]; do
-            sleep 1
-            echo "Waiting for final file move to complete..."
-        done
-
-        # Clean up the temporary directory
-        rm -rf $TMPDIR/*
+        # Run the script directly without temp directory overhead
+        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import main; main(['-video_path', '{input.avi}', '-output_file_path', '{output.mask}', '-DLC_csv_file_path', '{input.dlc_csv}', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--use_image_arrays', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
         """
 
 rule correct_SAM2_DLC_errors:
@@ -508,8 +466,6 @@ rule hilbert_transform_on_kymogram:
             '-fs', str(params.fs),
             '-w', str(params.window),
         ])
-
-#chemotaxis_rule
 rule chemotaxis_analysis:
     input:
         "{dataset}/{track_dir}/output/.meta.json",
@@ -520,18 +476,18 @@ rule chemotaxis_analysis:
         skeleton_spline_Y_coords = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords_new.csv",
         conc_gradient_array      = config["conc_gradient_array"],
         distance_array           = config["distance_array"],
-        DLC_filtered  = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.h5",
+        DLC_filtered             = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.h5",
     params:
-        factor_px_to_mm = config["factor_px_to_mm"],
-        fps             = config["fps"],
+        factor_px_to_mm       = config["factor_px_to_mm"],
+        fps                   = config["fps"],
         diffusion_time_offset = config["diffusion_time_offset"],
-        worm_pos        = "{dataset}/{track_dir}/track.txt",
-        tif_path        = "{dataset}/{track_dir}/track.tif",
-        dlc_nose_label  = config["nose"],
-        dlc_tail_label  = config["tail"],
-        bootstrap_iterations = 10,
-        bootstrap_seed = 42,
-        dC_lookback_frames = 1,
+        worm_pos              = "{dataset}/{track_dir}/track.txt",
+        tif_path              = "{dataset}/{track_dir}/track.tif",
+        dlc_nose_label        = config["nose"],
+        dlc_tail_label        = config["tail"],
+        bootstrap_iterations  = 10,
+        bootstrap_seed        = 42,
+        dC_lookback_frames    = 1,
     output:
         chemotaxis_visualisation = "{dataset}/{track_dir}/output/chemotaxis_analysis.pdf",
         chemotaxis_params        = "{dataset}/{track_dir}/output/chemotaxis_params.csv",
@@ -539,17 +495,16 @@ rule chemotaxis_analysis:
         done = touch("{dataset}/{track_dir}/output/chemotaxis_analysis.done")
     threads: create_scaled_threads_function("chemotaxis_analysis")
     resources:
-        mem_mb=create_scaled_memory_function("chemotaxis_analysis"),
-        time=create_scaled_time_function("chemotaxis_analysis"),
-        partition=create_partition_function("chemotaxis_analysis"),
-        gres=create_gres_function("chemotaxis_analysis")
+        mem_mb    = create_scaled_memory_function("chemotaxis_analysis"),
+        time      = create_scaled_time_function("chemotaxis_analysis"),
+        partition = create_partition_function("chemotaxis_analysis"),
+        gres      = create_gres_function("chemotaxis_analysis")
     run:
         from chemotaxis_analysis_high_res import initialize_load_files_high_res_universal_bootstrapping
         import tifffile as tiff
         from imutils import MicroscopeDataReader
         import dask.array as da
         import numpy as np
-        import yaml
         from pathlib import Path
 
         def get_video_resolution(tif_path):
@@ -561,53 +516,43 @@ rule chemotaxis_analysis:
                 break
             return video_resolution_x, video_resolution_y
 
-        def get_positions(track_id):
-            config_path = Path(tif_path).resolve().parents[3] / "dataset_coordinates.yaml"
-            with open(config_path, 'r') as f:
-                all_coords = yaml.safe_load(f)
-
-            if track_id not in all_coords:
-                raise ValueError(f"Missing coordinates for '{track_id}' in dataset_coordinates.yaml. Use GUI to annotate.")
-
-            entry = all_coords[track_id]
-            print(f"Loaded coordinates for {track_id}:")
-            print(f"  odor_pos: x={entry['odor_x']}, y={entry['odor_y']}")
-            print(f"  top_left: x={entry['top_left_x']}, y={entry['top_left_y']}")
-
-            return entry["odor_x"], entry["odor_y"], entry["top_left_x"], entry["top_left_y"]
-
         # Determine resolution
         tif_path = str(params.tif_path)
         video_resolution_x, video_resolution_y = get_video_resolution(tif_path)
 
-        # Extract coordinates
-        track_id = wildcards.dataset
-        odor_x, odor_y, top_left_x, top_left_y = get_positions(track_id)
-        odor_pos_str = f"x={odor_x}, y={odor_y}"
+        # ---- HARDCODED COORDINATES FOR TESTING ----
+        # Replace these four numbers if you need different test coordinates.
+        top_left_x = 435
+        top_left_y = 284
+        odor_x     = 2202
+        odor_y     = 3769
+        # -------------------------------------------
+
+        odor_pos_str     = f"x={odor_x}, y={odor_y}"
         top_left_pos_str = f"x={top_left_x}, y={top_left_y}"
 
         # Call script
         initialize_load_files_high_res_universal_bootstrapping.main([
-            '--reversal_annotation',     str(input.reversal_annotation),
-            '--skeleton_spline',         str(input.spline_K),
-            '--worm_pos',                str(params.worm_pos),
-            '--skeleton_spline_X_coords',str(input.skeleton_spline_X_coords),
-            '--skeleton_spline_Y_coords',str(input.skeleton_spline_Y_coords),
-            '--factor_px_to_mm',         str(params.factor_px_to_mm),
-            '--video_resolution_x',      str(video_resolution_x),
-            '--video_resolution_y',      str(video_resolution_y),
-            '--fps',                     str(params.fps),
-            '--conc_gradient_array',     str(input.conc_gradient_array),
-            '--distance_array',          str(input.distance_array),
-            '--turn_annotation',         str(input.turn_annotation),
-            '--top_left_pos',            top_left_pos_str,
-            '--odor_pos',                odor_pos_str,
-            '--diffusion_time_offset',   str(params.diffusion_time_offset),
-            '--img_type',                str('crop'),
-            '--DLC_coords',              str(input.DLC_filtered),
-            '--DLC_nose',                str(params.dlc_nose_label),
-            '--DLC_tail',                str(params.dlc_tail_label),
-            '--bootstrap_iterations',    str(params.bootstrap_iterations),
-            '--bootstrap_seed',          str(params.bootstrap_seed),
-            '--dC_lookback_frames',      str(params.dC_lookback_frames)
+            '--reversal_annotation',      str(input.reversal_annotation),
+            '--skeleton_spline',          str(input.spline_K),
+            '--worm_pos',                 str(params.worm_pos),
+            '--skeleton_spline_X_coords', str(input.skeleton_spline_X_coords),
+            '--skeleton_spline_Y_coords', str(input.skeleton_spline_Y_coords),
+            '--factor_px_to_mm',          str(params.factor_px_to_mm),
+            '--video_resolution_x',       str(video_resolution_x),
+            '--video_resolution_y',       str(video_resolution_y),
+            '--fps',                      str(params.fps),
+            '--conc_gradient_array',      str(input.conc_gradient_array),
+            '--distance_array',           str(input.distance_array),
+            '--turn_annotation',          str(input.turn_annotation),
+            '--top_left_pos',             top_left_pos_str,
+            '--odor_pos',                 odor_pos_str,
+            '--diffusion_time_offset',    str(params.diffusion_time_offset),
+            '--img_type',                 str('crop'),
+            '--DLC_coords',               str(input.DLC_filtered),
+            '--DLC_nose',                 str(params.dlc_nose_label),
+            '--DLC_tail',                 str(params.dlc_tail_label),
+            '--bootstrap_iterations',     str(params.bootstrap_iterations),
+            '--bootstrap_seed',           str(params.bootstrap_seed),
+            '--dC_lookback_frames',       str(params.dC_lookback_frames)
         ])
