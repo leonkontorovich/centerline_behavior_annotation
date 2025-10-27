@@ -97,9 +97,6 @@ find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_pa
 # Delete chemotaxis_analysis rule outputs
 find "$(pwd)" -type f \( -name "chemotaxis_overview.png" -o -name "chemotaxis_params.csv" \) -delete
 
-# Dry-run: Show what output folders would be deleted
-find "$(pwd)" -type d -name "output" -print
-
 # Delete all output folders
 
 # Dryrun
@@ -107,4 +104,10 @@ find "$(pwd)" -type d -name "output" -exec echo "Would remove: {}" \;
 
 # Real command - use with care after DRYRUN!!
 find "$(pwd)" -type d -name "output" -exec rm -r {} +
+```
+
+### Cleanup Commands - Debug run for one specific crop folder
+
+```bash
+snakemake --configfile config.yaml --latency-wait 500 --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {resources.gres} {rule}" --cluster-config cluster_config.yaml --jobs 1 --keep-going --rerun-incomplete -p "2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_analysis.done"
 ```
