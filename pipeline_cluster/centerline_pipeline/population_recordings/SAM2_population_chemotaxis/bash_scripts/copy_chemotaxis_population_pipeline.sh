@@ -50,10 +50,6 @@ for subfolder in "${current_dir}"/*/ ; do
         # Copy documentation
         cp "${src_folder}/README.md" "$subfolder"
         
-        # Make scripts executable
-        chmod +x "${subfolder}/RUNME_cluster.sh"
-        chmod +x "${subfolder}/submit_wrapper.sh"
-        
         ((processed++))
         log_message "[$processed/$folder_count] Processed $folder_name - copied 7 files and set permissions"
     fi
