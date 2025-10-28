@@ -5,6 +5,7 @@
 1. Load the conda module (first-time setup only):
    ```bash
    module load conda
+   echo 'module load conda' >> ~/.bashrc
    ```
 
 2. Configure conda on LISC login (first-time setup only):
