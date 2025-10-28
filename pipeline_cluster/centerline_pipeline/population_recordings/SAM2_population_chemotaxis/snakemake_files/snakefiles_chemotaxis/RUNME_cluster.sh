@@ -12,7 +12,7 @@ while getopts "c" opt; do
 done
 
 # Maximum parallel jobs
-MAX_JOBS=10
+MAX_JOBS=6
 
 # Count directories matching the specific pattern
 NUM_TRACKS=$(find "$PWD" -type d -name "*track*" | wc -l | tr -d ' ')
