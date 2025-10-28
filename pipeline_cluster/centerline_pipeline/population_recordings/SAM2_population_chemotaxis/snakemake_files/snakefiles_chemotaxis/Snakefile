@@ -466,6 +466,7 @@ rule hilbert_transform_on_kymogram:
             '-fs', str(params.fs),
             '-w', str(params.window),
         ])
+        
 rule chemotaxis_analysis:
     input:
         "{dataset}/{track_dir}/output/.meta.json",
@@ -505,6 +506,7 @@ rule chemotaxis_analysis:
         from imutils import MicroscopeDataReader
         import dask.array as da
         import numpy as np
+        import yaml
         from pathlib import Path
 
         def get_video_resolution(tif_path):
@@ -516,18 +518,28 @@ rule chemotaxis_analysis:
                 break
             return video_resolution_x, video_resolution_y
 
+        def get_positions(track_id):
+            config_path = Path(tif_path).resolve().parents[3] / "dataset_coordinates.yaml"
+            with open(config_path, 'r') as f:
+                all_coords = yaml.safe_load(f)
+
+            if track_id not in all_coords:
+                raise ValueError(f"Missing coordinates for '{track_id}' in dataset_coordinates.yaml. Use GUI to annotate.")
+
+            entry = all_coords[track_id]
+            print(f"Loaded coordinates for {track_id}:")
+            print(f"  odor_pos: x={entry['odor_x']}, y={entry['odor_y']}")
+            print(f"  top_left: x={entry['top_left_x']}, y={entry['top_left_y']}")
+
+            return entry["odor_x"], entry["odor_y"], entry["top_left_x"], entry["top_left_y"]
+
         # Determine resolution
         tif_path = str(params.tif_path)
         video_resolution_x, video_resolution_y = get_video_resolution(tif_path)
 
-        # ---- HARDCODED COORDINATES FOR TESTING ----
-        # Replace these four numbers if you need different test coordinates.
-        top_left_x = 435
-        top_left_y = 284
-        odor_x     = 2202
-        odor_y     = 3769
-        # -------------------------------------------
-
+        # Extract coordinates from YAML
+        track_id = wildcards.dataset
+        odor_x, odor_y, top_left_x, top_left_y = get_positions(track_id)
         odor_pos_str     = f"x={odor_x}, y={odor_y}"
         top_left_pos_str = f"x={top_left_x}, y={top_left_y}"
 
