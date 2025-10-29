@@ -195,7 +195,7 @@ rule tiff2avi:
 rule sam2_segment:
     input:
         "{dataset}/{track_dir}/output/.meta.json",
-        avi     = "{dataset}/{track_dir}/output/track.avi",
+        input_img = "{dataset}/{track_dir}/track.tif", 
         dlc_csv = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.csv"
     output:
         mask = temp("{dataset}/{track_dir}/output/track_mask.btf")
@@ -211,20 +211,20 @@ rule sam2_segment:
         sam2_conda_env_name = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
         batch_size        = config["batch_size"]
     shell:
-        """
+        '''
         # I started getting an error with the xml_catalog_files_libxml2 variable, so check if it is set
         if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
             export xml_catalog_files_libxml2=""
         fi
 
         module load cuda-toolkit/12.9.0
-        
+
         # Activate the environment and the correct cuda
         source /lisc/app/conda/miniforge3/bin/activate {params.sam2_conda_env_name}
 
         # Run the script directly without temp directory overhead
-        python -c "from SAM2_snakemake_scripts.sam2_video_processing_from_jpeg_batch_pipeline import main; main(['-video_path', '{input.avi}', '-output_file_path', '{output.mask}', '-DLC_csv_file_path', '{input.dlc_csv}', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--use_image_arrays', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
-        """
+        python -c "from SAM2_snakemake_scripts.sam2_video_processing_miscroscope_data_loader import main; main(['-tiff_path', '{input.input_img}', '-output_file_path', '{output.mask}', '-DLC_csv_file_path', '{input.dlc_csv}', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
+        '''
 
 rule correct_SAM2_DLC_errors:
     input:
@@ -239,13 +239,22 @@ rule correct_SAM2_DLC_errors:
         partition=create_partition_function("correct_SAM2_DLC_errors"),
         gres=create_gres_function("correct_SAM2_DLC_errors")
     params:
-        script_path   = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/correct_SAM2_DLC_error_pipeline.py",
+        sam2_conda_env_name = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
         min_worm_area = config["min_worm_area"],
         max_worm_area = config["max_worm_area"]
     shell:
-        """
-        python {params.script_path} {input.mask_stack} {output.processed_stack} {params.min_worm_area} {params.max_worm_area}
-        """
+        '''
+        # Check and set xml_catalog_files_libxml2 variable if needed
+        if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
+            export xml_catalog_files_libxml2=""
+        fi
+
+        # Activate the SAM2 environment
+        source /lisc/app/conda/miniforge3/bin/activate {params.sam2_conda_env_name}
+
+        # Run the correction script
+        python -c "from SAM2_snakemake_scripts.correct_SAM2_DLC_error_pipeline import main; main(['{input.mask_stack}', '{output.processed_stack}', '{params.min_worm_area}', '{params.max_worm_area}'])"
+        '''
 
 rule dlc_analyze_videos:
     input:
