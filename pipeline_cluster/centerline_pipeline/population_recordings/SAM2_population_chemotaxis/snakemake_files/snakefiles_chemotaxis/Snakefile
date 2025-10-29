@@ -239,7 +239,6 @@ rule correct_SAM2_DLC_errors:
         partition=create_partition_function("correct_SAM2_DLC_errors"),
         gres=create_gres_function("correct_SAM2_DLC_errors")
     params:
-        script_path   = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2/pipeline_implementation/correct_SAM2_DLC_error_pipeline.py",
         sam2_conda_env_name = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
         min_worm_area = config["min_worm_area"],
         max_worm_area = config["max_worm_area"]
@@ -254,7 +253,7 @@ rule correct_SAM2_DLC_errors:
         source /lisc/app/conda/miniforge3/bin/activate {params.sam2_conda_env_name}
 
         # Run the correction script
-        python {params.script_path} {input.mask_stack} {output.processed_stack} {params.min_worm_area} {params.max_worm_area}
+        python -c "from SAM2_snakemake_scripts.correct_SAM2_DLC_error_pipeline import main; main(['{input.mask_stack}', '{output.processed_stack}', '{params.min_worm_area}', '{params.max_worm_area}'])"
         '''
 
 rule dlc_analyze_videos:
