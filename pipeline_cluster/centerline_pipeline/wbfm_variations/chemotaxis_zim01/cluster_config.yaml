@@ -4,14 +4,15 @@
 # https://lisc.univie.ac.at/wiki/content/working_environment/services/computational_resources
 
 __default__:
-    partition: basic,gpu
     time: 1-0:00:00
     nodes: 1
     cpus_per_task: 16
     mem: 128G
     output: log_snakemake_step-%j.out
     mail_type: FAIL,TIME_LIMIT
-    gres: # Should be empty
+    gres: null # Should be null
+    constraint: "hdd|ssd" # Dummy values, because it can't be empty
+    no-requeue: "" # Should be empty
 
 # Note: may need to push over to himem if the cluster is busy
 preprocessing:
@@ -24,38 +25,62 @@ segmentation:
     mem: 256G
     cpus_per_task: 40
 
+alt_segmentation:
+    time: 2-12:00:00
+    mem: 256G
+    cpus_per_task: 40
+
 match_frame_pairs:
-    partition: basic,gpu
-    gpus_per_node: 1
     time: 1-12:00:00
     mem: 128G
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 build_frame_objects:
     time: 1-12:00:00
     cpus_per_task: 20
+    mem: 128G
+
+alt_build_frame_objects:
+    time: 1-12:00:00
+    cpus_per_task: 20
+    mem: 128G
 
 postprocess_matches_to_tracklets:
-    partition: basic,gpu
     cpus_per_task: 1
     time: 0-6:00:00
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 combine_tracking_and_tracklets:
     time: 1-18:00:00
     cpus_per_task: 20
 
 tracking:
-    partition: basic,gpu
     time: 1-00:00:00
-    gpus_per_node: 1
     cpus_per_task: 16
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 barlow_tracking:
-    gpus_per_node: 1
     cpus_per_task: 16
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+barlow_embedding:
+    cpus_per_task: 16
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+alt_barlow_embedding: 
+    cpus_per_task: 16
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+extract_full_traces:
+    time: 1-12:00:00
+    cpus_per_task: 56
+    mem: 256G
 
 # Behavior
 subtract_background:
@@ -69,10 +94,10 @@ tiff2avi:
 
 dlc_analyze_videos:
     time: 1-08:00:00
-    partition: basic,gpu
     mem: 128G
     cpus_per_task: 24
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 create_centerline:
     time: 1-12:00:00
@@ -86,34 +111,38 @@ normalize_img:
 
 worm_unet:
     time: 1-08:00:00
-    partition: basic,gpu
     mem: 128G
     cpus_per_task: 24
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 sam2_segment:
     time: 2-08:00:00
-    partition: basic,gpu
     mem: 128G
     cpus_per_task: 24
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 coil_unet:
     time: 1-08:00:00
-    partition: basic,gpu
     mem: 128G
     cpus_per_task: 24
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 binarize:
     time: 1-06:00:00
     cpus_per_task: 8
 
-binarize:
+binarize_coil:
     time: 1-06:00:00
     cpus_per_task: 8
-
 
 run_bayesian_model:
     time: 2-06:00:00
     cpus_per_task: 16
+
+chemotaxis_analysis:
+    time: 1-12:00:00
+    cpus_per_task: 16
+    mem: 64G
