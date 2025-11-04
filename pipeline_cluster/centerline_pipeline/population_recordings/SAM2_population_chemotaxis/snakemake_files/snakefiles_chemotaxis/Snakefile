@@ -123,6 +123,12 @@ def create_gres_function(rule_name):
         return get_cluster_config_value(rule_name, "gres", "")
     return get_gres
 
+def create_constraint_function(rule_name):
+    """Returns constraint value from cluster_config.yaml (no scaling)"""
+    def get_constraint(wildcards):
+        return get_cluster_config_value(rule_name, "constraint", "")
+    return get_constraint
+
 # ----- Static Resource Functions (no scaling, used for tiff2avi and sam2_segment) -----
 def create_static_threads_function(rule_name):
     """Returns a function that returns fixed thread count from cluster_config"""

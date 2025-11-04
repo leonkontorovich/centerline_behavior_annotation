@@ -8,6 +8,7 @@ __default__:
     mem_mb: 8000
     output: log/log_%x_%A_%a_%j.out
     gres:
+    constraint:
 
 chemotaxis_analysis:
     time: 0-08:00:00
@@ -34,6 +35,7 @@ dlc_analyze_videos:
     cpus_per_task: 24
     output: log/log_%x_%A_%a_%j.out
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 create_centerline:
     time: 0-12:00:00
@@ -47,6 +49,7 @@ sam2_segment:
     partition: basic,gpu
     mem: 128G
     gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
 
 correct_SAM2_DLC_errors:
     time: 0-06:00:00
