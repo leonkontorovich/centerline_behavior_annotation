@@ -112,3 +112,10 @@ find "$(pwd)" -type d -name "output" -exec rm -r {} +
 ```bash
 snakemake --configfile config.yaml --latency-wait 500 --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {resources.gres} {rule}" --cluster-config cluster_config.yaml --jobs 1 --keep-going --rerun-incomplete -p "2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_analysis.done"
 ```
+
+### Processing logs for SAM2 
+
+GPU: NVIDIA L4
+Per-frame processing time: ~0.403 s/frame (≈403 ms, ~2.48 fps)
+Mask resolution: 146 × 146 (uint8 {0, 255})
+
