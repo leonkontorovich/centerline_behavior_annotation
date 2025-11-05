@@ -70,7 +70,7 @@ else
   snakemake \
     --configfile config.yaml \
     --latency-wait 500 \
-    --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {cluster.gres} {rule}" \
+    --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out '{cluster.gres}' '{cluster.constraint}' {rule}" \
     --cluster-config cluster_config.yaml \
     --jobs $JOBS \
     --keep-going \

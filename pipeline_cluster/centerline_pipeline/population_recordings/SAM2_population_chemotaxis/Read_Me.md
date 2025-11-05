@@ -110,7 +110,22 @@ find "$(pwd)" -type d -name "output" -exec rm -r {} +
 ### Cleanup Commands - Debug run for one specific crop folder
 
 ```bash
-snakemake --configfile config.yaml --latency-wait 500 --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {resources.gres} {rule}" --cluster-config cluster_config.yaml --jobs 1 --keep-going --rerun-incomplete -p "2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_analysis.done"
+snakemake --configfile config.yaml \
+  --latency-wait 500 \
+  --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {cluster.gres} {rule}" \
+  --cluster-config cluster_config.yaml \
+  --jobs 1 \
+  --keep-going \
+  --rerun-incomplete \
+  -p \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_analysis.pdf \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_params.csv \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_analysis_complete.h5 \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/chemotaxis_analysis.done \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/hilbert_regenerated_carrier.csv \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/hilbert_inst_freq.csv \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/hilbert_inst_phase.csv \
+  2024-07-26_12-23-11_benzaldehyde_0.07/2024-07-26_12-23-11_benzaldehyde_0.07%_track_0/output/hilbert_inst_amplitude.csv
 ```
 
 ### Processing logs for SAM2 
