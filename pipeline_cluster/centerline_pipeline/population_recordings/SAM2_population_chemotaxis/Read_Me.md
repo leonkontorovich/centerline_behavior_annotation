@@ -50,9 +50,9 @@ ________________________________________________________________________________
    - If no odor is used, only annotate the `top_left` position with the GUI.  
    - A config file will be created in the dataset folder that saves the positions, and Snakemake will access these positions automatically for the corresponding experiments.
 
-6. Run the analysis:
+6. Run the analysis - Define paralellismn but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
    ```bash
-   sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh
+   sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -folders 20 --jobs 10
    ```
 
 ## Additional Commands for the Experiment Folder
