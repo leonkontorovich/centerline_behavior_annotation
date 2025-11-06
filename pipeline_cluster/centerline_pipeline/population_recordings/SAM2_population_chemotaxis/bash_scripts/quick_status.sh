@@ -154,13 +154,6 @@ else
     if [[ $NOT_STARTED -gt 0 ]]; then
         echo -e "   • ${NOT_STARTED} tracks not yet started"
     fi
-    echo -e "\n${Y}💡 Next steps:${N}"
-    if [[ $FAILED -gt 0 ]]; then
-        echo -e "   ${B}snakemake --rerun-incomplete --cores N${N}  # Rerun failed tracks"
-    fi
-    if [[ $NOT_STARTED -gt 0 ]]; then
-        echo -e "   ${B}snakemake --cores N${N}                     # Process remaining tracks"
-    fi
 fi
 
 echo ""
