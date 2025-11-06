@@ -57,6 +57,12 @@ ________________________________________________________________________________
 
 ## Additional Commands for the Experiment Folder
 
+
+Show current status of pipeline:
+   ```bash
+   bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/quick_status.sh
+   ```
+
 ### Copy Files Only
 To copy files into an existing folder structure:
 ```bash
