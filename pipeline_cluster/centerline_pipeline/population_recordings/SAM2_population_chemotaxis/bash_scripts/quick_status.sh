@@ -73,7 +73,7 @@ NOT_PCT=$(awk "BEGIN {printf \"%.1f\", $NOT_STARTED * 100 / $TOTAL}")
 
 printf "Total tracks:      %4d\n" "$TOTAL"
 printf "${G}✅ Completed:       %4d${N} (%s%%)\n" "$COMPLETED" "$COMP_PCT"
-printf "${R}❌ Failed:          %4d${N} (%s%%)\n" "$FAILED" "$FAIL_PCT"
+printf "${R}❌ Not finished:          %4d${N} (%s%%)\n" "$FAILED" "$FAIL_PCT"
 printf "⏸️  Not started:     %4d (%s%%)\n" "$NOT_STARTED" "$NOT_PCT"
 
 echo -e "\n${B}Note:${N}"
