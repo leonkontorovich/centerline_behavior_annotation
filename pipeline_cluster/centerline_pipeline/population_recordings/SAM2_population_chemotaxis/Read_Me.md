@@ -55,7 +55,7 @@ ________________________________________________________________________________
    sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
    ```
 
-## Additional Commands for the Experiment Folder
+## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
 
 
 Show current status of pipeline:
