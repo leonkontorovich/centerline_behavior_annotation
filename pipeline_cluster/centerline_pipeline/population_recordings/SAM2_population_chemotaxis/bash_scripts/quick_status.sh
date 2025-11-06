@@ -11,7 +11,7 @@ B='\033[1m'    # Bold
 N='\033[0m'    # No color
 
 # Config
-SOURCE="${1:-/lisc/scratch/neurobiology/zimmer/schaar/Behavior/High_Res_Population/elpiniki_data}"
+SOURCE="${1:-$(pwd)}"
 NETWORK="${2:-DLC_resnet50_population_nose_necitamarSep23shuffle2_1030000}"
 
 echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
