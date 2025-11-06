@@ -1,18 +1,27 @@
 #!/usr/bin/env bash
 
-# Check if -c flag is provided
+# Parse command line arguments
 RUN_LOCAL=false
-while getopts "c" opt; do
-  case ${opt} in
-    c ) RUN_LOCAL=true ;;
-    * ) echo "Usage: $0 [-c]" >&2
-        echo "  -c  Run locally instead of on cluster" >&2
-        exit 1 ;;
+MAX_JOBS=50  # Default value
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -c)
+      RUN_LOCAL=true
+      shift
+      ;;
+    --jobs|-j)
+      MAX_JOBS="$2"
+      shift 2
+      ;;
+    *)
+      echo "Usage: $0 [-c] [--jobs|-j NUM]" >&2
+      echo "  -c              Run locally instead of on cluster" >&2
+      echo "  --jobs, -j NUM  Maximum parallel jobs (default: 50)" >&2
+      exit 1
+      ;;
   esac
 done
-
-# Maximum parallel jobs
-MAX_JOBS=6
 
 # Count directories matching the specific pattern
 NUM_TRACKS=$(find "$PWD" -type d -name "*track*" | wc -l | tr -d ' ')

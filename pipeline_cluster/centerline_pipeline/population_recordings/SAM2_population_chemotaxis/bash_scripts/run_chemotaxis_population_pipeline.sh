@@ -13,8 +13,29 @@
 
 current_dir="$PWD"
 
-# Control how many Snakemake workflows can run simultaneously
+# Default values
 MAX_CONCURRENT_WORKFLOWS=4
+MAX_JOBS_PER_WORKFLOW=50
+
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --folders|-f)
+      MAX_CONCURRENT_WORKFLOWS="$2"
+      shift 2
+      ;;
+    --jobs|-j)
+      MAX_JOBS_PER_WORKFLOW="$2"
+      shift 2
+      ;;
+    *)
+      echo "Usage: $0 [--folders|-f NUM] [--jobs|-j NUM]" >&2
+      echo "  --folders, -f NUM  Max concurrent workflows (default: 4)" >&2
+      echo "  --jobs, -j NUM     Max jobs per workflow (default: 50)" >&2
+      exit 1
+      ;;
+  esac
+done
 
 echo "=========================================="
 echo "🔍 Scanning for workflows in: $current_dir"
@@ -35,6 +56,8 @@ fi
 
 echo "📁 Found ${NUM_FOLDERS} workflow folders"
 echo "🚀 Max concurrent workflows: ${MAX_CONCURRENT_WORKFLOWS}"
+echo "⚡ Max jobs per workflow: ${MAX_JOBS_PER_WORKFLOW}"
+echo "🎯 Total max parallel jobs: $((MAX_CONCURRENT_WORKFLOWS * MAX_JOBS_PER_WORKFLOW))"
 echo "⏱️  Started at: $(date)"
 echo "=========================================="
 echo ""
@@ -50,39 +73,39 @@ echo ""
 echo "=========================================="
 
 # Create the workflow runner script
-cat > workflow_runner.sh << 'RUNNER_EOF'
+cat > workflow_runner.sh << RUNNER_EOF
 #!/usr/bin/env bash
 set -e
 
-ARRAY_ID=${SLURM_ARRAY_TASK_ID}
-FOLDER=$(sed -n "$((ARRAY_ID + 1))p" workflow_folders.txt)
+ARRAY_ID=\${SLURM_ARRAY_TASK_ID}
+FOLDER=\$(sed -n "\$((ARRAY_ID + 1))p" workflow_folders.txt)
 
-if [ -z "$FOLDER" ] || [ ! -d "$FOLDER" ]; then
-    echo "❌ Error: Invalid folder for array ID $ARRAY_ID"
+if [ -z "\$FOLDER" ] || [ ! -d "\$FOLDER" ]; then
+    echo "❌ Error: Invalid folder for array ID \$ARRAY_ID"
     exit 1
 fi
 
-FOLDER_NAME=$(basename "$FOLDER")
+FOLDER_NAME=\$(basename "\$FOLDER")
 echo "=========================================="
-echo "🎬 Starting: $FOLDER_NAME"
-echo "⏰ Time: $(date)"
+echo "🎬 Starting: \$FOLDER_NAME"
+echo "⏰ Time: \$(date)"
 echo "=========================================="
 
-cd "$FOLDER" || exit 1
+cd "\$FOLDER" || exit 1
 
-# Run the workflow
-bash RUNME_cluster.sh
-EXIT_CODE=$?
+# Run the workflow with specified max jobs
+bash RUNME_cluster.sh --jobs ${MAX_JOBS_PER_WORKFLOW}
+EXIT_CODE=\$?
 
-if [ $EXIT_CODE -eq 0 ]; then
-    echo "✅ Completed: $FOLDER_NAME"
+if [ \$EXIT_CODE -eq 0 ]; then
+    echo "✅ Completed: \$FOLDER_NAME"
 else
-    echo "❌ Failed: $FOLDER_NAME (exit code: $EXIT_CODE)"
+    echo "❌ Failed: \$FOLDER_NAME (exit code: \$EXIT_CODE)"
 fi
 
-echo "⏰ Finished at: $(date)"
+echo "⏰ Finished at: \$(date)"
 echo "=========================================="
-exit $EXIT_CODE
+exit \$EXIT_CODE
 RUNNER_EOF
 
 chmod +x workflow_runner.sh
@@ -102,7 +125,8 @@ echo ""
 echo "=========================================="
 echo "🚀 Submitted job array: $job_id"
 echo "📊 Total workflows: $NUM_FOLDERS"
-echo "💥 Concurrent workflows: $MAX_CONCURRENT_WORKFLOWS"
+echo "👥 Concurrent workflows: $MAX_CONCURRENT_WORKFLOWS"
+echo "⚡ Jobs per workflow: $MAX_JOBS_PER_WORKFLOW"
 echo ""
 echo "Monitor with:"
 echo "  squeue -j $job_id"
