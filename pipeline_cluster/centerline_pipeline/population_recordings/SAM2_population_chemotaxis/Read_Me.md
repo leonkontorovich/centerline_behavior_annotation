@@ -6,6 +6,7 @@
 
 The cropper sorts by video lenght so when you find the cutoff when crops start becoming bubbles just delete them </strong></span>
 
+
 1. Load the conda module (first-time setup only):
    ```bash
    module load conda
