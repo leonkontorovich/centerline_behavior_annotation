@@ -149,7 +149,11 @@ Mask resolution: 146 × 146 (uint8 {0, 255})
 
 ```bash
    conda activate Jupyter_SHARED
-   cd /lisc/scratch/neurobiology/zimmer/schaar/code/jupyternotebooks/
-   jupyter notebook --no-browser --port=9997
-   ssh -CNL localhost:9997:localhost:9997 schaar@login01.lisc.univie.ac.at
+
+   cd <to notebook folder>
+ 
+   jupyter notebook --no-browser --port=9997 -> pick a port e.g 9997 and stick to it
+
+   ssh -CNL localhost:9997:localhost:9997 schaar@login01.lisc.univie.ac.at -> use same port as before when opening the notebook
+ 
 ```
