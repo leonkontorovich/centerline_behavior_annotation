@@ -2,6 +2,11 @@
 
 ## Initial Setup (for first time users of conda)
 
+<span style="color: red;"><strong>Before you run this validate your worm/noise ration - sometimes the cropper with certin settings crops bubbles and the jitter will create thousand of crops which overflood the server with wastefull jobs - when a recording has more than 150 crops evakluate data quality and delete bubbles before running!
+
+The cropper sorts by video lenght so when you find the cutoff when crops start becoming bubbles just delete them </strong></span>
+
+
 1. Load the conda module (first-time setup only):
    ```bash
    module load conda
@@ -55,7 +60,13 @@ ________________________________________________________________________________
    sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
    ```
 
-## Additional Commands for the Experiment Folder
+## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
+
+
+Show current status of pipeline:
+   ```bash
+   bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/quick_status.sh
+   ```
 
 ### Copy Files Only
 To copy files into an existing folder structure:
