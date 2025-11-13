@@ -145,3 +145,11 @@ GPU: NVIDIA L4
 Per-frame processing time: ~0.403 s/frame (≈403 ms, ~2.48 fps)
 Mask resolution: 146 × 146 (uint8 {0, 255})
 
+### Opening Jupyter-Notebooks on server for later grouped analysis
+
+```bash
+   conda activate Jupyter_SHARED
+   cd /lisc/scratch/neurobiology/zimmer/schaar/code/jupyternotebooks/
+   jupyter notebook --no-browser --port=9997
+   ssh -CNL localhost:9997:localhost:9997 schaar@login01.lisc.univie.ac.at
+```
