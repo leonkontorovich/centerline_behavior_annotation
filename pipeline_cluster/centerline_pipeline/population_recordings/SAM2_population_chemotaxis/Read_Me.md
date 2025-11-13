@@ -2,6 +2,11 @@
 
 ## Initial Setup (for first time users of conda)
 
+<span style="color: red;"><strong>Before you run this validate your worm/noise ration - sometimes the cropper with certin settings crops bubbles and the jitter will create thousand of crops which overflood the server with wastefull jobs - when a recording has more than 150 crops evakluate data quality and delete bubbles before running!
+
+The cropper sorts by video lenght so when you find the cutoff when crops start becoming bubbles just delete them </strong></span>
+
+
 1. Load the conda module (first-time setup only):
    ```bash
    module load conda
