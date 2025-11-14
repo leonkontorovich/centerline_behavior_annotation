@@ -1,0 +1,120 @@
+# cluster_config.yaml - cluster configuration
+# For available resources, see: https://lisc.univie.ac.at/wiki/content/working_environment/services/computational_resources
+
+__default__:
+    time: 1-00:00:00
+    nodes: 1
+    cpus_per_task: 16
+    mem: 128G
+    output: log/log_snakemake_%x_%j.out
+    mail_type: FAIL,TIME_LIMIT
+    gres: null
+    constraint: "hdd|ssd"
+    no-requeue: ""
+
+subtract_background:
+    time: 1-08:00:00
+    mem: 128G
+    cpus_per_task: 8
+
+normalize_img:
+    time: 1-06:00:00
+    mem: 128G
+    cpus_per_task: 8
+
+worm_unet:
+    time: 1-08:00:00
+    mem: 128G
+    cpus_per_task: 24
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+binarize:
+    time: 1-06:00:00
+    cpus_per_task: 8
+
+tiff2avi:
+    time: 1-18:00:00
+    cpus_per_task: 2
+
+dlc_analyze_videos:
+    time: 1-08:00:00
+    mem: 128G
+    cpus_per_task: 24
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+sam2_segment:
+    time: 2-08:00:00
+    mem: 128G
+    cpus_per_task: 24
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+coil_unet:
+    time: 1-08:00:00
+    mem: 128G
+    cpus_per_task: 24
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+binarize_coil:
+    time: 1-06:00:00
+    cpus_per_task: 8
+
+create_centerline:
+    time: 1-12:00:00
+    mem: 128G
+    cpus_per_task: 4
+
+process_skeleton_curvature:
+    time: 1-06:00:00
+    mem: 64G
+    cpus_per_task: 8
+
+invert_curvature_sign:
+    time: 0-02:00:00
+    mem: 32G
+    cpus_per_task: 2
+
+annotate_behaviour:
+    time: 0-04:00:00
+    mem: 64G
+    cpus_per_task: 4
+
+annotate_turns:
+    time: 0-04:00:00
+    mem: 64G
+    cpus_per_task: 4
+
+save_signed_speed:
+    time: 0-01:00:00
+    mem: 16G
+    cpus_per_task: 1
+
+calculate_parameters:
+    time: 0-02:00:00
+    mem: 32G
+    cpus_per_task: 2
+
+hilbert_transform_on_kymogram:
+    time: 0-04:00:00
+    mem: 32G
+    cpus_per_task: 4
+
+crop_pharynx_video:
+    time: 0-04:00:00
+    mem: 32G
+    cpus_per_task: 4
+
+pharynx_pump_dlc_analyze_videos:
+    time: 1-08:00:00
+    mem: 128G
+    cpus_per_task: 24
+    gres: gpu:1
+    constraint: "l40s|a30|t4|v100|l4"
+
+chemotaxis_analysis:
+    time: 1-12:00:00
+    cpus_per_task: 16
+    mem: 64G

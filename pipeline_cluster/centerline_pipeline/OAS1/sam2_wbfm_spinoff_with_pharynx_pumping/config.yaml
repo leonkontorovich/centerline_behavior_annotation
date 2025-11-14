@@ -1,0 +1,119 @@
+#
+# General settings
+#
+delete_intermediate_files: False
+
+#
+# Preprocessing parameters
+#
+# rule subtract_background
+do_inverse: True
+
+# rule normalize_img
+alpha: 0
+beta: 255
+
+# rule binarize (worm segmentation)
+threshold: 30
+max_value: 255
+
+# rule binarize_coil (coil segmentation)
+coil_threshold: 240
+coil_new_value: 255
+
+#
+# Video conversion
+#
+# rule tiff2avi
+fourcc: 0  # codec
+fps: 30
+
+#
+# Neural network paths (update these to your actual paths)
+#
+# Main worm segmentation U-Net
+main_unet_model: '/lisc/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm.hdf5'
+
+# Coiled shape U-Net
+coiled_shape_unet_model: '/lisc/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm_coil.hdf5'
+
+# SAM2 model path
+sam2_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2"
+
+# DLC project for head/tail tracking
+head_tail_dlc_project: "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/track_nose_pharynx_tail_3-stoll-2024-04-05/config.yaml"
+
+# PCA model for curvature analysis
+pca_model: "/lisc/scratch/neurobiology/zimmer/wbfm/pca_models/2per/2per_segments_30_to_80_components_5_zscore_filtered.pkl"
+
+# DLC project for pharynx pump tracking
+dlc_model_configfile_path_track_pumps: "/lisc/scratch/neurobiology/zimmer/stoll/code/pharynxpump_network_selected_frames-stoll-2024-04-17/config.yaml"
+
+#
+# Conda environment names
+#
+dlc_conda_env_name_only_dlc: "/lisc/app/conda/miniforge3/envs/deeplabcut-2.3.11"
+sam2_conda_env_name: "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared"
+
+#
+# DLC tracking parameters
+#
+# Network string for head/tail/pharynx DLC model
+network_string_pharynx: "DLC_resnet50_pharynxpump_network_selected_framesApr17shuffle1_910000"
+
+#
+# Centerline extraction
+#
+# rule create_centerline
+nose: "head"  # DLC label for nose/head
+tail: "tail"  # DLC label for tail
+num_splines: 100  # Number of spline points along the skeleton
+
+#
+# Skeleton processing (equi-distance and smoothing)
+#
+# rule process_skeleton_curvature
+relative_spacing: 1.0  # 1% of skeleton's total length for spacing between sampled points
+num_sampled_points: 10000  # Number of points to sample during spline fitting
+smoothing: 0.0  # Smoothing parameter for spline fitting (higher = more smoothing)
+time_sigma: 2.0  # Sigma for Gaussian smoothing along time (frame) axis
+spatial_sigma: 1.0  # Sigma for Gaussian smoothing along spatial axis
+max_columns: 0  # Dynamic mode: 0 = truncate where NaN content increases by >50%
+
+#
+# Behavior annotation
+#
+# rule annotate_behaviour (assumes 100 segments)
+initial_segment: 30
+final_segment: 80
+window: 100
+
+# rule annotate_turns (assumes 100 segments)
+turn_threshold: 0.5
+turn_initial_segment: 10
+turn_final_segment: 90
+turn_avg_window: 500
+turn_min_event_length: 24  # Minimum frames for a turn event
+
+#
+# Averaging windows
+#
+averaging_window: 83  # For averaging kymogram and XY coords
+
+#
+# Hilbert transform
+#
+hilbert_averaging_window: 30
+sampling_frequency: 30  # Same as FPS for Hilbert and FFT
+
+#
+# FFT parameters
+#
+fft_averaging_window: 30
+
+#
+# Pharynx tracking
+#
+crop_size_pharynx: 200
+pharynx: "pharynx"  # DLC label for pharynx
+
