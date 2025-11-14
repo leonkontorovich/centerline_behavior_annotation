@@ -65,7 +65,7 @@ network_string_pharynx: "DLC_resnet50_pharynxpump_network_selected_framesApr17sh
 # Centerline extraction
 #
 # rule create_centerline
-nose: "head"  # DLC label for nose/head
+nose: "nose"  # DLC label for nose/head
 tail: "tail"  # DLC label for tail
 num_splines: 100  # Number of spline points along the skeleton
 

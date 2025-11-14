@@ -494,16 +494,28 @@ rule pharynx_pump_dlc_analyze_videos:
         cropped_pharynx = "{datasets_output}cropped_pharynx_video.avi"
     params:
         dlc_model_configfile_path = config["dlc_model_configfile_path_track_pumps"],
-        network_string = config["network_string_pharynx"]
+        network_string = config["network_string_pharynx"],
+        dlc_conda_env = config["dlc_conda_env_name_only_dlc"]
     output:
         hdf5_file_pharynx = "{datasets_output}cropped_pharynx_video" + config["network_string_pharynx"] + ".h5",
         csv_file_pharynx = "{datasets_output}cropped_pharynx_video" + config["network_string_pharynx"] + ".csv"
     shell:
         """
-        source /lisc/app/conda/miniforge3/bin/activate /lisc/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils 
-        python -c "from imutils.src import DLC_analyze_videos; \
-        DLC_analyze_videos.main(['--path_config_file', '{params.dlc_model_configfile_path}', \
-        '--videofile_path', '{input.cropped_pharynx}'])"
+        # Fix for xml_catalog_files_libxml2 variable
+        if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
+            export xml_catalog_files_libxml2=""
+        fi 
+        
+        source /lisc/app/conda/miniforge3/bin/activate {params.dlc_conda_env}
+        module load cuda-toolkit/12.9.0
+        
+        # Run DLC and rename output files to expected names
+        python -c "import deeplabcut, os; \
+        output_dir = os.path.dirname('{output.hdf5_file_pharynx}'); \
+        fname = deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', '{input.cropped_pharynx}', videotype='avi', gputouse=${{CUDA_VISIBLE_DEVICES:-0}}, save_as_csv=True); \
+        print('Produced raw files with name: ' + fname); \
+        os.rename(output_dir + '/cropped_pharynx_video' + fname + '.h5', '{output.hdf5_file_pharynx}'); \
+        os.rename(output_dir + '/cropped_pharynx_video' + fname + '.csv', '{output.csv_file_pharynx}')"
         """
 
 #
