@@ -1,0 +1,29 @@
+# worm_config.yaml - Dataset-specific configuration
+# Place this file in each dataset folder: data/worm2/worm_config.yaml
+#
+# ⚠️ ALL FIELDS ARE REQUIRED - Pipeline will fail if any are missing!
+# ⚠️ Do not leave any field empty - provide actual values!
+
+# Ventral side orientation (REQUIRED)
+ventral: "left"  # Options: "left" or "right"
+
+# Pixel to mm conversion factor (REQUIRED)
+factor_px_to_mm: "0.00082319"
+
+# Video resolution (REQUIRED)
+video_resolution_x: "1696"
+video_resolution_y: "1700"
+
+# Chemotaxis gradient arrays - paths to .npy files (REQUIRED)
+conc_gradient_array: "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_concentration_array.npy"
+distance_array: "/lisc/scratch/neurobiology/zimmer/schaar/diffusion/benzaldehyde_0.07/interpolated_distance_array.npy"
+
+# Position coordinates as strings (REQUIRED)
+top_left_pos: "[0, 0]"      # Top-left corner position [x, y]
+odor_pos: "[848, 850]"      # Odor source position [x, y]
+
+# Timing offset for diffusion simulation (REQUIRED)
+diffusion_time_offset: 0    # Offset in frames
+
+# Video source identifier (REQUIRED)
+video_source: "OAS1"  # For tracking different recording setups
