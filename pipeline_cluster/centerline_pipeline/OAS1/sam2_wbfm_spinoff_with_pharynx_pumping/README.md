@@ -3,7 +3,7 @@
 This repository expects a simple and clean directory layout.  
 Run the pipeline from the **project root** (the folder containing the `Snakefile`).
 
-## Folder Layout
+## Folder Layout (THIS IS THE OLD LAYOUT WE ARE TRANSITIONING TO THE NEW VERSION (WBFM STYLE)
 
 ```
 project_root/
