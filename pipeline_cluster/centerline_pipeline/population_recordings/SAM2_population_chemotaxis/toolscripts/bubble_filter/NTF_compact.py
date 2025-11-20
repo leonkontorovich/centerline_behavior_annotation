@@ -61,46 +61,41 @@ def looks_like_bubble(avg_feats, sol_thresh=0.90, circ_thresh=0.50, ar_tol=0.10)
     _, sol, ar, circ = avg_feats
     return (sol >= sol_thresh) and (circ >= circ_thresh) and (abs(ar - 1.0) <= ar_tol)
 
-# -------- FAST finder (depth-limited, no os.walk) --------
+# -------- FAST finder (fixed depth: src/{session}/{session}/_track_*/track.tif) --------
 def iter_track_tifs(src):
     """
-    Prefer: src/_track_*/track.tif
-    Else: src/{session}/_track_*/track.tif
-    Skip folders named 'output'.
+    Fixed structure: src/{session}/{session}/_track_*/track.tif
+    Skip folders named 'output' and hidden folders.
     """
     src = os.path.abspath(src)
-
-    def track_dirs_in(folder):
-        with os.scandir(folder) as it:
-            for e in it:
-                if not e.is_dir():
-                    continue
-                name = e.name
-                if name == "output" or name.startswith('.'):
-                    continue
-                if "_track_" in name:
-                    tif = os.path.join(e.path, "track.tif")
-                    if os.path.isfile(tif):
-                        yield tif
-
-    # Case 1: tracks directly under src
-    direct = list(track_dirs_in(src))
-    if direct:
-        for t in direct:
-            yield t
-        return
-
-    # Case 2: one level of sessions, then _track_* under each
-    with os.scandir(src) as sessions:
-        for s in sessions:
-            if not s.is_dir() or s.name.startswith('.'):
+    
+    # Iterate over session folders (level 1)
+    with os.scandir(src) as level1:
+        for session in level1:
+            if not session.is_dir() or session.name.startswith('.'):
                 continue
-            for t in track_dirs_in(s.path):
-                yield t
+            
+            # Go into the nested folder with same name (level 2)
+            nested_path = os.path.join(session.path, session.name)
+            if not os.path.isdir(nested_path):
+                continue
+            
+            # Now find _track_* folders at this level
+            with os.scandir(nested_path) as level3:
+                for track_folder in level3:
+                    if not track_folder.is_dir():
+                        continue
+                    name = track_folder.name
+                    if name == "output" or name.startswith('.'):
+                        continue
+                    if "_track_" in name:
+                        tif = os.path.join(track_folder.path, "track.tif")
+                        if os.path.isfile(tif):
+                            yield tif
 
 def main():
     ap = argparse.ArgumentParser(description="Delete bubble-like track.tif folders (fast scan).")
-    ap.add_argument("src", help="Root folder (e.g., elpiniki_data)")
+    ap.add_argument("--src", required=True, help="Root folder (e.g., elpiniki_data)")
     ap.add_argument("--sample-frames", type=int, default=500)
     ap.add_argument("--sol-thresh", type=float, default=0.90)
     ap.add_argument("--circ-thresh", type=float, default=0.50)
