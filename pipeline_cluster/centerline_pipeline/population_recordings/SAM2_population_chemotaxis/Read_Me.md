@@ -59,16 +59,12 @@ ________________________________________________________________________________
 
    Dryrun first:
    
-   ```bash
 python /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src .
 
-   ```
    Then delete:
 
-    ```bash
 python /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --delete
 
-   ```
 
 7. Run the analysis - Define parallelism but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
    ```bash
