@@ -205,7 +205,7 @@ def process_repeat(repeat_folder, track_folders, threshold, dry_run, delete_mode
     logger.info(f"{'='*60}")
     
     # Create output directory
-    output_dir = os.path.join(repeat_folder, "Output")
+    output_dir = os.path.join(repeat_folder, "Output_Bubble_Filter")
     os.makedirs(output_dir, exist_ok=True)
     
     # Calculate SD values for all tracks
