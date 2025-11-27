@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Bubble Filter - Command-line tool for filtering stationary tracks from nematode datasets
-Uses SD-based auto-threshold clustering to identify and optionally remove bubble artifacts
+Uses SD-based threshold clustering to identify and optionally remove bubble artifacts
 """
 
 import os
@@ -95,54 +95,18 @@ def calculate_sd(track_folder):
         return None
 
 
-def auto_threshold(sd_values):
-    """
-    Calculate optimal threshold using first derivative method.
-    Finds the point where SD values jump from stationary cluster to mobile cluster.
-    
-    Args:
-        sd_values: array of SD values
-    
-    Returns:
-        float: optimal threshold value
-    """
-    logger.info("Calculating auto-threshold using first derivative method...")
-    
-    # Sort the SD values
-    sd_sorted = np.sort(sd_values)
-    
-    # Compute first derivative (differences between consecutive SD values)
-    first_derivative = np.diff(sd_sorted)
-    
-    # Calculate relative increases
-    relative_increases = first_derivative / sd_sorted[:-1]
-    
-    # Identify the index of the maximum relative increase
-    max_increase_idx = np.argmax(relative_increases)
-    
-    # Set threshold at the SD value corresponding to this index
-    threshold = sd_sorted[max_increase_idx]
-    
-    logger.info(f"Auto-threshold calculated: {threshold:.4f}")
-    return threshold
-
-
-def sd_threshold_clustering(sd_summary_df, threshold=None):
+def sd_threshold_clustering(sd_summary_df, threshold):
     """
     Classify tracks as Stationary or Non-Stationary based on SD threshold.
     
     Args:
         sd_summary_df: DataFrame with SD values
-        threshold: Manual threshold value (if None, auto-calculate)
+        threshold: Threshold value in pixels
     
     Returns:
         DataFrame with Cluster column added
     """
-    if threshold is None:
-        # Auto-thresholding
-        threshold = auto_threshold(sd_summary_df['EuclideanNorm_SD(X,Y)'].values)
-    else:
-        logger.info(f"Using manual threshold: {threshold:.4f}")
+    logger.info(f"Using threshold: {threshold:.4f} px")
     
     # Classify based on threshold
     sd_summary_df['Cluster'] = sd_summary_df['EuclideanNorm_SD(X,Y)'].apply(
@@ -195,7 +159,7 @@ def process_repeat(repeat_folder, track_folders, threshold, dry_run, delete_mode
     Args:
         repeat_folder: Path to repeat folder
         track_folders: List of track folder paths
-        threshold: Manual threshold (None for auto)
+        threshold: Threshold value in pixels
         dry_run: If True, only simulate deletions
         delete_mode: If True, actually delete stationary tracks
     """
@@ -281,7 +245,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Dry run (default) - shows what would be deleted
+  # Dry run (default) - shows what would be deleted with default 15px threshold
   python bubble_filter.py --src elpiniki_data
   
   # Use current directory
@@ -290,11 +254,11 @@ Examples:
   # Actually delete stationary tracks
   python bubble_filter.py --src . --delete
   
-  # Use manual threshold instead of auto-detection
-  python bubble_filter.py --src . --threshold 2.5
+  # Use custom threshold
+  python bubble_filter.py --src . --threshold 20.0
   
-  # Combine manual threshold with deletion
-  python bubble_filter.py --src . --threshold 2.5 --delete
+  # Combine custom threshold with deletion
+  python bubble_filter.py --src . --threshold 20.0 --delete
         """
     )
     
@@ -308,8 +272,8 @@ Examples:
     parser.add_argument(
         '--threshold',
         type=float,
-        default=None,
-        help='Manual SD threshold (default: auto-detect using first derivative method)'
+        default=15.0,
+        help='SD threshold in pixels (default: 15.0)'
     )
     
     parser.add_argument(
@@ -335,7 +299,6 @@ Examples:
     # Determine mode
     dry_run = not args.delete
     mode_str = "DRY RUN" if dry_run else "DELETE"
-    threshold_str = f"{args.threshold:.4f}" if args.threshold else "AUTO"
     
     # Print configuration
     logger.info("="*60)
@@ -343,7 +306,7 @@ Examples:
     logger.info("="*60)
     logger.info(f"Input directory: {args.src}")
     logger.info(f"Mode: {mode_str}")
-    logger.info(f"Threshold: {threshold_str}")
+    logger.info(f"Threshold: {args.threshold:.4f} px")
     logger.info(f"FPS: {args.fps}")
     logger.info("="*60)
     
