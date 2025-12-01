@@ -1,0 +1,42 @@
+# Default parameters for creating a new project
+# Do not edit unless you know what you are doing!
+# NOTE: these comments will be deleted when moving to a new project!
+
+task_name:
+experimenter:
+
+project_dir: null # Not used after initial creation
+project_path: null # For reference afterwards
+
+###################
+# Raw Data
+###################
+parent_data_folder: null
+
+raw_data: null
+
+behavior_fname: null
+
+
+dataset_params:
+  gas: false
+  chemotaxis: false
+
+# TODO: implement the physical units
+# physical_units:
+
+
+###################
+# Project status and steps
+###################
+
+subfolder_configs:
+  behavior: behavior/behavior_config.yaml
+  cluster: snakemake/cluster_config.yaml
+  snakemake: snakemake/snakemake_config.yaml
+
+
+###################
+# Other
+###################
+verbose: 0
