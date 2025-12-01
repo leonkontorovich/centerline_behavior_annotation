@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: how does it submit the analysis? Do I need to parse anything new? Especially the config files is what concern me
+
 # Add help function
 function usage {
     echo "Usage: $0 [-n] [-c] [-h]"

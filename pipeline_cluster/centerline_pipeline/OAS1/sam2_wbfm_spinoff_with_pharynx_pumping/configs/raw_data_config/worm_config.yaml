@@ -1,8 +1,8 @@
 # worm_config.yaml - Dataset-specific configuration
 # Place this file in each dataset folder: data/worm2/worm_config.yaml
 #
-# ⚠️ ALL FIELDS ARE REQUIRED - Pipeline will fail if any are missing!
-# ⚠️ Do not leave any field empty - provide actual values!
+# ALL FIELDS ARE REQUIRED - Pipeline will fail if any are missing!
+# Do not leave any field empty - provide actual values!
 
 # Ventral side orientation (REQUIRED)
 ventral: "left"  # Options: "left" or "right"

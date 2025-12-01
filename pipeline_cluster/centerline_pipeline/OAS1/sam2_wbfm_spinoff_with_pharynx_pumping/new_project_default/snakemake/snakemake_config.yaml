@@ -1,7 +1,7 @@
 #
 # General settings
 #
-delete_intermediate_files: False
+delete_intermediate_files: true
 
 #
 # Preprocessing parameters
@@ -52,7 +52,7 @@ dlc_model_configfile_path_track_pumps: "/lisc/scratch/neurobiology/zimmer/stoll/
 #
 # Conda environment names
 #
-dlc_conda_env_name_only_dlc: "/lisc/app/conda/miniforge3/envs/deeplabcut-2.3.11"
+dlc_conda_env_name_only_dlc: "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils/deeplabcut-2.3.11"
 sam2_conda_env_name: "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared"
 
 #
