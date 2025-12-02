@@ -1,6 +1,6 @@
 import os
 import glob
-import logging
+from snakemake.logging import logger
 from ruamel.yaml import YAML
 from typing import Any, Dict
 
