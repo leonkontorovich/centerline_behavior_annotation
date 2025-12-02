@@ -1,4 +1,3 @@
-
 import os
 from ruamel.yaml import YAML
 import snakemake
@@ -131,7 +130,6 @@ rule worm_unet:
         ])
 
 
-# TODO: input is the raw video
 
 rule sam2_segment:
     input:
@@ -221,7 +219,6 @@ rule binarize_coil:
             '-max_val', str(params.max_value),
         ])
 
-# TODO: fix the behavior btf thing, input is the raw video,
 
 rule tiff2avi:
     input:
