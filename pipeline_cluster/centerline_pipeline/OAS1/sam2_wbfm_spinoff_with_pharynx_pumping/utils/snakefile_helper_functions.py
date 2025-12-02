@@ -9,7 +9,6 @@ from typing import Any, Dict
 # I need a function that reads the project_config and finds all of the relevant paths!!
 # such as the: raw_data_path, behavior_output_dir, snakemake and cluster config?
 
-logger = logging.getLogger(__name__)
 # --------------------------
 # HELPER FUNCTIONS
 # --------------------------
