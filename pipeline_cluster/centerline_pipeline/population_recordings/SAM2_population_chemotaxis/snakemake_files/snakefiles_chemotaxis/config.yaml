@@ -5,6 +5,7 @@ factor_px_to_mm: '0.00962'
 
 # Model paths and settings
 dlc_model_configfile_path: /lisc/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml
+dlc_conda_env_path: /lisc/opt/sw/software/Conda/Miniforge3/envs/DeepLabCut-2.3.11
 network_string: DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_itamarSep23shuffle2_1030000
 pca_model_path: /lisc/scratch/neurobiology/zimmer/autoscope/trained_models/PCA_models/equi_distance_centerline_seg_10_40.pkl
 
