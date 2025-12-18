@@ -4,8 +4,19 @@
 
 <span style="color: red;"><strong>Before you run this validate your worm/noise ration - sometimes the cropper with certin settings crops bubbles and the jitter will create thousand of crops which overflood the server with wastefull jobs - when a recording has more than 150 crops evakluate data quality and delete bubbles before running!
 
-The cropper sorts by video lenght so when you find the cutoff when crops start becoming bubbles just delete them </strong></span>
+## Dataset Folder Structure
+```
+Datasetfolder/
+├── condition1/ (e.g., 2024-07-26_13-01-01_benzaldehyde_control)
+├── condition2/ (e.g., 2024-07-26_12-23-11_benzaldehyde_0_07)
+└── condition3/ (or more conditions)
+```
 
+**Important Notes:**
+- Each repeat needs a **unique string identifier** in the folder name
+- Downstream code uses this identifier to read the dataset and separate by condition (e.g., `benzaldehyde_0_07` or `control`)
+- Multiple conditions per dataset are supported (e.g., concentration series of an odor)
+- **No subfolders** - all scripts expect this flat folder structure
 
 1. Load the conda module (first-time setup only):
    ```bash
@@ -55,7 +66,7 @@ ________________________________________________________________________________
    - If no odor is used, only annotate the `top_left` position with the GUI.  
    - A config file will be created in the dataset folder that saves the positions, and Snakemake will access these positions automatically for the corresponding experiments.
   
-6. **Run the Bublefilter with default settings**
+6. **Run the cluster based Bublefilter with default settings if not done so locally already, local bubblefilter has a better bubble/worm ratio andn early removes all bubbles **
 
   # Dry-run first:
 ```bash
