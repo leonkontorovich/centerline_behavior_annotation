@@ -9,3 +9,10 @@ __pycache__
 
 # Apple things
 *.DS_Store
+pipeline_cluster/.DS_Store
+pipeline_cluster/centerline_pipeline/.DS_Store
+pipeline_cluster/centerline_pipeline/OAS1/.DS_Store
+pipeline_cluster/centerline_pipeline/population_recordings/.DS_Store
+pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/.DS_Store
+pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/.DS_Store
+pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/.DS_Store
