@@ -26,7 +26,7 @@ Datasetfolder/
 
 2. Configure conda on LISC login (first-time setup only):
    ```bash
-   conda config --append envs_dirs /lisc/scratch/neurobiology/zimmer/.conda/envs
+   conda config --append envs_dirs /lisc/data/scratch/neurobiology/zimmer/.conda/envs
    ```
    This tells conda to look for shared environments located in the specified folder.
 
@@ -53,14 +53,19 @@ ________________________________________________________________________________
 
 3. Rename TIFF files in the experiment folder:
    ```bash
-   python /lisc/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
+   python /lisc/data/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
    ```
    This script renames the TIFF files to fit the pipeline's needs.
 
 4. Create folder structures and copy pipeline files (don't run this if folder structure already exists, but use alternative that just copies!):
    ```bash
-   bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh
+   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh
    ```
+
+4.1 Just copy new Files
+```bash
+bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
+```
 
 5. **Use `annotate_odor_pos` GUI to annotate `top_left` and `odor_pos`**  
    - If no odor is used, only annotate the `top_left` position with the GUI.  
@@ -70,18 +75,18 @@ ________________________________________________________________________________
 
   # Dry-run first:
 ```bash
-python /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0
+python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0
 ```
 
 # Then delete:
 ```bash
-python /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0 --delete
+python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0 --delete
 ```
 
 
 7. Run the analysis - Define parallelism but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
    ```bash
-   sbatch /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
+   sbatch /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
    ```
 
 ## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
@@ -89,13 +94,13 @@ python /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_anno
 
 Show current status of pipeline:
    ```bash
-   bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/quick_status.sh
+   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/quick_status.sh
    ```
 
 ### Copy Files Only
 To copy files into an existing folder structure:
 ```bash
-bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
+bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
 ```
 
 ### Essential Shell Count Commands
