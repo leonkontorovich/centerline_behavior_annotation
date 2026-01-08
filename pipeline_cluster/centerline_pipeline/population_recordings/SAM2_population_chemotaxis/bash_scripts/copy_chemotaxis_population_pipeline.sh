@@ -8,7 +8,7 @@
 #   Run this script from the directory containing the subfolders to process.
 
 # Define source folder (universal pipeline)
-src_folder="/lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis"
+src_folder="/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis"
 
 # Get current directory
 current_dir="$PWD"

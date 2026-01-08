@@ -213,8 +213,8 @@ rule sam2_segment:
         gres=create_gres_function("sam2_segment")
     params:
         column_names      = ["neck"],
-        model_path        = "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
-        sam2_conda_env_name = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
+        model_path        = "/lisc/data/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
+        sam2_conda_env_name = "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
         batch_size        = config["batch_size"]
     shell:
         '''
@@ -245,7 +245,7 @@ rule correct_SAM2_DLC_errors:
         partition=create_partition_function("correct_SAM2_DLC_errors"),
         gres=create_gres_function("correct_SAM2_DLC_errors")
     params:
-        sam2_conda_env_name = "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
+        sam2_conda_env_name = "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
         min_worm_area = config["min_worm_area"],
         max_worm_area = config["max_worm_area"]
     shell:
