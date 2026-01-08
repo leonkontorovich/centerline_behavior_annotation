@@ -20,10 +20,8 @@ behavior_fname: null
 
 dataset_params:
   gas: false
-  chemotaxis: false
+  run_chemotaxis: false
 
-# TODO: implement the physical units
-# physical_units:
 
 
 ###################
