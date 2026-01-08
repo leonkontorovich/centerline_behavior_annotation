@@ -26,7 +26,7 @@ Datasetfolder/
 
 2. Configure conda on LISC login (first-time setup only):
    ```bash
-   conda config --append envs_dirs /lisc/scratch/neurobiology/zimmer/.conda/envs
+   conda config --append envs_dirs /lisc/data/scratch/neurobiology/zimmer/.conda/envs
    ```
    This tells conda to look for shared environments located in the specified folder.
 
