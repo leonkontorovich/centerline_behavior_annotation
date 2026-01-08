@@ -64,7 +64,7 @@ ________________________________________________________________________________
 
 4.1 Just copy new Files
 ```bash
-bash /lisc/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
+bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
 ```
 
 5. **Use `annotate_odor_pos` GUI to annotate `top_left` and `odor_pos`**  
