@@ -39,7 +39,7 @@ do
 done
 
 # Shared setup for each command
-conda_setup_cmd="conda activate /lisc/scratch/neurobiology/zimmer/.conda/envs/wbfm/"
+conda_setup_cmd="conda activate /lisc/data/scratch/neurobiology/zimmer/.conda/envs/wbfm/"
 
 # Loop through the parent folder, then try to get the config file within each of these parent folders
 for f in "$folder_of_projects"/*; do
