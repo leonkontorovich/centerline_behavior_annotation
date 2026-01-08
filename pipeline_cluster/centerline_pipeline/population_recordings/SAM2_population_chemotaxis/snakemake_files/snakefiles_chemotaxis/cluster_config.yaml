@@ -35,7 +35,7 @@ dlc_analyze_videos:
     cpus_per_task: 24
     output: log/log_%x_%A_%a_%j.out
     gres: gpu:1
-    constraint: "l40s|a30|t4|l4"
+    constraint: "l40s|a30|t4|l4|rtx"
 
 create_centerline:
     time: 0-12:00:00
@@ -49,7 +49,7 @@ sam2_segment:
     partition: basic,gpu
     mem: 128G
     gres: gpu:1
-    constraint: "l40s|a30|t4|l4"
+    constraint: "l40s|a30|t4|l4|rtx"
 
 correct_SAM2_DLC_errors:
     time: 0-06:00:00
