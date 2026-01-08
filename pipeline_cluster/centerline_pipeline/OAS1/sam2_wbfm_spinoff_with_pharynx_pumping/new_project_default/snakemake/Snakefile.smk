@@ -25,11 +25,11 @@ def _cleanup_helper(output_path):
 # NOTE: this is an undocumented feature, and may not work for other versions (this is 7.32)
 
 project_dir = os.path.dirname(snakemake.workflow.workflow.basedir)
-logging.info("Detected project folder: ", project_dir)
+logger.info("Detected project folder: ", project_dir)
 project_cfg_fname = os.path.join(project_dir,"project_config.yaml") # necessary??
 
 if not snakemake.__version__.startswith("7.32"):
-    logging.warning(f"Note: this pipeline is only tested on snakemake version 7.32.X, but found {snakemake.__version__}")
+    logger.warning(f"Note: this pipeline is only tested on snakemake version 7.32.X, but found {snakemake.__version__}")
 
 # get all paths and configs
 try:
