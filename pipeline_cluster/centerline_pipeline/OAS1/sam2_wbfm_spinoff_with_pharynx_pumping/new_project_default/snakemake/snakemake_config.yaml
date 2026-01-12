@@ -32,28 +32,28 @@ fps: 30
 # Neural network paths (update these to your actual paths)
 #
 # Main worm segmentation U-Net
-main_unet_model: '/lisc/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm.hdf5'
+main_unet_model: '/lisc/data/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm.hdf5'
 
 # Coiled shape U-Net
-coiled_shape_unet_model: '/lisc/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm_coil.hdf5'
+coiled_shape_unet_model: '/lisc/data/scratch/neurobiology/zimmer/centerline_pipeline/neural_networks/unet_worm_coil.hdf5'
 
 # SAM2 model path
-sam2_model: "/lisc/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2"
+sam2_model: "/lisc/data/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2"
 
 # DLC project for head/tail tracking
-head_tail_dlc_project: "/lisc/scratch/neurobiology/zimmer/schaar/code/DLC/track_nose_pharynx_tail_3-stoll-2024-04-05/config.yaml"
+head_tail_dlc_project: "/lisc/data/scratch/neurobiology/zimmer/schaar/code/DLC/track_nose_pharynx_tail_3-stoll-2024-04-05/config.yaml"
 
 # PCA model for curvature analysis
-pca_model: "/lisc/scratch/neurobiology/zimmer/wbfm/pca_models/2per/2per_segments_30_to_80_components_5_zscore_filtered.pkl"
+pca_model: "/lisc/data/scratch/neurobiology/zimmer/wbfm/pca_models/2per/2per_segments_30_to_80_components_5_zscore_filtered.pkl"
 
 # DLC project for pharynx pump tracking
-dlc_model_configfile_path_track_pumps: "/lisc/scratch/neurobiology/zimmer/stoll/code/pharynxpump_network_selected_frames-stoll-2024-04-17/config.yaml"
+dlc_model_configfile_path_track_pumps: "/lisc/data/scratch/neurobiology/zimmer/stoll/code/pharynxpump_network_selected_frames-stoll-2024-04-17/config.yaml"
 
 #
 # Conda environment names
 #
-dlc_conda_env_name_only_dlc: "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/deeplabcut_imutils/deeplabcut-2.3.11"
-sam2_conda_env_name: "/lisc/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared"
+dlc_conda_env_name_only_dlc: "/lisc/opt/sw/software/Conda/Miniforge3/envs/DeepLabCut-2.3.11"
+sam2_conda_env_name: "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared"
 
 #
 # DLC tracking parameters

@@ -36,11 +36,15 @@ while getopts :s:R:nch flag; do
 done
 
 # -------------------------------
+# CREATE LOGS DIRECTORY
+# -------------------------------
+mkdir -p logs
+
+# -------------------------------
 # SNAKEMAKE OPTIONS
 # -------------------------------
 SNAKEMAKE_OPT="-s Snakefile.smk --latency-wait 60 --cores 56 --retries 2"
 
-# Restart rule?
 if [[ -n "$RESTART_RULE" ]]; then
     SNAKEMAKE_OPT="$SNAKEMAKE_OPT -R $RESTART_RULE"
 fi
@@ -48,20 +52,14 @@ fi
 # -------------------------------
 # SBATCH OPTIONS (Snakemake-expanded)
 # -------------------------------
-SBATCH_OPT="sbatch \
-    -t {cluster.time} \
-    --cpus-per-task {cluster.cpus_per_task} \
-    --mem {cluster.mem} \
-    --output {cluster.output} \
-    --gres {cluster.gres} \
-    --job-name={rule}
-"
+# Package options
+SBATCH_OPT="sbatch -t {cluster.time} --cpus-per-task {cluster.cpus_per_task} --mem {cluster.mem} --output {cluster.output} --gres {cluster.gres} --job-name {rule} --constraint '{cluster.constraint}'"
+SNAKEMAKE_OPT="-s Snakefile.smk --latency-wait 60 --cores 56 --retries 3"
 
-# How many Snakemake jobs to allow in parallel
 NUM_JOBS_TO_SUBMIT=8
 
 # -------------------------------
-# CREATE TEMPORARY cluster-status script
+# CREATE TEMPORARY CLUSTER-STATUS SCRIPT
 # -------------------------------
 CLUSTER_STATUS_SCRIPT=$(mktemp /tmp/slurm_status.XXXXXX.py)
 
@@ -110,8 +108,6 @@ else
         --cluster "$SBATCH_OPT --parsable" \
         --cluster-config cluster_config.yaml \
         --jobs $NUM_JOBS_TO_SUBMIT \
-        --cluster-status "$CLUSTER_STATUS_SCRIPT"
+        --cluster-status "$CLUSTER_STATUS_SCRIPT" \
+        --printshellcmds
 fi
-
-# Cleanup
-rm -f "$CLUSTER_STATUS_SCRIPT"

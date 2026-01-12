@@ -1,7 +1,6 @@
 import os
 from ruamel.yaml import YAML
 import snakemake
-
 from pipeline_cluster.centerline_pipeline.OAS1.sam2_wbfm_spinoff_with_pharynx_pumping.utils.snakefile_helper_functions import *
 
 
@@ -17,29 +16,30 @@ def _cleanup_helper(output_path):
     else:
         return output_path
 
+
 # --------------------------
 # ASSIGN PATHS AND VARIABLES
 # --------------------------
 
 # Determine the project folder (the parent of the folder containing the Snakefile)
 # NOTE: this is an undocumented feature, and may not work for other versions (this is 7.32)
+snakefile_dir = workflow.basedir
+project_dir = os.path.abspath(os.path.join(snakefile_dir,".."))
 
-project_dir = os.path.dirname(snakemake.workflow.workflow.basedir)
-logger.info("Detected project folder: ", project_dir)
-project_cfg_fname = os.path.join(project_dir,"project_config.yaml") # necessary??
+logger.info("Detected project folder: ",project_dir)
+project_cfg = os.path.join(project_dir,"project_config.yaml")
 
 if not snakemake.__version__.startswith("7.32"):
     logger.warning(f"Note: this pipeline is only tested on snakemake version 7.32.X, but found {snakemake.__version__}")
 
 # get all paths and configs
 try:
-    config = load_autoscope_dataset_config(project_cfg_fname)
+    config = load_autoscope_dataset_config(project_cfg)
 
     # assign relevant directories
     raw_data_dir = config['raw_data_dir']
     raw_data_subfolder = config['raw_data_subfolder']
     output_behavior_dir = config['output_behavior_dir']
-
 
     # load background image
     background_img = find_background_file(raw_data_dir)
@@ -49,19 +49,17 @@ except FileNotFoundError as e:
     print(f"Error: {e}")
     raise
 
-
-
 # --------------------------
 # MAIN RULE
 # --------------------------
 
 final_targets = [
-    os.path.join(output_behavior_dir, "behavioral_summary_figure.pdf"),
-    os.path.join(output_behavior_dir, "cropped_pharynx_video.avi"),
+    os.path.join(output_behavior_dir,"behavioral_summary_figure.pdf"),
+    os.path.join(output_behavior_dir,"cropped_pharynx_video.avi"),
 ]
 
-# chemotaxis rule is optional
-if config.get("run_chemotaxis", True):
+# chemotaxis rule is optional (statement is nested in the project_config)
+if config.get("dataset_params", {}).get("run_chemotaxis", True):
     final_targets.append(f"{output_behavior_dir}/chemotaxis_analysis_complete.h5")
 
 
@@ -79,7 +77,7 @@ rule subtract_background:
         ometiff_subfolder=raw_data_subfolder,
         background_img=background_img
     params:
-        do_inverse = config["do_inverse"]
+        do_inverse=config["do_inverse"]
     output:
         background_subtracted_img=_cleanup_helper(f"{output_behavior_dir}/raw_stack_AVG_background_subtracted.btf")
     run:
@@ -130,6 +128,7 @@ rule worm_unet:
         ])
 
 
+# TODO: input is the raw video
 
 rule sam2_segment:
     input:
@@ -141,7 +140,7 @@ rule sam2_segment:
         column_names=["pharynx"],
         model_path=config["sam2_model"],
         sam2_conda_env_name=config["sam2_conda_env_name"],
-        batch_size=300
+        batch_size=250
     shell:
         """
         # I started getting an error with the xml_catalog_files_libxml2 variable, so check if it is set
@@ -152,10 +151,10 @@ rule sam2_segment:
         # Enable CuDNN backend for faster attention
         export TORCH_CUDNN_SDPA_ENABLED=1
 
-        module load CUDA/12.6.0
+        module load CUDA/12.9.1
 
         # Activate the environment and the correct cuda
-        source /lisc/app/conda/miniforge3/bin/activate {params.sam2_conda_env_name}
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.sam2_conda_env_name}
 
         # Run the script directly without temp directory overhead
         python -c "from SAM2_snakemake_scripts.sam2_video_processing_miscroscope_data_loader import main; main(['-tiff_path', '{input.ometiff_subfolder}', '-output_file_path', '{output.output_file}', '-DLC_csv_file_path', '{input.dlc_csv}', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
@@ -184,7 +183,7 @@ rule coil_unet:
     input:
         binary_input_img=f"{output_behavior_dir}/raw_stack_mask.btf",# From the SAM2 segmentation
         raw_input_img=f"{output_behavior_dir}/raw_stack_AVG_background_subtracted_normalised.btf"
-        # Does not need to match the other segmentation; needs to match the training of the coil unet
+    # Does not need to match the other segmentation; needs to match the training of the coil unet
     params:
         weights_path=config["coiled_shape_unet_model"]
     output:
@@ -219,6 +218,7 @@ rule binarize_coil:
             '-max_val', str(params.max_value),
         ])
 
+# TODO: fix the behavior btf thing, input is the raw video,
 
 rule tiff2avi:
     input:
@@ -257,7 +257,7 @@ rule dlc_analyze_videos:
             export xml_catalog_files_libxml2=""
         fi 
 
-        source /lisc/app/conda/miniforge3/bin/activate {params.dlc_conda_env}
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.dlc_conda_env}
         module load CUDA/12.9.1
         # Also rename the output file to the expected name
         # We don't actually know the name without querying deeplabcut, so just rename it
@@ -494,7 +494,7 @@ rule calculate_parameters:
     #So far it only calculates speed
     input:
         curvature_file=f"{output_behavior_dir}/skeleton_spline_K__equi_dist_segment_2D_smoothed_signed.csv"
-        #This is used as a parameter because it is only used to find the main dir
+    #This is used as a parameter because it is only used to find the main dir
     output:
         speed_file=f"{output_behavior_dir}/raw_worm_speed.csv"  # This is never produced, so this will always run
     params:
@@ -514,7 +514,7 @@ rule save_signed_speed:
         behaviour_annotation=f"{output_behavior_dir}/beh_annotation.csv"
     output:
         signed_speed_file=f"{output_behavior_dir}/signed_worm_speed.csv"
-        # This is never produced, so this will always run
+    # This is never produced, so this will always run
     run:
         import pandas as pd
 
@@ -593,13 +593,13 @@ rule process_skeleton_curvature:
 
 rule crop_pharynx_video:
     input:
-        csv = f"{output_behavior_dir}/raw_stack_dlc.csv",
-        avi = f"{output_behavior_dir}/raw_stack.avi"
+        csv=f"{output_behavior_dir}/raw_stack_dlc.csv",
+        avi=f"{output_behavior_dir}/raw_stack.avi"
     output:
-        cropped_pharynx = f"{output_behavior_dir}/cropped_pharynx_video.avi"
+        cropped_pharynx=f"{output_behavior_dir}/cropped_pharynx_video.avi"
     params:
-        fps = config["fps"],
-        crop_size = config["crop_size_pharynx"]
+        fps=config["fps"],
+        crop_size=config["crop_size_pharynx"]
     run:
         # package installed in the autoscope environment
         from pharynx_tracking import crop_pharynx_video_script
@@ -614,24 +614,24 @@ rule crop_pharynx_video:
 
 rule pharynx_pump_dlc_analyze_videos:
     input:
-        cropped_pharynx = f"{output_behavior_dir}/cropped_pharynx_video.avi"
+        cropped_pharynx=f"{output_behavior_dir}/cropped_pharynx_video.avi"
     params:
-        dlc_model_configfile_path = config["dlc_model_configfile_path_track_pumps"],
-        network_string = config["network_string_pharynx"],
-        dlc_conda_env = config["dlc_conda_env_name_only_dlc"]
+        dlc_model_configfile_path=config["dlc_model_configfile_path_track_pumps"],
+        network_string=config["network_string_pharynx"],
+        dlc_conda_env=config["dlc_conda_env_name_only_dlc"]
     output:
-        hdf5_file_pharynx = f"{output_behavior_dir}/cropped_pharynx_video_{config['network_string_pharynx']}.h5",
-        csv_file_pharynx = f"{output_behavior_dir}/cropped_pharynx_video_{config['network_string_pharynx']}.csv"
+        hdf5_file_pharynx=f"{output_behavior_dir}/cropped_pharynx_video_{config['network_string_pharynx']}.h5",
+        csv_file_pharynx=f"{output_behavior_dir}/cropped_pharynx_video_{config['network_string_pharynx']}.csv"
     shell:
         """
         # Fix for xml_catalog_files_libxml2 variable
         if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
             export xml_catalog_files_libxml2=""
         fi 
-        
-        source /lisc/app/conda/miniforge3/bin/activate {params.dlc_conda_env}
+
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.dlc_conda_env}
         module load CUDA/12.9.1
-        
+
         # Run DLC and rename output files to expected names
         python -c "import deeplabcut, os; \
         output_dir = os.path.dirname('{output.hdf5_file_pharynx}'); \
@@ -647,52 +647,52 @@ rule pharynx_pump_dlc_analyze_videos:
 
 rule chemotaxis_analysis:
     input:
-        reversal_annotation = f"{output_behavior_dir}/beh_annotation.csv",
-        turn_annotation = f"{output_behavior_dir}/turns_annotation.csv",
-        spline_K = f"{output_behavior_dir}/skeleton_spline_K__equi_dist_segment_2D_smoothed_signed.csv",
-        skeleton_spline_X_coords = f"{output_behavior_dir}/skeleton_spline_X_coords_equi_dist_segment.csv",
-        skeleton_spline_Y_coords = f"{output_behavior_dir}/skeleton_spline_Y_coords_equi_dist_segment.csv",
-        DLC_hdf5_file = f"{output_behavior_dir}/raw_stack_dlc.h5",
-        pharynx_pump_csv = f"{output_behavior_dir}/cropped_pharynx_video_{config['network_string_pharynx']}.csv"
+        reversal_annotation=f"{output_behavior_dir}/beh_annotation.csv",
+        turn_annotation=f"{output_behavior_dir}/turns_annotation.csv",
+        spline_K=f"{output_behavior_dir}/skeleton_spline_K__equi_dist_segment_2D_smoothed_signed.csv",
+        skeleton_spline_X_coords=f"{output_behavior_dir}/skeleton_spline_X_coords_equi_dist_segment.csv",
+        skeleton_spline_Y_coords=f"{output_behavior_dir}/skeleton_spline_Y_coords_equi_dist_segment.csv",
+        DLC_hdf5_file=f"{output_behavior_dir}/raw_stack_dlc.h5",
+        pharynx_pump_csv=f"{output_behavior_dir}/cropped_pharynx_video_{config['network_string_pharynx']}.csv"
     params:
         # Paths the raw data path
-        worm_pos = f"{raw_data_dir}/worm_pos.txt",
-        
+        worm_pos=f"{raw_data_dir}/worm_pos.txt",
+
         # Global config parameters
-        fps = config["fps"],
-        dlc_nose_label = config["nose"],
-        dlc_tail_label = config["tail"],
-        bootstrap_iterations = 100,
-        bootstrap_seed = 42,
-        dC_lookback_frames = 1,
-        
+        fps=config["fps"],
+        dlc_nose_label=config["nose"],
+        dlc_tail_label=config["tail"],
+        bootstrap_iterations=100,
+        bootstrap_seed=42,
+        dC_lookback_frames=1,
+
         # Dataset-specific parameters from worm_config.yaml (NO DEFAULTS - will fail if missing)
-        factor_px_to_mm = config["factor_px_to_mm"],
-        video_resolution_x = config["video_resolution_x"],
-        video_resolution_y = config["video_resolution_y"],
-        conc_gradient_array = config["conc_gradient_array"],
-        distance_array = config["distance_array"],
-        top_left_pos = config["top_left_pos"],
-        odor_pos = config["odor_pos"],
-        diffusion_time_offset = config["diffusion_time_offset"],
-        video_source = config["video_source"]
+        factor_px_to_mm=config["factor_px_to_mm"],
+        video_resolution_x=config["video_resolution_x"],
+        video_resolution_y=config["video_resolution_y"],
+        conc_gradient_array=config["conc_gradient_array"],
+        distance_array=config["distance_array"],
+        top_left_pos=config["top_left_pos"],
+        odor_pos=config["odor_pos"],
+        diffusion_time_offset=config["diffusion_time_offset"],
+        video_source=config["video_source"]
     output:
-        chemotaxis_visualisation = f"{output_behavior_dir}/chemotaxis_analysis.pdf",
-        chemotaxis_overview = f"{output_behavior_dir}/chemotaxis_overview.png",
-        worm_movie = f"{output_behavior_dir}/worm_movie.avi",
-        chemotaxis_params = f"{output_behavior_dir}/chemotaxis_params.csv",
-        chemotaxis_h5 = f"{output_behavior_dir}/chemotaxis_analysis_complete.h5",
+        chemotaxis_visualisation=f"{output_behavior_dir}/chemotaxis_analysis.pdf",
+        chemotaxis_overview=f"{output_behavior_dir}/chemotaxis_overview.png",
+        worm_movie=f"{output_behavior_dir}/worm_movie.avi",
+        chemotaxis_params=f"{output_behavior_dir}/chemotaxis_params.csv",
+        chemotaxis_h5=f"{output_behavior_dir}/chemotaxis_analysis_complete.h5",
     shell:
         """
         unset DCGM_ARGS
-        
+
         if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
             export xml_catalog_files_libxml2=""
         fi
-        
+
         eval "$(/lisc/app/conda/miniforge3/bin/conda shell.bash hook)"
         conda activate /lisc/scratch/neurobiology/zimmer/.conda/envs/autoscope_behaviour_shared
-        
+
         python -c "from chemotaxis_analysis_high_res import initialize_load_files_high_res_universal_bootstrapping; \
         initialize_load_files_high_res_universal_bootstrapping.main([ \
             '--reversal_annotation', '{input.reversal_annotation}', \
