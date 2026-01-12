@@ -2,11 +2,9 @@
 # this file was copied and modified from the WBFM-pipeline of Charles Fieseler
 
 # Opens tmux session and runs snakemake for all projects in a folder. Example dry run usage:
-# bash run_all_projects_in_parent_folder.sh -t '/path/to/parent/folder' -n True
+# bash run_all_projects_in_parent_folder.sh -t /path/to/project/parent/folder -n True
 #
 # For real usage, remove '-n True' and update the path after -t
-
-# TODO: could be it is necessary to add "load module Conda" due to changes in the server
 
 # Add help function
 function usage {
@@ -19,7 +17,7 @@ function usage {
   exit 1
 }
 
-RULE="autoscope_behavior"
+RULE="run_autoscope_behavior"
 is_dry_run=""
 RUNME_ARGS=""
 RESTART_RULE=""
@@ -39,7 +37,7 @@ do
 done
 
 # Shared setup for each command
-conda_setup_cmd="conda activate /lisc/scratch/neurobiology/zimmer/.conda/envs/wbfm/"
+conda_setup_cmd="conda activate /lisc/data/scratch/neurobiology/zimmer/.conda/envs/autoscope_behaviour_shared/"
 
 # Loop through the parent folder, then try to get the config file within each of these parent folders
 for f in "$folder_of_projects"/*; do
