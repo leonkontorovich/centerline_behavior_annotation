@@ -590,7 +590,7 @@ rule process_skeleton_curvature:
 #
 # Pharynx tracking (from old pipeline)
 #
-
+#TODO: downsampling
 rule crop_pharynx_video:
     input:
         csv=f"{output_behavior_dir}/raw_stack_dlc.csv",
@@ -599,7 +599,10 @@ rule crop_pharynx_video:
         cropped_pharynx=f"{output_behavior_dir}/cropped_pharynx_video.avi"
     params:
         fps=config["fps"],
-        crop_size=config["crop_size_pharynx"]
+        crop_size=config["crop_size_pharynx"],
+        dlc_nose_label=config["nose"],
+        dlc_pharynx_label=config["pharynx"]
+
     run:
         # package installed in the autoscope environment
         from pharynx_tracking import crop_pharynx_video_script
@@ -610,6 +613,8 @@ rule crop_pharynx_video:
             '--output', str(output.cropped_pharynx),
             '--fps', str(params.fps),
             '--crop_size', str(params.crop_size),
+            '--keypoint_nose', str(params.dlc_nose_label),
+            '--keypoint_pharynx', str(params.dlc_pharynx_label),
         ])
 
 rule pharynx_pump_dlc_analyze_videos:
