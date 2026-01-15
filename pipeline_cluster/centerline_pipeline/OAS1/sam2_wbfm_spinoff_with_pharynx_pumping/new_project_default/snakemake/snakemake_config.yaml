@@ -54,6 +54,7 @@ dlc_model_configfile_path_track_pumps: "/lisc/data/scratch/neurobiology/zimmer/s
 #
 dlc_conda_env_name_only_dlc: "/lisc/opt/sw/software/Conda/Miniforge3/envs/DeepLabCut-2.3.11"
 sam2_conda_env_name: "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared"
+wbfm_conda_env: "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/wbfm"
 
 #
 # DLC tracking parameters
