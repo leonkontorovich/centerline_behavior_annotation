@@ -188,16 +188,19 @@ rule coil_unet:
         weights_path=config["coiled_shape_unet_model"]
     output:
         coil_unet_prediction=_cleanup_helper(f"{output_behavior_dir}/raw_stack_AVG_background_subtracted_normalised_worm_segmented_mask_coil_segmented.btf")
-    run:
-        from imutils.src import imutils_parser_main
+    shell:
+        """
+        # I started getting an error with the xml_catalog_files_libxml2 variable, so check if it is set
+        if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
+            #echo "Warning: xml_catalog_files_libxml2 is not set, setting it to /lisc/app/conda/miniforge3/etc/xml/catalog"
+            export xml_catalog_files_libxml2=""
+        fi 
 
-        imutils_parser_main.main([
-            "unet_segmentation_contours_with_children",
-            '-bi', str(input.binary_input_img),
-            '-ri', str(input.raw_input_img),
-            '-o', str(output.coil_unet_prediction),
-            '-w', str(params.weights_path),
-        ])
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.wbfm_conda_env}
+        # Also rename the output file to the expected name
+        # We don't actually know the name without querying deeplabcut, so just rename it
+        python -c "from imutils.src import imutils_parser_main; imutils_parser_main.main(['unet_segmentation_contours_with_children', '-bi', '{input.binary_input_img}', '-ri', '{input.raw_input_img}', '-o', '{output.coil_unet_prediction}', '-w', '{params.weights_path}']); print('UNet segmentation finished. Output saved to: {output.coil_unet_prediction}')"
+        """
 
 rule binarize_coil:
     input:
@@ -218,7 +221,7 @@ rule binarize_coil:
             '-max_val', str(params.max_value),
         ])
 
-# TODO: fix the behavior btf thing, input is the raw video,
+
 
 rule tiff2avi:
     input:
