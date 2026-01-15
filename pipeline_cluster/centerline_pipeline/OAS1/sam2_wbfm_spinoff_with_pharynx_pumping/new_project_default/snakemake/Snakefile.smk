@@ -185,7 +185,8 @@ rule coil_unet:
         raw_input_img=f"{output_behavior_dir}/raw_stack_AVG_background_subtracted_normalised.btf"
     # Does not need to match the other segmentation; needs to match the training of the coil unet
     params:
-        weights_path=config["coiled_shape_unet_model"]
+        weights_path=config["coiled_shape_unet_model"],
+        wbfm_conda_env=config["wbfm_conda_env"]
     output:
         coil_unet_prediction=_cleanup_helper(f"{output_behavior_dir}/raw_stack_AVG_background_subtracted_normalised_worm_segmented_mask_coil_segmented.btf")
     shell:
