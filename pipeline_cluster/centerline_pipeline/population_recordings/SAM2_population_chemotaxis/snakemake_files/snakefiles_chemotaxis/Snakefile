@@ -98,7 +98,8 @@ def create_scaled_memory_function(rule_name):
     def calculate_memory(wildcards):
         base_mb = parse_memory_to_mb(get_cluster_config_value(rule_name, "mem", "64G"))
         scale = get_video_duration_seconds(wildcards) / MAX_CROP_SEC
-        return max(1000, min(base_mb, int(base_mb * scale)))
+        floor_mb = int(base_mb * 0.2)  # 20% minimum floor
+        return max(floor_mb, min(base_mb, int(base_mb * scale)))
     return calculate_memory
 
 def create_scaled_time_function(rule_name):
@@ -107,7 +108,8 @@ def create_scaled_time_function(rule_name):
         base_time = get_cluster_config_value(rule_name, "time", "0-08:00:00")
         base_sec = parse_time_to_seconds(base_time)
         scale = get_video_duration_seconds(wildcards) / MAX_CROP_SEC
-        scaled_sec = max(600, min(base_sec, int(base_sec * scale)))
+        floor_sec = int(base_sec * 0.2)  # 20% minimum floor
+        scaled_sec = max(floor_sec, min(base_sec, int(base_sec * scale)))
         return format_seconds_to_slurm_time(scaled_sec)
     return calculate_time
 
@@ -511,10 +513,10 @@ rule chemotaxis_analysis:
         chemotaxis_params        = "{dataset}/{track_dir}/output/chemotaxis_params.csv",
         chemotaxis_h5            = "{dataset}/{track_dir}/output/chemotaxis_analysis_complete.h5",
         done = touch("{dataset}/{track_dir}/output/chemotaxis_analysis.done")
-    threads: create_scaled_threads_function("chemotaxis_analysis")
+    threads: create_static_threads_function("chemotaxis_analysis")
     resources:
-        mem_mb    = create_scaled_memory_function("chemotaxis_analysis"),
-        time      = create_scaled_time_function("chemotaxis_analysis"),
+        mem_mb    = create_static_memory_function("chemotaxis_analysis"),  # No scaling - loads large diffusion arrays
+        time      = create_static_time_function("chemotaxis_analysis"),
         partition = create_partition_function("chemotaxis_analysis"),
         gres      = create_gres_function("chemotaxis_analysis")
     run:
