@@ -90,6 +90,12 @@ python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior
    bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
    ```
 
+8. When analysis is finished, create results_dict.pkl for downstream analysis notebooks:
+   ```bash
+   python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/utils/create_results_dict_server.py .
+   ```
+   Output: `results_dict.pkl` saved in current dataset folder.
+
 ## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
 
 
