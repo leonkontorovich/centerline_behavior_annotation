@@ -87,7 +87,7 @@ python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior
 
 7. Run the analysis - Define parallelism but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
    ```bash
-   sbatch /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
+   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
    ```
 
 ## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
