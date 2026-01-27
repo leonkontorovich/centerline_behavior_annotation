@@ -63,7 +63,7 @@ def process_root_folder(root_folder: Path):
     1. Scans the root folder for subfolders containing 'recording' in the name.
     2. For each such folder:
        - Processes the gantry CSV (time, x, y → TXT)
-       - Moves any .btf file into a _Ch0 subfolder
+       - Converts the BTF file to ND-TIFF format
        - Copies worm_config.yaml into the folder
     3. Prints informative messages for each action.
     """
