@@ -54,6 +54,13 @@ def copy_config(recording_folder: Path):
     shutil.copy(CONFIG_PATH, recording_folder / "worm_config.yaml")
     # print("  [DONE] Config file copied")
 
+def process_one_folder(recording_folder: Path):
+    """Process a single recording folder."""
+    print(f"[PROCESSING] {recording_folder.name}")
+    process_gantry_csv(recording_folder)
+    convert_btf_to_ndtiff(recording_folder)
+    copy_config(recording_folder)
+    print(f"[DONE] Finished {recording_folder.name}\n")
 
 def process_root_folder(root_folder: Path):
     """
@@ -94,8 +101,8 @@ if __name__ == "__main__":
     import sys
 
     if len(sys.argv) != 2:
-        print("Usage: python prepare_OAS_formatting.py <root_folder>")
+        print("Usage: python prepare_OAS_formatting.py <recording_folder>")
         sys.exit(1)
 
-    root = Path(sys.argv[1])
-    process_root_folder(root)
+    recording_folder = Path(sys.argv[1])
+    process_one_folder(recording_folder)
