@@ -90,8 +90,8 @@ def process_root_folder(root_folder: Path):
     for folder in recording_folders:
         print(f"[PROCESSING] {folder.name}")
         process_gantry_csv(folder)
-        convert_btf_to_ndtiff(folder)
         copy_config(folder)
+        convert_btf_to_ndtiff(folder)
         print(f"[DONE] Finished {folder.name}\n")
 
     print("All done!")
