@@ -14,7 +14,7 @@
 # Example:
 #   sbatch run_prepare_recordings.sh /lisc/data/recordings
 # Specific example:
-#   sbatch /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/code_temp/adapt_oas2_to_oas1_wrapper.sh /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/test2
+#   sbatch /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS2/convert_to_OAS1_format/adapt_oas2_to_oas1_wrapper.sh /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/test2
 #
 # Notes:
 #   - The Python script will process all subfolders
@@ -47,7 +47,7 @@ fi
 ROOT_FOLDER="$1"
 
 # Python script path
-PY_SCRIPT="/lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/code_temp/adapt_oas2_to_oas1.py"
+PY_SCRIPT="/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS2/convert_to_OAS1_format/adapt_oas2_to_oas1.py"
 
 if [ ! -f "$PY_SCRIPT" ]; then
     echo "Error: Python script not found at $PY_SCRIPT"
