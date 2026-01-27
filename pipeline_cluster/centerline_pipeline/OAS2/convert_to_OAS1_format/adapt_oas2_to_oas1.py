@@ -1,14 +1,11 @@
 import shutil
 from pathlib import Path
 import pandas as pd
-
+from video_conversions.ndtiff import ometiff2ndtiff
 
 # Path to default files
 # - default raw file config file used for annotating vulva side
 CONFIG_PATH = Path("/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS1/sam2_wbfm_spinoff_with_pharynx_pumping/configs/raw_data_config/worm_config.yaml")
-# - default project template (not used in this script, but kept for reference)
-# PROJECT_DEFAULT_PATH = Path("/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS1/sam2_wbfm_spinoff_with_pharynx_pumping/new_project_default")
-from video_conversions.ndtiff import ometiff2ndtiff
 
 def process_gantry_csv(recording_folder: Path):
     """Extract time, x, y from gantry_position.csv and save as txt."""
@@ -25,8 +22,6 @@ def process_gantry_csv(recording_folder: Path):
     output_path = recording_folder / output_name
     df.to_csv(output_path, index=False)
     print(f"  [DONE] CSV processed and saved as {output_name}")
-
-import subprocess
 
 def convert_btf_to_ndtiff(recording_folder: Path):
     """
