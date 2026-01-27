@@ -16,9 +16,9 @@
 #
 # Example usage:
 # PROJECT_DEFAULT_PATH "/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS1/sam2_wbfm_spinoff_with_pharynx_pumping/new_project_default"
-# ./prepare_oas_project_folders.sh /path/to/root /path/to/output /path/to/default_project_folder #TODO: update example with the final path
+# ./prepare_oas_project_folders.sh /path/to/root /path/to/output /path/to/default_project_folder
 # Specific example:
-# bash prepare_oas_project_folders.sh /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/test2 /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/test2_projects "/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS1/sam2_wbfm_spinoff_with_pharynx_pumping/new_project_default"
+# bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS2/oas_make_project_folders_wrapper.sh /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/test2 /lisc/data/scratch/neurobiology/zimmer/ItamarLev/pepita/test2_projects /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS1/sam2_wbfm_spinoff_with_pharynx_pumping/new_project_default
 # -------------------------------------------
 
 ROOT_FOLDER="$1"
@@ -31,5 +31,4 @@ if [ -z "$ROOT_FOLDER" ] || [ -z "$OUTPUT_FOLDER" ] || [ -z "$DEFAULT_PROJECT" ]
 fi
 
 echo "Preparing OAS project folders..."
-python3 /lisc/data/scratch/neurobiology/zimmer/ItamarLev/Code/bash/test_make_OAS1_project_folders.py --root "$ROOT_FOLDER" --output "$OUTPUT_FOLDER" --default_project "$DEFAULT_PROJECT"
-#TODO: update with the final path
+python3 /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/OAS2/oas_make_project_folders.py --root "$ROOT_FOLDER" --output "$OUTPUT_FOLDER" --default_project "$DEFAULT_PROJECT"

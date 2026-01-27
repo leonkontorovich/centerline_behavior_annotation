@@ -21,7 +21,7 @@ def process_gantry_csv(recording_folder: Path):
     output_name = f"{recording_folder.name}-TablePosRecord.txt"
     output_path = recording_folder / output_name
     df.to_csv(output_path, index=False)
-    print(f"  [DONE] CSV processed and saved as {output_name}")
+    # print(f"  [DONE] CSV processed and saved as {output_name}")
 
 def convert_btf_to_ndtiff(recording_folder: Path):
     """
@@ -52,7 +52,7 @@ def copy_config(recording_folder: Path):
         raise FileNotFoundError(f"Missing config file: {CONFIG_PATH}")
 
     shutil.copy(CONFIG_PATH, recording_folder / "worm_config.yaml")
-    print("  [DONE] Config file copied")
+    # print("  [DONE] Config file copied")
 
 
 def process_root_folder(root_folder: Path):
