@@ -75,8 +75,8 @@ def process_one_folder(recording_folder: Path):
     """Process a single recording folder."""
     print(f"[PROCESSING] {recording_folder.name}")
     process_gantry_csv(recording_folder)
-    convert_btf_to_ndtiff(recording_folder)
     copy_config(recording_folder)
+    convert_btf_to_ndtiff(recording_folder)
     print(f"[DONE] Finished {recording_folder.name}\n")
 
 def process_root_folder(root_folder: Path):
