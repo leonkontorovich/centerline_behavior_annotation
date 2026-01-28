@@ -63,6 +63,7 @@ def convert_btf_to_ndtiff(recording_folder: Path):
 
 
 
+
 def copy_config(recording_folder: Path):
     """Copy worm_config.yaml into the recording folder."""
     if not CONFIG_PATH.exists():
