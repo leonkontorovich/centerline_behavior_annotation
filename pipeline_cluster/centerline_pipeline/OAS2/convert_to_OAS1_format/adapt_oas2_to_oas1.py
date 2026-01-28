@@ -23,6 +23,9 @@ def process_gantry_csv(recording_folder: Path):
     df.to_csv(output_path, index=False)
     # print(f"  [DONE] CSV processed and saved as {output_name}")
 
+from imutils import MicroscopeDataReader, MicroscopeDataWriter
+from tqdm import tqdm
+
 def convert_btf_to_ndtiff(recording_folder: Path):
     """
     Convert BTF to ND-TIFF format using external conversion script.
@@ -37,11 +40,25 @@ def convert_btf_to_ndtiff(recording_folder: Path):
 
     print(f"  [RUN] Converting BTF to ND-TIFF ({ch0_name})")
 
-    ometiff2ndtiff.main([
-        "--input", str(btf),
-        "--output", str(recording_folder),
-        "--name", ch0_name,
-    ])
+    data_reader = MicroscopeDataReader(btf, as_raw_tiff=True, raw_tiff_num_slices=1, verbose="ERROR")
+    total_frame_number = data_reader.get_number_of_timepoints()
+
+    data_writer = MicroscopeDataWriter(dataset_path=recording_folder, dataset_name=ch0_name,
+                                       add_date_time=False, verbose="ERROR")
+
+    for frame_number in tqdm(range(0, total_frame_number), desc= "Creating ndtiff: converting frames"):
+        frame = data_reader.get_frame(time=frame_number)
+        data_writer.put_image(frame, time=frame_number)
+
+    try:
+        data_writer.close()
+
+    # catch if this is the error: UnicodeDecodeError
+    except UnicodeDecodeError:
+        print("[WARNING] UnicodeDecodeError caught while closing data_writer. A known problem with IMUTILS and btf2ndtiff conversion, Continuing...")
+
+    data_reader.close()
+
     print("  [DONE] Conversion completed")
 
 
@@ -106,3 +123,4 @@ if __name__ == "__main__":
 
     recording_folder = Path(sys.argv[1])
     process_one_folder(recording_folder)
+
