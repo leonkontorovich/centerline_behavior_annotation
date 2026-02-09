@@ -58,11 +58,12 @@ ________________________________________________________________________________
    This script renames the TIFF files to fit the pipeline's needs.
 
 4. Create folder structures and copy pipeline files (don't run this if folder structure already exists, but use alternative that just copies!):
+
    ```bash
    bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh
    ```
 
-4.1 Just copy new Files
+**4.1 Just copy new Files**
 ```bash
 bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
 ```
@@ -86,8 +87,14 @@ python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior
 
 7. Run the analysis - Define parallelism but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
    ```bash
-   sbatch /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
+   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
    ```
+
+8. When analysis is finished, create results_dict.pkl for downstream analysis notebooks:
+   ```bash
+   python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/utils/create_results_dict_server.py .
+   ```
+   Output: `results_dict.pkl` saved in current dataset folder.
 
 ## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
 
