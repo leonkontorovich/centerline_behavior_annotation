@@ -60,7 +60,13 @@ aerotaxis:
 ```
 
 To adapt to a different paradigm, just edit `baseline_*` and the `cycle` phase list -
-no code change is needed. Time is derived from the top-level `fps` key.
+no code change is needed.
+
+Alignment uses the **absolute recording time** from each track's SWC `track.txt`
+(`time_imputed_seconds`), so crops that start at different times in the recording
+all lock to the same global gas protocol. `Frame` and `Time_Seconds` in the output
+are therefore absolute (recording-wide). `t0_offset_s` sets the recording time at
+which the protocol begins; frames before it are labelled `pre_protocol`.
 ______________________________________________________________________________________________
 ## Start here if you already did set up your conda on user login!
 

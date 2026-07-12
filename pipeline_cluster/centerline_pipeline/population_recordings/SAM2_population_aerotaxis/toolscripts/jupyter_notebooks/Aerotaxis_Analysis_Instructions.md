@@ -28,10 +28,10 @@ aerotaxis_results.{parquet,csv,pkl}
 | `Condition` | top-level folder (e.g. genotype / paradigm) |
 | `Recording` | recording folder |
 | `Crop_ID` | per-worm track id |
-| `Frame` | frame index (0-based) |
-| `Time_Seconds` | `t0_offset_s + Frame / fps` |
-| `O2_State` | gas state from the `aerotaxis:` protocol (e.g. `7pct_O2`, `21pct_O2`) |
-| `Forward_Velocity` | signed speed (mm/s); negative during reversals |
+| `Frame` | **absolute** recording frame (from SWC `track.txt`), so crops share one clock |
+| `Time_Seconds` | **absolute** recording time (s), from `track.txt` `time_imputed_seconds` |
+| `O2_State` | gas state from the `aerotaxis:` protocol at that absolute time (e.g. `7pct_O2`, `21pct_O2`, `pre_protocol`) |
+| `Forward_Velocity` | signed speed (mm/s) from the arena X,Y trajectory; negative during reversals |
 | `Reversal_Active` | 1 while reversing, else 0 |
 | `Turn_Active` | 1 during a turn/coil, else 0 |
 

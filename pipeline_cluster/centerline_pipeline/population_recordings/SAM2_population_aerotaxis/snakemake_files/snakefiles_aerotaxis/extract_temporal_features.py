@@ -9,17 +9,31 @@ temporal state locked to global gas shifts (baseline O2, then repeating
 pulse/return cycles).
 
 Reads only artifacts already produced by the upstream (untouched) pipeline:
+    track.txt                        (SWC tracker log)  -> ABSOLUTE clock + arena position
     reversal_annotation.csv          (annotate_reversals)          -> Reversal_Active, velocity sign
     turn_annotation_by_roundness.csv (calc_turns_by_roundness)     -> Turn_Active
-    skeleton_spline_X/Y_coords_new.csv (process_skeleton_curvature)-> crop centroid
-    track.txt                        (tracker stage log)           -> stage displacement
+    skeleton_spline_X/Y_coords_new.csv (process_skeleton_curvature)-> velocity FALLBACK only
+
+Clock / alignment (important):
+    Each crop is only a *segment* of the whole recording and starts at a
+    different absolute time, but the gas protocol is global to the plate. The
+    SWC track.txt logs, per frame, the absolute recording frame + time
+    (`time_imputed_seconds`) and the worm's absolute arena position (X, Y in
+    px). We therefore use track.txt as the authoritative per-frame clock:
+      * Time_Seconds / O2_State come from the ABSOLUTE recording time
+      * Forward_Velocity is computed from the arena X, Y trajectory (px -> mm)
+    The behaviour arrays (reversal/turn) are aligned to that clock from the
+    first frame (they are derived from the crop tif, which can be off by ~1
+    frame vs track.txt -- we trim to the common length).
+
+    If track.txt is missing/unparseable, we fall back to a local clock
+    (Frame/fps) and crop-centroid speed, and warn -- so the script still runs.
 
 Output: a tidy, flat per-frame CSV with columns
     [Crop_ID, Frame, Time_Seconds, O2_State,
      Forward_Velocity, Reversal_Active, Turn_Active]
-
-Downstream (create_results_dict_server.py) simply concatenates one of these
-per crop into a single tidy table for Pandas / Seaborn / R.
+where Frame / Time_Seconds are ABSOLUTE (recording-wide) when track.txt is
+available, so crops share one clock for gas-locked population analysis.
 """
 
 import argparse
@@ -34,17 +48,20 @@ import pandas as pd
 # ======================================================================
 # Protocol -> per-frame gas state
 # ======================================================================
-def build_o2_state(time_s, baseline_duration_s, baseline_state, cycle, n_cycles=None):
+def build_o2_state(protocol_time_s, baseline_duration_s, baseline_state, cycle, n_cycles=None):
     """
-    Map an array of timestamps (seconds) to gas states.
+    Map an array of PROTOCOL-relative timestamps (seconds; 0 = protocol start)
+    to gas states.
 
     Protocol = one baseline block, then `cycle` (an ordered list of
-    {state, duration_s} phases) repeated. Fully vectorised and generic:
-    any oxygen-sensing paradigm is expressed by editing baseline_* and cycle
-    in config.yaml -- no code change needed here.
+    {state, duration_s} phases) repeated. Fully vectorised and generic: any
+    oxygen-sensing paradigm is expressed by editing baseline_* and cycle in
+    config.yaml -- no code change needed here.
+
+    Times before protocol start (t < 0) are labelled "pre_protocol".
     """
-    time_s = np.asarray(time_s, dtype=float)
-    states = np.empty(time_s.shape, dtype=object)
+    t = np.asarray(protocol_time_s, dtype=float)
+    states = np.empty(t.shape, dtype=object)
 
     cycle_durations = np.array([float(p["duration_s"]) for p in cycle], dtype=float)
     cycle_states = [p["state"] for p in cycle]
@@ -53,28 +70,27 @@ def build_o2_state(time_s, baseline_duration_s, baseline_state, cycle, n_cycles=
         raise ValueError("aerotaxis.cycle total duration must be > 0")
     phase_edges = np.cumsum(cycle_durations)  # boundaries within one cycle
 
-    # baseline block
-    in_baseline = time_s < baseline_duration_s
+    pre = t < 0
+    in_baseline = (~pre) & (t < baseline_duration_s)
+    in_cycles = (~pre) & (~in_baseline)
+
+    states[pre] = "pre_protocol"
     states[in_baseline] = baseline_state
 
-    # cyclic region
-    t_cyc = time_s[~in_baseline] - baseline_duration_s
+    t_cyc = t[in_cycles] - baseline_duration_s
     cyc_index = np.floor(t_cyc / cycle_period).astype(int)
     t_in_cycle = t_cyc - cyc_index * cycle_period
-
-    phase_idx = np.searchsorted(phase_edges, t_in_cycle, side="right")
-    phase_idx = np.clip(phase_idx, 0, len(cycle_states) - 1)
+    phase_idx = np.clip(np.searchsorted(phase_edges, t_in_cycle, side="right"),
+                        0, len(cycle_states) - 1)
     cyc_states = np.array([cycle_states[i] for i in phase_idx], dtype=object)
-
     if n_cycles is not None:
         cyc_states[cyc_index >= n_cycles] = "post_protocol"
-
-    states[~in_baseline] = cyc_states
+    states[in_cycles] = cyc_states
     return states
 
 
 # ======================================================================
-# Loaders (formats verified against the upstream writers)
+# Loaders (formats verified against real SWC output + upstream writers)
 # ======================================================================
 def load_reversal(path):
     """reversal_annotation.csv: index + 1 data column of {-1, 0, 1}."""
@@ -92,13 +108,72 @@ def load_centroid_px(x_path, y_path):
     """Skeleton spline coords (header=None, index=None) -> per-frame centroid (px)."""
     xs = pd.read_csv(x_path, header=None)
     ys = pd.read_csv(y_path, header=None)
-    cx = xs.mean(axis=1, skipna=True).to_numpy()
-    cy = ys.mean(axis=1, skipna=True).to_numpy()
-    return cx, cy
+    return xs.mean(axis=1, skipna=True).to_numpy(), ys.mean(axis=1, skipna=True).to_numpy()
+
+
+def load_track_txt(track_txt, fps):
+    """
+    Read the SWC tracker log. Returns a dict with per-frame arrays:
+        frame     : absolute recording frame index
+        abs_time  : absolute recording time (s)
+        x, y      : absolute arena position (px)
+    or None if the file is missing / not in the expected format.
+
+    Expected header (SWC v1.x):
+        frame,time,X,Y,time_imputed_seconds
+    `time` may be blank; `time_imputed_seconds` is the reliable clock and
+    equals frame/fps. We fall back to frame/fps if that column is absent.
+    """
+    p = Path(track_txt)
+    if not p.exists():
+        # Robustness: the SWC writes "<name>_track_N.txt"; the pipeline expects
+        # "track.txt" after rename_tracks.py. If the exact name is absent, fall
+        # back to the SWC-style sibling in the same crop dir.
+        siblings = sorted(p.parent.glob("*_track_*.txt")) or sorted(p.parent.glob("*.txt"))
+        if not siblings:
+            return None
+        p = siblings[0]
+        print(f"[info] {track_txt} not found; using SWC log {p.name}", file=sys.stderr)
+    try:
+        df = pd.read_csv(p)
+    except Exception as e:  # noqa: BLE001
+        print(f"[warn] could not read {track_txt} ({e}).", file=sys.stderr)
+        return None
+
+    cols = {c.lower(): c for c in df.columns}
+    if "x" not in cols or "y" not in cols:
+        print(f"[warn] {track_txt} lacks X/Y columns {list(df.columns)}.", file=sys.stderr)
+        return None
+
+    x = df[cols["x"]].to_numpy(dtype=float)
+    y = df[cols["y"]].to_numpy(dtype=float)
+
+    if "frame" in cols:
+        frame = df[cols["frame"]].to_numpy(dtype=float)
+    else:
+        frame = np.arange(len(df), dtype=float)
+
+    if "time_imputed_seconds" in cols:
+        abs_time = df[cols["time_imputed_seconds"]].to_numpy(dtype=float)
+    elif "time" in cols and df[cols["time"]].notna().any():
+        abs_time = df[cols["time"]].to_numpy(dtype=float)
+    else:
+        abs_time = frame / fps
+
+    return {"frame": frame, "abs_time": abs_time, "x": x, "y": y}
+
+
+def _signed_velocity(x_mm, y_mm, reversal_active, fps, smooth_win):
+    """Speed magnitude (mm/s) signed by reversal state (reversal -> negative)."""
+    x = pd.Series(x_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
+    y = pd.Series(y_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
+    speed = np.sqrt(np.gradient(x) ** 2 + np.gradient(y) ** 2) * fps
+    direction = np.where(reversal_active == 1, -1.0, 1.0)
+    return speed * direction
 
 
 def _fit_length(arr, n):
-    """Truncate or NaN-pad a 1-D array to length n so all features align on Frame."""
+    """Truncate or NaN-pad a 1-D array to length n so all columns align."""
     arr = np.asarray(arr, dtype=float)
     if len(arr) >= n:
         return arr[:n]
@@ -108,79 +183,22 @@ def _fit_length(arr, n):
 
 
 # ======================================================================
-# Forward velocity
-# ======================================================================
-# ----------------------------------------------------------------------
-# TODO(track.txt): DEFERRED until the cropper settings are finalised.
-#
-# The magnitude of Forward_Velocity depends on how the tracker's stage log
-# (track.txt) encodes position -- column layout and units (px vs mm) are
-# setup-specific and not yet known. Everything else in this file is final.
-#
-# When a viable crop exists, replace ONLY the body of load_stage_px() below
-# with the real column names / units. Nothing else in the pipeline touches
-# velocity. Until then we fall back to crop-centroid-only speed (stage drift
-# ignored) and emit a warning, so the pipeline runs end-to-end today.
-# ----------------------------------------------------------------------
-def load_stage_px(track_txt, n_frames):
-    """
-    Stage/table position per frame from track.txt, in the SAME px units as the
-    crop centroid. Returns (sx, sy), or zeros (+warning) if unavailable.
-
-    PLACEHOLDER heuristic: parse tolerantly and take the last two numeric
-    columns as stage X, Y. Verify against a real track.txt before trusting the
-    velocity magnitude (see TODO above).
-    """
-    p = Path(track_txt)
-    if not p.exists():
-        print(f"[warn] {track_txt} not found -- crop-centroid speed only "
-              f"(stage drift ignored).", file=sys.stderr)
-        return np.zeros(n_frames), np.zeros(n_frames)
-    try:
-        raw = pd.read_csv(p, sep=None, engine="python", header=None, comment="#")
-        num = raw.apply(pd.to_numeric, errors="coerce").dropna(axis=1, how="all")
-        if num.shape[1] < 2:
-            raise ValueError("fewer than 2 numeric columns")
-        sx = num.iloc[:, -2].to_numpy(dtype=float)
-        sy = num.iloc[:, -1].to_numpy(dtype=float)
-        return sx, sy
-    except Exception as e:  # noqa: BLE001 -- tolerant by design (placeholder)
-        print(f"[warn] could not parse {track_txt} ({e}); crop-centroid speed only.",
-              file=sys.stderr)
-        return np.zeros(n_frames), np.zeros(n_frames)
-
-
-def compute_forward_velocity(cx, cy, sx, sy, reversal_active, fps, factor_px_to_mm, smooth_win):
-    """
-    Signed forward velocity (mm/s): speed magnitude signed by reversal state
-    (forward -> positive, reversal -> negative). Position is smoothed before
-    differentiating to suppress tracking jitter.
-    """
-    abs_x_mm = (sx + cx) * factor_px_to_mm
-    abs_y_mm = (sy + cy) * factor_px_to_mm
-    abs_x_mm = pd.Series(abs_x_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
-    abs_y_mm = pd.Series(abs_y_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
-    speed = np.sqrt(np.gradient(abs_x_mm) ** 2 + np.gradient(abs_y_mm) ** 2) * fps  # mm/s
-    direction = np.where(reversal_active == 1, -1.0, 1.0)
-    return speed * direction
-
-
-# ======================================================================
 def main(arg_list=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--crop_id", required=True, help="Crop_ID (the track_dir name)")
     ap.add_argument("--reversal_annotation", required=True)
     ap.add_argument("--turn_annotation", required=True)
-    ap.add_argument("--skeleton_x", required=True)
-    ap.add_argument("--skeleton_y", required=True)
-    ap.add_argument("--worm_pos", required=True, help="track.txt stage log")
+    ap.add_argument("--skeleton_x", required=True, help="velocity fallback only")
+    ap.add_argument("--skeleton_y", required=True, help="velocity fallback only")
+    ap.add_argument("--worm_pos", required=True, help="SWC track.txt (authoritative clock + arena position)")
     ap.add_argument("--fps", type=float, required=True)
     ap.add_argument("--factor_px_to_mm", type=float, required=True)
     ap.add_argument("--speed_smooth_window", type=int, default=None,
                     help="rolling window (frames) for position smoothing; default = round(fps)")
     # protocol timing
-    ap.add_argument("--t0_offset_s", type=float, default=0.0)
+    ap.add_argument("--t0_offset_s", type=float, default=0.0,
+                    help="absolute recording time at which the gas protocol starts")
     ap.add_argument("--baseline_duration_s", type=float, required=True)
     ap.add_argument("--baseline_state", required=True)
     ap.add_argument("--cycle_json", required=True,
@@ -194,38 +212,52 @@ def main(arg_list=None):
     n_cycles = None if str(args.n_cycles).lower() in ("none", "null", "") else int(args.n_cycles)
     smooth_win = args.speed_smooth_window or max(1, int(round(args.fps)))
 
-    # ---- load per-frame features ----
+    # ---- behaviour arrays (derived from the crop tif) ----
     reversal = load_reversal(args.reversal_annotation)
     turn = load_turn(args.turn_annotation)
-    cx, cy = load_centroid_px(args.skeleton_x, args.skeleton_y)
 
-    n = min(len(reversal), len(turn), len(cx), len(cy))
+    # ---- authoritative clock + position from SWC track.txt ----
+    track = load_track_txt(args.worm_pos, args.fps)
+
+    if track is not None:
+        # Absolute recording clock. Align behaviour arrays from the first frame;
+        # tif vs track.txt can differ by ~1 frame, so trim to the common length.
+        n = min(len(track["frame"]), len(reversal), len(turn))
+        abs_frame = track["frame"][:n]
+        abs_time = track["abs_time"][:n]
+        x_mm = track["x"][:n] * args.factor_px_to_mm
+        y_mm = track["y"][:n] * args.factor_px_to_mm
+    else:
+        # Fallback: no track.txt -> local clock + crop-centroid speed.
+        print(f"[warn] {args.worm_pos} unusable -- local clock (Frame/fps) and "
+              f"crop-centroid speed; ABSOLUTE gas alignment NOT guaranteed.", file=sys.stderr)
+        cx, cy = load_centroid_px(args.skeleton_x, args.skeleton_y)
+        n = min(len(cx), len(cy), len(reversal), len(turn))
+        abs_frame = np.arange(n, dtype=float)
+        abs_time = abs_frame / args.fps
+        x_mm = cx[:n] * args.factor_px_to_mm
+        y_mm = cy[:n] * args.factor_px_to_mm
+
     if n == 0:
         raise ValueError(f"[{args.crop_id}] no frames to process (empty inputs).")
 
     reversal = _fit_length(reversal, n)
     turn = _fit_length(turn, n)
-    cx, cy = _fit_length(cx, n), _fit_length(cy, n)
-    sx, sy = load_stage_px(args.worm_pos, n)
-    sx, sy = _fit_length(sx, n), _fit_length(sy, n)
-
     reversal_active = (reversal == -1).astype(int)
-    forward_velocity = compute_forward_velocity(
-        cx, cy, sx, sy, reversal_active, args.fps, args.factor_px_to_mm, smooth_win
-    )
 
-    # ---- time + gas state ----
-    frame = np.arange(n)
-    time_s = args.t0_offset_s + frame / args.fps
+    forward_velocity = _signed_velocity(x_mm, y_mm, reversal_active, args.fps, smooth_win)
+
+    # ---- gas state from ABSOLUTE time, offset to protocol start ----
+    protocol_time = abs_time - args.t0_offset_s
     o2_state = build_o2_state(
-        time_s, args.baseline_duration_s, args.baseline_state, cycle, n_cycles
+        protocol_time, args.baseline_duration_s, args.baseline_state, cycle, n_cycles
     )
 
     # ---- tidy output ----
     out = pd.DataFrame({
         "Crop_ID": args.crop_id,
-        "Frame": frame,
-        "Time_Seconds": time_s,
+        "Frame": abs_frame.astype(int),
+        "Time_Seconds": abs_time,
         "O2_State": o2_state,
         "Forward_Velocity": forward_velocity,
         "Reversal_Active": reversal_active,
@@ -233,7 +265,8 @@ def main(arg_list=None):
     })
     Path(args.out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_csv, index=False)
-    print(f"[{args.crop_id}] wrote {len(out)} frames -> {args.out_csv}")
+    print(f"[{args.crop_id}] wrote {len(out)} frames "
+          f"({out.Time_Seconds.iloc[0]:.1f}-{out.Time_Seconds.iloc[-1]:.1f}s) -> {args.out_csv}")
 
 
 if __name__ == "__main__":

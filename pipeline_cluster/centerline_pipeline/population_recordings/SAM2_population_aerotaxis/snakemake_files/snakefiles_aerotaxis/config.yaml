@@ -1,7 +1,11 @@
 # Video processing parameters
 fourcc: 0
 fps: 10
-factor_px_to_mm: '0.00962'
+# Pixel -> mm calibration, used only to scale Forward_Velocity (linear).
+# CONFIRM per rig: SWC sensor here is 2048 px and the arena is 2.5 cm (25 mm),
+# so if the frame spans the arena, factor = 25/2048 = 0.01221 mm/px.
+# (0.00962 was inherited from the old chemotaxis rig and implies a 2599 px arena.)
+factor_px_to_mm: '0.01221'
 
 # Model paths and settings
 dlc_model_configfile_path: /lisc/data/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml
@@ -44,11 +48,13 @@ lower_threshold: '-0.00001'
 # Global plate-level gas protocol. Edit freely per assay / paradigm.
 # Protocol = one baseline block, then `cycle` (an ordered list of phases)
 # repeated until the recording ends (or n_cycles times, if set).
-# Time base uses the top-level `fps` key above so it stays consistent
-# with the rest of the pipeline.
+# Alignment uses the ABSOLUTE recording time from the SWC track.txt
+# (time_imputed_seconds), so crops that start at different times all lock to
+# the same global protocol. fps comes from the top-level `fps` key above.
 # ============================================================
 aerotaxis:
-  t0_offset_s: 0.0             # seconds of recording BEFORE the protocol starts
+  t0_offset_s: 0.0             # absolute recording time (s) at which the protocol starts
+                               # (0 = protocol begins at recording t=0; frames before it -> "pre_protocol")
   baseline_duration_s: 240     # 4-min baseline
   baseline_state: "7pct_O2"
   cycle:                       # one repeating unit; phases applied in order
