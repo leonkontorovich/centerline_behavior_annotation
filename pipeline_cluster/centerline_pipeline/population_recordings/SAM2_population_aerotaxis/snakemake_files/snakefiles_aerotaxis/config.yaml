@@ -1,0 +1,57 @@
+# Video processing parameters
+fourcc: 0
+fps: 10
+factor_px_to_mm: '0.00962'
+
+# Model paths and settings
+dlc_model_configfile_path: /lisc/data/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml
+dlc_conda_env_path: /lisc/opt/sw/software/Conda/Miniforge3/envs/DeepLabCut-2.3.11
+network_string: DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_itamarSep23shuffle2_1030000
+pca_model_path: /lisc/data/scratch/neurobiology/zimmer/autoscope/trained_models/PCA_models/equi_distance_centerline_seg_10_40.pkl
+
+# SAM2 parameters
+downsample_factor: 0
+batch_size: 200
+
+# Worm detection parameters
+min_worm_area: 400
+max_worm_area: 1000
+min_worm_lenght: 83  # Note: there's a typo in 'length'
+
+# Annotation parameters
+nose: head
+tail: tail
+num_splines: 20
+initial_segment: 9
+final_segment: 39
+
+#preprocess spline
+relative_spacing: 2.0  # 2% of skeleton length
+num_sampled_points: 10000
+smoothing: 0
+time_sigma: 2.0
+spatial_sigma: 1.0
+max_columns: 0 #dynamic mode - cuts skelleton where nan content increases 50%+
+
+window: 10
+min_round_threshold: 0.55
+max_round_threshold: 0.99
+upper_threshold: '0.000001'
+lower_threshold: '-0.00001'
+
+# ============================================================
+# Aerotaxis temporal-alignment parameters
+# Global plate-level gas protocol. Edit freely per assay / paradigm.
+# Protocol = one baseline block, then `cycle` (an ordered list of phases)
+# repeated until the recording ends (or n_cycles times, if set).
+# Time base uses the top-level `fps` key above so it stays consistent
+# with the rest of the pipeline.
+# ============================================================
+aerotaxis:
+  t0_offset_s: 0.0             # seconds of recording BEFORE the protocol starts
+  baseline_duration_s: 240     # 4-min baseline
+  baseline_state: "7pct_O2"
+  cycle:                       # one repeating unit; phases applied in order
+    - {state: "21pct_O2", duration_s: 30}   # pulse
+    - {state: "7pct_O2",  duration_s: 60}    # return
+  n_cycles: null               # null = repeat to end of recording; or an int to cap

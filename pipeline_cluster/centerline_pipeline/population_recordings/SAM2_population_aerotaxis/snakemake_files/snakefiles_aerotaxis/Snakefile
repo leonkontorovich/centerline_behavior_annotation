@@ -1,0 +1,540 @@
+from snakemake.io import glob_wildcards, temp, touch
+
+# ---- dynamic per-rule resources from cluster_config.yaml ----
+import json, math, re, yaml
+from functools import lru_cache
+
+MAX_CROP_SEC = 1800  # 30 minutes baseline
+
+# read cluster_config once
+with open("cluster_config.yaml") as _f:
+    _CLUSTER_CONFIG = yaml.safe_load(_f)
+
+def get_cluster_config_value(rule_name, config_key, default=None):
+    """Get a configuration value for a specific rule, with fallback to __default__"""
+    if rule_name in _CLUSTER_CONFIG and config_key in _CLUSTER_CONFIG[rule_name]:
+        value = _CLUSTER_CONFIG[rule_name][config_key]
+        return value if value is not None else default
+    if "__default__" in _CLUSTER_CONFIG and config_key in _CLUSTER_CONFIG["__default__"]:
+        value = _CLUSTER_CONFIG["__default__"][config_key]
+        return value if value is not None else default
+    return default
+
+def parse_memory_to_mb(memory_string):
+    """Convert memory string (e.g., '64G', '64000M') to megabytes"""
+    if isinstance(memory_string, (int, float)): 
+        return int(memory_string)
+    s = str(memory_string).strip().upper()
+    m = re.match(r"^(\d+(?:\.\d+)?)([KMG]B?|)$", s)
+    if not m:  # last resort: assume MB
+        return int(float(re.sub(r"\D", "", s) or 0))
+    val, unit = float(m.group(1)), m.group(2)
+    if unit in ("G", "GB"): 
+        return int(val * 1024)
+    if unit in ("M", "MB", ""): 
+        return int(val)
+    if unit in ("K", "KB"): 
+        return int(val / 1024)
+    return int(val)
+
+def parse_time_to_seconds(time_string):
+    """Convert SLURM time format (D-HH:MM:SS, HH:MM:SS, MM:SS) to seconds"""
+    if isinstance(time_string, (int, float)): 
+        return int(time_string)
+    s = str(time_string).strip()
+    days = 0
+    if "-" in s:
+        days_str, s = s.split("-", 1)
+        days = int(days_str)
+    parts = [int(p) for p in s.split(":")]
+    if len(parts) == 3:
+        h, m, sec = parts
+    elif len(parts) == 2:
+        h, m, sec = 0, parts[0], parts[1]
+    else:
+        h, m, sec = 0, 0, parts[0]
+    return days*86400 + h*3600 + m*60 + sec
+
+def format_seconds_to_slurm_time(seconds):
+    """Convert seconds to SLURM time format (D-HH:MM:SS)"""
+    seconds = int(seconds)
+    d, r = divmod(seconds, 86400)
+    h, r = divmod(r, 3600)
+    m, s = divmod(r, 60)
+    return f"{d}-{h:02d}:{m:02d}:{s:02d}" if d else f"{h:02d}:{m:02d}:{s:02d}"
+
+@lru_cache(None)
+def get_video_metadata(dataset, track_dir):
+    """
+    Read video duration and frame count from .meta.json file.
+    Returns (duration_seconds, frame_count) or defaults if file doesn't exist.
+    """
+    path = f"{dataset}/{track_dir}/output/.meta.json"
+    try:
+        with open(path) as f:
+            streams = json.load(f).get("streams", [])
+        s = streams[0] if streams else {}
+        return float(s.get("duration") or 0.0), int(s.get("nb_frames") or 0)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Return baseline 30-min duration for initial resource allocation
+        return MAX_CROP_SEC, 0
+
+def get_video_duration_seconds(wildcards):
+    """Get video duration in seconds for a specific dataset/track"""
+    duration_sec, _ = get_video_metadata(wildcards.dataset, wildcards.track_dir)
+    return max(1.0, duration_sec)  # avoid zero
+
+# ----- Resource Scaling Functions (based on video duration) -----
+def create_scaled_threads_function(rule_name):
+    """Returns a function that scales thread count based on video duration"""
+    def calculate_threads(wildcards):
+        base = int(get_cluster_config_value(rule_name, "cpus_per_task", 1))
+        scale = get_video_duration_seconds(wildcards) / MAX_CROP_SEC
+        return max(1, min(base, math.ceil(base * scale)))
+    return calculate_threads
+
+def create_scaled_memory_function(rule_name):
+    """Returns a function that scales memory (MB) based on video duration"""
+    def calculate_memory(wildcards):
+        base_mb = parse_memory_to_mb(get_cluster_config_value(rule_name, "mem", "64G"))
+        scale = get_video_duration_seconds(wildcards) / MAX_CROP_SEC
+        floor_mb = int(base_mb * 0.2)  # 20% minimum floor
+        return max(floor_mb, min(base_mb, int(base_mb * scale)))
+    return calculate_memory
+
+def create_scaled_time_function(rule_name):
+    """Returns a function that scales walltime based on video duration"""
+    def calculate_time(wildcards):
+        base_time = get_cluster_config_value(rule_name, "time", "0-08:00:00")
+        base_sec = parse_time_to_seconds(base_time)
+        scale = get_video_duration_seconds(wildcards) / MAX_CROP_SEC
+        floor_sec = int(base_sec * 0.2)  # 20% minimum floor
+        scaled_sec = max(floor_sec, min(base_sec, int(base_sec * scale)))
+        return format_seconds_to_slurm_time(scaled_sec)
+    return calculate_time
+
+def create_partition_function(rule_name):
+    """Returns partition value from cluster_config.yaml (no scaling)"""
+    def get_partition(wildcards):
+        return get_cluster_config_value(rule_name, "partition", "basic")
+    return get_partition
+
+def create_gres_function(rule_name):
+    """Returns GRES value from cluster_config.yaml (no scaling)"""
+    def get_gres(wildcards):
+        return get_cluster_config_value(rule_name, "gres", "")
+    return get_gres
+
+def create_constraint_function(rule_name):
+    """Returns constraint value from cluster_config.yaml (no scaling)"""
+    def get_constraint(wildcards):
+        return get_cluster_config_value(rule_name, "constraint", "")
+    return get_constraint
+
+# ----- Static Resource Functions (no scaling, used for tiff2avi and sam2_segment) -----
+def create_static_threads_function(rule_name):
+    """Returns a function that returns fixed thread count from cluster_config"""
+    def get_threads(wildcards):
+        return int(get_cluster_config_value(rule_name, "cpus_per_task", 1))
+    return get_threads
+
+def create_static_memory_function(rule_name):
+    """Returns a function that returns fixed memory (MB) from cluster_config"""
+    def get_memory(wildcards):
+        return parse_memory_to_mb(get_cluster_config_value(rule_name, "mem", "64G"))
+    return get_memory
+
+def create_static_time_function(rule_name):
+    """Returns a function that returns fixed time from cluster_config"""
+    def get_time(wildcards):
+        return get_cluster_config_value(rule_name, "time", "0-08:00:00")
+    return get_time
+
+# --------------------------------------------------------------
+
+# Discover all datasets and their track directories
+DATASETS = glob_wildcards("{dataset}/{track_dir}/track.tif")
+
+rule all:
+    input:
+        expand(
+            [
+                # Aerotaxis temporal analysis (replaces spatial chemotaxis outputs)
+                "{dataset}/{track_dir}/output/temporal_features.csv",
+                "{dataset}/{track_dir}/output/aerotaxis_temporal_analysis.done",
+                # Hilbert body-bend outputs (gradient-independent, kept)
+                "{dataset}/{track_dir}/output/hilbert_regenerated_carrier.csv",
+                "{dataset}/{track_dir}/output/hilbert_inst_freq.csv",
+                "{dataset}/{track_dir}/output/hilbert_inst_phase.csv",
+                "{dataset}/{track_dir}/output/hilbert_inst_amplitude.csv"
+            ],
+            zip,
+            dataset=DATASETS.dataset,
+            track_dir=DATASETS.track_dir
+        )
+
+rule tiff2avi:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        input_img = "{dataset}/{track_dir}/track.tif"
+    output:
+        avi = temp("{dataset}/{track_dir}/output/track.avi")
+    threads: create_scaled_threads_function("tiff2avi")
+    resources:
+        mem_mb=create_scaled_memory_function("tiff2avi"),
+        time=create_scaled_time_function("tiff2avi"),
+        partition=create_partition_function("tiff2avi"),
+        gres=create_gres_function("tiff2avi")
+    params:
+        function = "tiff2avi",
+        fourcc   = config["fourcc"],
+        fps      = config["fps"]
+    run:
+        from imutils.src import imutils_parser_main
+        imutils_parser_main.main([
+            params.function,
+            '-i',     str(input.input_img),
+            '-o',     str(output.avi),
+            '-fourcc',str(params.fourcc),
+            '-fps',   str(params.fps),
+        ])
+
+rule sam2_segment:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        input_img = "{dataset}/{track_dir}/track.tif", 
+        dlc_csv = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.csv"
+    output:
+        mask = temp("{dataset}/{track_dir}/output/track_mask.btf")
+    threads: create_static_threads_function("sam2_segment")
+    resources:
+        mem_mb=create_static_memory_function("sam2_segment"),
+        time=create_static_time_function("sam2_segment"),
+        partition=create_partition_function("sam2_segment"),
+        gres=create_gres_function("sam2_segment")
+    params:
+        column_names      = ["neck"],
+        model_path        = "/lisc/data/scratch/neurobiology/zimmer/schaar/code/github/segment-anything-2",
+        sam2_conda_env_name = "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
+        batch_size        = config["batch_size"]
+    shell:
+        '''
+        # I started getting an error with the xml_catalog_files_libxml2 variable, so check if it is set
+        if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
+            export xml_catalog_files_libxml2=""
+        fi
+
+        module load CUDA/12.9.1
+
+        # Activate the environment and the correct cuda
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.sam2_conda_env_name}
+
+        # Run the script directly without temp directory overhead
+        python -c "from SAM2_snakemake_scripts.sam2_video_processing_miscroscope_data_loader import main; main(['-tiff_path', '{input.input_img}', '-output_file_path', '{output.mask}', '-DLC_csv_file_path', '{input.dlc_csv}', '-column_names', '{params.column_names}', '-SAM2_path', '{params.model_path}', '--batch_size', '{params.batch_size}', '--device', '${{CUDA_VISIBLE_DEVICES:-0}}'])"
+        '''
+
+rule correct_SAM2_DLC_errors:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        mask_stack = "{dataset}/{track_dir}/output/track_mask.btf"
+    output:
+        processed_stack = temp("{dataset}/{track_dir}/output/track_mask_corrected.btf")
+    threads: create_scaled_threads_function("correct_SAM2_DLC_errors")
+    resources:
+        mem_mb=create_scaled_memory_function("correct_SAM2_DLC_errors"),
+        time=create_scaled_time_function("correct_SAM2_DLC_errors"),
+        partition=create_partition_function("correct_SAM2_DLC_errors"),
+        gres=create_gres_function("correct_SAM2_DLC_errors")
+    params:
+        sam2_conda_env_name = "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
+        min_worm_area = config["min_worm_area"],
+        max_worm_area = config["max_worm_area"]
+    shell:
+        '''
+        # Check and set xml_catalog_files_libxml2 variable if needed
+        if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
+            export xml_catalog_files_libxml2=""
+        fi
+
+        # Activate the SAM2 environment
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.sam2_conda_env_name}
+
+        # Run the correction script
+        python -c "from SAM2_snakemake_scripts.correct_SAM2_DLC_error_pipeline import main; main(['{input.mask_stack}', '{output.processed_stack}', '{params.min_worm_area}', '{params.max_worm_area}'])"
+        '''
+
+rule dlc_analyze_videos:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        avi = "{dataset}/{track_dir}/output/track.avi"
+    output:
+        hdf5_file = temp("{dataset}/{track_dir}/output/track" + config["network_string"] + ".h5"),
+        csv_file  = temp("{dataset}/{track_dir}/output/track" + config["network_string"] + ".csv")
+    threads: create_scaled_threads_function("dlc_analyze_videos")
+    resources:
+        mem_mb=create_scaled_memory_function("dlc_analyze_videos"),
+        time=create_scaled_time_function("dlc_analyze_videos"),
+        partition=create_partition_function("dlc_analyze_videos"),
+        gres=create_gres_function("dlc_analyze_videos")
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        dlc_conda_env_path        = config["dlc_conda_env_path"],
+        shuffle                   = 2
+    shell:
+        """
+        # Check and set xml_catalog_files_libxml2 variable if needed
+        if [ -z "${{xml_catalog_files_libxml2:-}}" ]; then
+            export xml_catalog_files_libxml2=""
+        fi 
+        
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.dlc_conda_env_path}
+        module load CUDA/12.9.1
+        python -c "import deeplabcut; deeplabcut.analyze_videos('{params.dlc_model_configfile_path}', '{input.avi}', videotype='avi', gputouse=${{CUDA_VISIBLE_DEVICES:-0}}, save_as_csv=True, shuffle={params.shuffle})"
+        """
+
+rule dlc_filter_predictions_arima:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        hdf5_file = "{dataset}/{track_dir}/output/track" + config["network_string"] + ".h5",
+        csv_file  = "{dataset}/{track_dir}/output/track" + config["network_string"] + ".csv",
+        avi       = "{dataset}/{track_dir}/output/track.avi"
+    output:
+        filtered_hdf5 = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.h5",
+        filtered_csv  = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.csv"
+    threads: create_scaled_threads_function("dlc_filter_predictions_arima")
+    resources:
+        mem_mb=create_scaled_memory_function("dlc_filter_predictions_arima"),
+        time=create_scaled_time_function("dlc_filter_predictions_arima"),
+        partition=create_partition_function("dlc_filter_predictions_arima"),
+        gres=create_gres_function("dlc_filter_predictions_arima")
+    params:
+        dlc_model_configfile_path = config["dlc_model_configfile_path"],
+        dlc_conda_env_path        = config["dlc_conda_env_path"],
+        shuffle                   = 2,
+        window_length             = 9,
+        p_bound                   = 0.001
+    shell:
+        """
+        source /lisc/opt/sw/software/Conda/Miniforge3/bin/activate {params.dlc_conda_env_path}
+        python -c "import deeplabcut; deeplabcut.filterpredictions('{params.dlc_model_configfile_path}', ['{input.avi}'], shuffle={params.shuffle}, filtertype='arima', windowlength={params.window_length}, p_bound={params.p_bound}, save_as_csv=True)"
+        """
+
+rule create_centerline:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        input_binary_img = "{dataset}/{track_dir}/output/track_mask_corrected.btf",
+        hdf5_file        = "{dataset}/{track_dir}/output/track" + config["network_string"] + "_filtered.h5"
+    output:
+        output_spline_K = "{dataset}/{track_dir}/output/skeleton_spline_K.csv",
+        output_spline_X = "{dataset}/{track_dir}/output/skeleton_spline_X_coords.csv",
+        output_spline_Y = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords.csv"
+    threads: create_scaled_threads_function("create_centerline")
+    resources:
+        mem_mb=create_scaled_memory_function("create_centerline"),
+        time=create_scaled_time_function("create_centerline"),
+        partition=create_partition_function("create_centerline"),
+        gres=create_gres_function("create_centerline")
+    params:
+        head_annotation  = config["nose"],
+        tail_annotation  = config["tail"],
+        number_of_spline = config["num_splines"],
+        min_worm_length  = config["min_worm_lenght"]
+    run:
+        from centerline_behavior_annotation.centerline.dev import head_and_tail_low_res
+        head_and_tail_low_res.main([
+            '--input_binary_mask', str(input.input_binary_img),
+            '--input_dlc_h5',      str(input.hdf5_file),
+            '--head_annotation',   str(params.head_annotation),
+            '--tail_annotation',   str(params.tail_annotation),
+            '--number_of_spline',  str(params.number_of_spline),
+            '--min_worm_length',   str(params.min_worm_length)
+        ])
+
+rule process_skeleton_curvature:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        skeleton_x = "{dataset}/{track_dir}/output/skeleton_spline_X_coords.csv",
+        skeleton_y = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords.csv"
+    output:
+        output_x                 = "{dataset}/{track_dir}/output/skeleton_spline_X_coords_new.csv",
+        output_y                 = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords_new.csv",
+        output_curvature         = "{dataset}/{track_dir}/output/skeleton_spline_K_new.csv",
+        output_smoothed_curvature= "{dataset}/{track_dir}/output/skeleton_spline_K_new_smoothed.csv"
+    threads: create_scaled_threads_function("process_skeleton_curvature")
+    resources:
+        mem_mb=create_scaled_memory_function("process_skeleton_curvature"),
+        time=create_scaled_time_function("process_skeleton_curvature"),
+        partition=create_partition_function("process_skeleton_curvature"),
+        gres=create_gres_function("process_skeleton_curvature")
+    params:
+        spacing             = config["relative_spacing"],
+        num_sampled_points  = config["num_sampled_points"],
+        smoothing           = config["smoothing"],
+        time_sigma          = config["time_sigma"],
+        spatial_sigma       = config["spatial_sigma"],
+        max_columns         = config["max_columns"]
+    run:
+        from centerline_behavior_annotation.centerline.dev import centerline_equi_distance_2d_smoothing
+        centerline_equi_distance_2d_smoothing.main([
+            '--skeleton_x',                str(input.skeleton_x),
+            '--skeleton_y',                str(input.skeleton_y),
+            '--relative_spacing',          str(params.spacing),
+            '--num_sampled_points',        str(params.num_sampled_points),
+            '--smoothing',                 str(params.smoothing),
+            '--time_sigma',                str(params.time_sigma),
+            '--spatial_sigma',             str(params.spatial_sigma),
+            '--max_columns',               str(params.max_columns),
+            '--output_x',                  str(output.output_x),
+            '--output_y',                  str(output.output_y),
+            '--output_curvature',          str(output.output_curvature),
+            '--output_smoothed_curvature', str(output.output_smoothed_curvature)
+        ])
+
+rule annotate_reversals:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        curvature_file = "{dataset}/{track_dir}/output/skeleton_spline_K_new_smoothed.csv"
+    output:
+        principal_components = "{dataset}/{track_dir}/output/principal_components.csv",
+        behaviour_annotation = "{dataset}/{track_dir}/output/reversal_annotation.csv"
+    threads: create_scaled_threads_function("annotate_reversals")
+    resources:
+        mem_mb=create_scaled_memory_function("annotate_reversals"),
+        time=create_scaled_time_function("annotate_reversals"),
+        partition=create_partition_function("annotate_reversals"),
+        gres=create_gres_function("annotate_reversals")
+    params:
+        pca_model_path   = config["pca_model_path"],
+        initial_segment  = config["initial_segment"],
+        final_segment    = config["final_segment"],
+        window           = config["window"],
+        upper_threshold  = config["upper_threshold"],
+        lower_threshold  = config["lower_threshold"]
+    run:
+        from centerline_behavior_annotation.curvature.src import annotate_reversals_snakemake
+        annotate_reversals_snakemake.main([
+            '-i',    str(input.curvature_file),
+            '-pca',  str(params.pca_model_path),
+            '-i_s',  str(params.initial_segment),
+            '-f_s',  str(params.final_segment),
+            '-win',  str(params.window),
+            '-o_bh', str(output.behaviour_annotation),
+            '-o_pc', str(output.principal_components),
+            '--upper_threshold', str(params.upper_threshold),
+            '--lower_threshold', str(params.lower_threshold)
+        ])
+
+rule calc_turns_by_roundness:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        mask_stack = "{dataset}/{track_dir}/output/track_mask_corrected.btf"
+    output:
+        turn_annotation = "{dataset}/{track_dir}/output/turn_annotation_by_roundness.csv"
+    threads: create_scaled_threads_function("calc_turns_by_roundness")
+    resources:
+        mem_mb=create_scaled_memory_function("calc_turns_by_roundness"),
+        time=create_scaled_time_function("calc_turns_by_roundness"),
+        partition=create_partition_function("calc_turns_by_roundness"),
+        gres=create_gres_function("calc_turns_by_roundness")
+    params:
+        min_round_threshold = config["min_round_threshold"],
+        max_round_threshold = config["max_round_threshold"],
+        smoothing_window    = config["fps"],
+        min_worm_area       = config["min_worm_area"],
+        max_worm_area       = config["max_worm_area"]
+    run:
+        from centerline_behavior_annotation.curvature.src import annotate_turns_coils_by_mask_roundness_snakemake
+        annotate_turns_coils_by_mask_roundness_snakemake.main([
+            '-input',        str(input.mask_stack),
+            '-min_t',        str(params.min_round_threshold),
+            '-max_t',        str(params.max_round_threshold),
+            '-min_worm_area', str(params.min_worm_area),
+            '-max_worm_area', str(params.max_worm_area),
+            '-window',        str(params.smoothing_window),
+            '-output_file',   str(output.turn_annotation)
+        ])
+
+# Added rule: Hilbert transform on kymogram
+rule hilbert_transform_on_kymogram:
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        spline_K = "{dataset}/{track_dir}/output/skeleton_spline_K_new_smoothed.csv"
+    output:
+        # Changed to keep the outputs as final results (not temp)
+        hilbert_regenerated_carrier = "{dataset}/{track_dir}/output/hilbert_regenerated_carrier.csv",
+        hilbert_inst_freq = "{dataset}/{track_dir}/output/hilbert_inst_freq.csv",
+        hilbert_inst_phase = "{dataset}/{track_dir}/output/hilbert_inst_phase.csv",
+        hilbert_inst_amplitude = "{dataset}/{track_dir}/output/hilbert_inst_amplitude.csv"
+    threads: create_scaled_threads_function("hilbert_transform_on_kymogram")
+    resources:
+        mem_mb=create_scaled_memory_function("hilbert_transform_on_kymogram"),
+        time=create_scaled_time_function("hilbert_transform_on_kymogram"),
+        partition=create_partition_function("hilbert_transform_on_kymogram"),
+        gres=create_gres_function("hilbert_transform_on_kymogram")
+    params:
+        output_path = "{dataset}/{track_dir}/output/", # Ulises' functions expect the final slash
+        fs = config["fps"], 
+        window = config["fps"]
+    run:
+        from centerline_behavior_annotation.behavior_analysis.src import hilbert_transform
+
+        hilbert_transform.main([
+            '-i', str(params.output_path),
+            '-kp', str(input.spline_K),
+            '-fs', str(params.fs),
+            '-w', str(params.window),
+        ])
+        
+rule aerotaxis_temporal_analysis:
+    """
+    Temporal (non-spatial) behavioural analysis for global gas-shift assays.
+
+    Replaces the spatial chemotaxis rule: no odor position, no concentration/
+    distance arrays, no chemotaxis index. Behaviour is aligned to the global O2
+    protocol defined in config["aerotaxis"] and written as a tidy per-frame CSV.
+    """
+    input:
+        "{dataset}/{track_dir}/output/.meta.json",
+        reversal_annotation      = "{dataset}/{track_dir}/output/reversal_annotation.csv",
+        turn_annotation          = "{dataset}/{track_dir}/output/turn_annotation_by_roundness.csv",
+        skeleton_spline_X_coords = "{dataset}/{track_dir}/output/skeleton_spline_X_coords_new.csv",
+        skeleton_spline_Y_coords = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords_new.csv",
+    params:
+        factor_px_to_mm     = config["factor_px_to_mm"],
+        fps                 = config["fps"],
+        worm_pos            = "{dataset}/{track_dir}/track.txt",
+        crop_id             = "{track_dir}",
+        # Global gas protocol (see config["aerotaxis"]) -- edit per assay, no code change
+        t0_offset_s         = config["aerotaxis"]["t0_offset_s"],
+        baseline_duration_s = config["aerotaxis"]["baseline_duration_s"],
+        baseline_state      = config["aerotaxis"]["baseline_state"],
+        cycle_json          = json.dumps(config["aerotaxis"]["cycle"]),
+        n_cycles            = config["aerotaxis"]["n_cycles"] if config["aerotaxis"]["n_cycles"] is not None else "none",
+        script              = "extract_temporal_features.py",  # copied alongside the Snakefile
+    output:
+        temporal_features = "{dataset}/{track_dir}/output/temporal_features.csv",
+        done = touch("{dataset}/{track_dir}/output/aerotaxis_temporal_analysis.done")
+    threads: create_static_threads_function("aerotaxis_temporal_analysis")
+    resources:
+        mem_mb    = create_static_memory_function("aerotaxis_temporal_analysis"),
+        time      = create_static_time_function("aerotaxis_temporal_analysis"),
+        partition = create_partition_function("aerotaxis_temporal_analysis"),
+        gres      = create_gres_function("aerotaxis_temporal_analysis")
+    shell:
+        '''
+        python "{params.script}" \
+            --crop_id "{params.crop_id}" \
+            --reversal_annotation "{input.reversal_annotation}" \
+            --turn_annotation "{input.turn_annotation}" \
+            --skeleton_x "{input.skeleton_spline_X_coords}" \
+            --skeleton_y "{input.skeleton_spline_Y_coords}" \
+            --worm_pos "{params.worm_pos}" \
+            --fps "{params.fps}" \
+            --factor_px_to_mm "{params.factor_px_to_mm}" \
+            --t0_offset_s "{params.t0_offset_s}" \
+            --baseline_duration_s "{params.baseline_duration_s}" \
+            --baseline_state "{params.baseline_state}" \
+            --cycle_json '{params.cycle_json}' \
+            --n_cycles "{params.n_cycles}" \
+            --out_csv "{output.temporal_features}"
+        '''
