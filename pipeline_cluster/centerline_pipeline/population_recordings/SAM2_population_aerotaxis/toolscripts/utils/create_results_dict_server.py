@@ -13,7 +13,8 @@ Output (in the dataset folder):
 
 Columns:
     Condition, Recording, Crop_ID, Frame, Time_Seconds, O2_State,
-    Forward_Velocity, Reversal_Active, Turn_Active
+    Forward_Velocity, Reversal_Active, Turn_Active,
+    Reversal_Onset, Bend_Frequency, Bend_Amplitude
 
 The `Condition` / `Recording` columns are recovered from the folder structure
     <condition>/<recording>/<crop>/output/temporal_features.csv

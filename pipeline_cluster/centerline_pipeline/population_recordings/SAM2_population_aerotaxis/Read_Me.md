@@ -1,56 +1,86 @@
-# Protocols for running aerotaxis (temporal gas-shift) assay analysis on population data
+# Population Aerotaxis Pipeline — Protocol & Guide
 
-This pipeline analyses **temporal** behavioural state changes (speed, turns, reversals)
-locked to **global plate-level gas shifts** (e.g. an O2 baseline followed by repeating
-pulse/return cycles). There is **no spatial navigation** component: no odor position,
-no concentration gradient, no chemotaxis index.
+Temporal (non-spatial) behavioural analysis for **global plate-level gas-shift**
+assays (aerotaxis / O₂-sensing). Behaviour — speed, reversals, turns, body-bend
+frequency — is locked to global gas shifts (a baseline O₂ level, then repeating
+pulse/return cycles). There are **no gradients, no odor position, no chemotaxis
+index**.
 
-The gas protocol is defined in `config.yaml` under the `aerotaxis:` block and can be
-edited freely per assay / oxygen-sensing paradigm (see **Gas protocol** below).
+This pipeline shares all upstream tracking (SAM2 segmentation, DLC, centerline,
+curvature, reversals, turns, Hilbert) with the chemotaxis pipeline and only
+replaces the final analysis with a temporal one.
 
-## Initial Setup (for first time users of conda)
+- **Reference cropper output** inspected while building this:
+  `/Volumes/scratch/neurobiology/zimmer/LeonK/rde4_behavior/LeonL1/2026-06-20_11-00-53_N2_A`
+  (SWC v1.1.0; 10 fps; 2.5 cm arena; 2048 px sensor; 187 tracks).
 
-<span style="color: red;"><strong>Before you run this validate your worm/noise ration - sometimes the cropper with certin settings crops bubbles and the jitter will create thousand of crops which overflood the server with wastefull jobs - when a recording has more than 150 crops evakluate data quality and delete bubbles before running!
+---
 
-## Dataset Folder Structure
+## Contents
+1. [How the assay maps to the pipeline](#1-how-the-assay-maps-to-the-pipeline)
+2. [The gas protocol (config)](#2-the-gas-protocol-config)
+3. [One-time setup](#3-one-time-setup)
+4. [Step-by-step run protocol](#4-step-by-step-run-protocol)
+5. [Outputs & the tidy table](#5-outputs--the-tidy-table)
+6. [Downstream analysis](#6-downstream-analysis)
+7. [Monitoring, cleanup & single-crop debug](#7-monitoring-cleanup--single-crop-debug)
+8. [Troubleshooting](#8-troubleshooting)
+9. [Configuration reference](#9-configuration-reference)
+
+---
+
+## 1. How the assay maps to the pipeline
+
 ```
-Datasetfolder/
-├── condition1/ (e.g., 2025-03-10_13-01-01_N2_7pct_baseline)
-├── condition2/ (e.g., 2025-03-10_12-23-11_gcy35_7pct_baseline)
-└── condition3/ (or more conditions)
+raw recording ──► SWC cropper ──► one folder per worm track
+                                   (track.tif  + track.txt position log)
+        │
+        ▼  (upstream, unchanged: SAM2 → DLC → centerline → curvature →
+        │   reversals → turns → Hilbert body-bends)
+        ▼
+  aerotaxis_temporal_analysis  ──►  output/temporal_features.csv   (one per crop, tidy per-frame)
+        │
+        ▼
+  create_results_dict_server.py ──►  aerotaxis_results.parquet     (one flat table for the whole dataset)
+        │
+        ▼
+  aerotaxis_analysis.py / notebook ──► per-state summaries, gas-transition-triggered averages,
+                                       reversal-reaction latency, per-crop viewer
 ```
 
-**Important Notes:**
-- Each repeat needs a **unique string identifier** in the folder name
-- Downstream code uses this identifier to read the dataset and separate by condition (e.g., `N2` or `gcy35`)
-- Multiple conditions per dataset are supported (e.g., a genotype panel)
-- **No subfolders** - all scripts expect this flat folder structure
+**Key idea — one global clock.** Each crop is only a *segment* of the recording
+and starts at a different time, but the gas protocol is global to the plate. The
+SWC `track.txt` logs the **absolute** recording frame/time (`time_imputed_seconds`)
+and the worm's **absolute arena position** (`X,Y` in px). The extractor uses that
+as the authoritative clock, so every crop locks to the same protocol. `Forward_Velocity`
+is derived from the arena `X,Y` trajectory (px→mm, signed by reversal state).
 
-1. Load the conda module (first-time setup only):
-   ```bash
-   module load conda
-   echo 'module load conda' >> ~/.bashrc
-   ```
+### Dataset folder structure (flat — no extra nesting)
+```
+Working_dir/
+├── 2026-06-20_11-00-53_N2_A/         (condition / recording 1)
+│   ├── <...>_track_0/  ├── track.tif  └── track.txt
+│   ├── <...>_track_1/  └── ...
+│   └── ...
+├── 2026-06-20_12-10-05_gcy35_A/      (condition / recording 2)
+└── ...
+```
+- Each recording folder needs a **unique identifier** in its name; downstream
+  code uses the top-level folder as the `Condition` and the mid folder as the
+  `Recording` grouping key.
+- Multiple conditions per dataset are supported (e.g. a genotype panel).
 
-2. Configure conda on LISC login (first-time setup only):
-   ```bash
-   conda config --append envs_dirs /lisc/data/scratch/neurobiology/zimmer/.conda/envs
-   ```
-   This tells conda to look for shared environments located in the specified folder.
+---
 
-3. List available environments:
-   ```bash
-   conda env list
-   ```
+## 2. The gas protocol (config)
 
-## Gas protocol (temporal alignment)
-
-The assay timing lives in `config.yaml` and is applied per frame by
-`extract_temporal_features.py`. The default matches a global O2 shift assay:
+The assay timing lives in `config.yaml` under `aerotaxis:` and is applied per
+frame from the **absolute** recording time. Edit it freely — no code change.
 
 ```yaml
 aerotaxis:
-  t0_offset_s: 0.0             # seconds of recording BEFORE the protocol starts
+  t0_offset_s: 0.0             # absolute recording time (s) at which the protocol starts
+                               # (0 = protocol begins at recording t=0; earlier frames -> "pre_protocol")
   baseline_duration_s: 240     # 4-min baseline
   baseline_state: "7pct_O2"
   cycle:                       # one repeating unit; phases applied in order
@@ -59,170 +89,212 @@ aerotaxis:
   n_cycles: null               # null = repeat to end of recording; or an int to cap
 ```
 
-To adapt to a different paradigm, just edit `baseline_*` and the `cycle` phase list -
-no code change is needed.
+Default = **4-min 7 % O₂ baseline, then repeating 30 s 21 % pulse / 60 s 7 %
+return**. For any other paradigm, change `baseline_*` and the `cycle` phase list;
+the `O2_State` column follows automatically.
 
-Alignment uses the **absolute recording time** from each track's SWC `track.txt`
-(`time_imputed_seconds`), so crops that start at different times in the recording
-all lock to the same global gas protocol. `Frame` and `Time_Seconds` in the output
-are therefore absolute (recording-wide). `t0_offset_s` sets the recording time at
-which the protocol begins; frames before it are labelled `pre_protocol`.
-______________________________________________________________________________________________
-## Start here if you already did set up your conda on user login!
+---
 
-   ## RUN
-1. Navigate to the experiment folder:
-   ```bash
-   cd "path/to/folder/of/cropped/recordings"
-   ```
+## 3. One-time setup
 
-   Important: for this pipeline run every command from within the dataset working directory (path/to/folder/of/cropped/recordings) !
-      e.g type PWD in shell
-
-2. Activate the centerline environment:
-   ```bash
-   conda activate autoscope_behaviour_shared
-   ```
-
-3. Rename TIFF files in the experiment folder:
-   ```bash
-   python /lisc/data/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
-   ```
-   This script renames the TIFF files to fit the pipeline's needs.
-
-4. Create folder structures and copy pipeline files (don't run this if folder structure already exists, but use alternative that just copies!):
-
-   ```bash
-   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/create_folders_and_copy_aerotaxis_population_pipeline.sh
-   ```
-
-**4.1 Just copy new Files**
+Only needed the first time you use conda on the LISC login.
 ```bash
-bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/copy_aerotaxis_population_pipeline.sh
+module load conda
+echo 'module load conda' >> ~/.bashrc
+conda config --append envs_dirs /lisc/data/scratch/neurobiology/zimmer/.conda/envs
+conda env list      # confirm environments are visible
 ```
 
-5. **Confirm the gas protocol in `config.yaml`** (`aerotaxis:` block) matches this experiment.
-   There is **no GUI / position-annotation step** in the aerotaxis pipeline - the gas shifts
-   are global to the plate, so alignment is purely temporal (see **Gas protocol** above).
+---
 
-6. **Run the cluster based Bublefilter with default settings if not done so locally already, local bubblefilter has a better bubble/worm ratio andn early removes all bubbles **
+## 4. Step-by-step run protocol
 
-  # Dry-run first:
+> Run **every** command from within the working directory that contains your
+> recording folders (`cd` there first; check with `pwd`).
+
+**Set a shortcut to the pipeline root (optional, keeps commands short):**
 ```bash
-python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0
+AERO=/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis
 ```
 
+**1. Go to the dataset and activate the environment**
+```bash
+cd "path/to/folder/of/cropped/recordings"
+conda activate autoscope_behaviour_shared
+```
+
+**2. Rename the SWC files to the pipeline convention** (`*_track_N.tif` → `track.tif`)
+```bash
+python /lisc/data/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py "$PWD"
+```
+
+**3. Create the folder structure and copy the pipeline files**
+(skip if the structure already exists — use the copy-only script in step 3a instead)
+```bash
+bash "$AERO/bash_scripts/create_folders_and_copy_aerotaxis_population_pipeline.sh"
+```
+*3a. Copy/refresh pipeline files only (existing structure):*
+```bash
+bash "$AERO/bash_scripts/copy_aerotaxis_population_pipeline.sh"
+```
+
+**4. Confirm the gas protocol** in each `config.yaml` (`aerotaxis:` block) matches
+this experiment. There is **no GUI / position-annotation step** — gas shifts are
+global, so alignment is purely temporal. Also confirm `fps` and `factor_px_to_mm`
+(see [§9](#9-configuration-reference)).
+
+**5. Quality-gate the crops — run the bubble filter.**
+> ⚠️ If a recording has **> 150 crops**, inspect it first: certain cropper settings
+> latch onto bubbles and jitter into thousands of junk crops that flood the queue.
+```bash
+# Dry-run (shows what would be deleted):
+python "$AERO/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0
 # Then delete:
-```bash
-python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0 --delete
+python "$AERO/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0 --delete
 ```
 
-
-7. Run the analysis - Define parallelism but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
-   ```bash
-   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh -- --folders 20 --jobs 10
-   ```
-
-8. When analysis is finished, create the tidy results table for downstream analysis (Pandas / Seaborn / R):
-   ```bash
-   python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/utils/create_results_dict_server.py . --format parquet
-   ```
-   Output: `aerotaxis_results.parquet` (or `--format csv` / `--format pkl`) saved in the current
-   dataset folder. It is a flat tidy table with columns
-   `[Condition, Recording, Crop_ID, Frame, Time_Seconds, O2_State, Forward_Velocity, Reversal_Active, Turn_Active]`.
-
-## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
-
-
-Show current status of pipeline:
-   ```bash
-   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/quick_status.sh
-   ```
-
-### Copy Files Only
-To copy files into an existing folder structure:
+**6. Run the pipeline.** Keep total parallel jobs ≤ 200
+(e.g. 20 recordings × 10 jobs).
 ```bash
-bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/copy_aerotaxis_population_pipeline.sh
+bash "$AERO/bash_scripts/run_aerotaxis_population_pipeline.sh" -- --folders 20 --jobs 10
+```
+*Local test run (one recording, no cluster): from inside a `*_new/` folder run
+`bash RUNME_cluster.sh -c`.*
+
+**7. Build the combined tidy table** for downstream analysis:
+```bash
+python "$AERO/toolscripts/utils/create_results_dict_server.py" . --format parquet
+```
+→ `aerotaxis_results.parquet` in the dataset folder (use `--format csv` or `pkl` if preferred).
+
+---
+
+## 5. Outputs & the tidy table
+
+**Per crop:** `output/temporal_features.csv` — one row per frame.
+**Whole dataset:** `aerotaxis_results.{parquet,csv,pkl}` — all crops concatenated.
+
+| Column | Meaning |
+|---|---|
+| `Condition` | top-level folder (genotype / paradigm) — *added by create_results_dict* |
+| `Recording` | recording folder — *added by create_results_dict* |
+| `Crop_ID` | per-worm track id |
+| `Frame` | **absolute** recording frame (shared clock across crops) |
+| `Time_Seconds` | **absolute** recording time (s) |
+| `O2_State` | gas state at that time (`7pct_O2`, `21pct_O2`, `pre_protocol`, `post_protocol`) |
+| `Forward_Velocity` | signed speed (mm/s); negative during reversals |
+| `Reversal_Active` | 1 while reversing, else 0 |
+| `Turn_Active` | 1 during a turn/coil, else 0 |
+| `Reversal_Onset` | 1 on the frame a reversal begins (for reaction-latency analysis) |
+| `Bend_Frequency` | body-bend frequency (Hz), median \|Hilbert inst. freq\| across segments |
+| `Bend_Amplitude` | body-bend amplitude (curvature units), from Hilbert envelope |
+
+The first seven columns are the originally-specified schema; the last three are
+enrichments computed from tools already in the pipeline (reversal onsets + the
+Hilbert body-bend transform).
+
+---
+
+## 6. Downstream analysis
+
+Everything is plain Pandas/Seaborn and lives in
+`toolscripts/utils/aerotaxis_analysis.py` (import in a notebook, run as a CLI, or
+feed the tidy CSVs to R).
+
+**CLI (quick standard readouts):**
+```bash
+python "$AERO/toolscripts/utils/aerotaxis_analysis.py" \
+    aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2
+```
+Writes to `analysis/`:
+- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`
+- `transition_triggered_<feature>.csv` + `.png` — feature aligned to each gas shift (mean ± 95 % CI)
+- `reversal_reaction.csv` — latency from each pulse onset to the first reversal
+
+**Notebook:** `jupyter_notebooks/Aerotaxis_population_grouped.ipynb`
+(load → per-state summary → transition-triggered averages → reversal reaction →
+per-crop viewer with the gas protocol shaded). See
+`toolscripts/jupyter_notebooks/Aerotaxis_Analysis_Instructions.md` for the primitives.
+
+**Open a notebook on the server:**
+```bash
+conda activate Jupyter_SHARED
+cd <notebook folder>
+jupyter notebook --no-browser --port=9997
+# on your machine:
+ssh -CNL localhost:9997:localhost:9997 <user>@login01.lisc.univie.ac.at
 ```
 
-### Essential Shell Count Commands
-run all from dataset directory
+---
 
-Count files by exact name:
+## 7. Monitoring, cleanup & single-crop debug
+
+**Pipeline status:**
 ```bash
-# Count files named "temporal_features.csv"
-find . -type f -name "temporal_features.csv" | wc -l
+bash "$AERO/bash_scripts/quick_status.sh"
 ```
 
-Count folders by exact name:
+**Count things (read-only):**
 ```bash
-# Count directories named "output"
-find . -type d -name "output" | wc -l
+find . -type f -name "temporal_features.csv" | wc -l   # finished crops
+find . -type d -name "*track*" | wc -l                 # track dirs
 ```
 
-Count folders by pattern in name:
+**Cleanup the analysis outputs (dry-run first!):**
 ```bash
-# Count directories with "track" in their name
-find . -type d -name "*track*" | wc -l
+find "$(pwd)" -type f \( -name "temporal_features.csv" -o -name "aerotaxis_temporal_analysis.done" \) -print   # DRY-RUN
+find "$(pwd)" -type f \( -name "temporal_features.csv" -o -name "aerotaxis_temporal_analysis.done" \) -delete  # delete
 ```
 
-> **Note:**
-> All commands above are read-only and won't delete or modify any files or directories.
-
-### Cleanup Commands
-
-Delete specific output files:
-
+**Re-run a single crop (debug), from inside its `*_new/` folder:**
 ```bash
-# Dry-run: Show what would be deleted for aerotaxis_temporal_analysis rule outputs
-find "$(pwd)" -type f \( -name "temporal_features.csv" -o -name "aerotaxis_temporal_analysis.done" \) -print
-
-# Delete aerotaxis_temporal_analysis rule outputs
-find "$(pwd)" -type f \( -name "temporal_features.csv" -o -name "aerotaxis_temporal_analysis.done" \) -delete
-
-# Delete all output folders
-
-# Dryrun
-find "$(pwd)" -type d -name "output" -exec echo "Would remove: {}" \;
-
-# Real command - use with care after DRYRUN!!
-find "$(pwd)" -type d -name "output" -exec rm -r {} +
-```
-
-### Cleanup Commands - Debug run for one specific crop folder
-
-```bash
-snakemake --configfile config.yaml \
-  --latency-wait 500 \
+snakemake --configfile config.yaml --latency-wait 500 \
   --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {cluster.gres} {rule}" \
-  --cluster-config cluster_config.yaml \
-  --jobs 1 \
-  --keep-going \
-  --rerun-incomplete \
-  -p \
-  2025-03-10_12-23-11_gcy35_7pct_baseline/2025-03-10_12-23-11_gcy35_7pct_baseline_track_0/output/temporal_features.csv \
-  2025-03-10_12-23-11_gcy35_7pct_baseline/2025-03-10_12-23-11_gcy35_7pct_baseline_track_0/output/aerotaxis_temporal_analysis.done \
-  2025-03-10_12-23-11_gcy35_7pct_baseline/2025-03-10_12-23-11_gcy35_7pct_baseline_track_0/output/hilbert_regenerated_carrier.csv \
-  2025-03-10_12-23-11_gcy35_7pct_baseline/2025-03-10_12-23-11_gcy35_7pct_baseline_track_0/output/hilbert_inst_freq.csv \
-  2025-03-10_12-23-11_gcy35_7pct_baseline/2025-03-10_12-23-11_gcy35_7pct_baseline_track_0/output/hilbert_inst_phase.csv \
-  2025-03-10_12-23-11_gcy35_7pct_baseline/2025-03-10_12-23-11_gcy35_7pct_baseline_track_0/output/hilbert_inst_amplitude.csv
+  --cluster-config cluster_config.yaml --jobs 1 --keep-going --rerun-incomplete -p \
+  <condition>/<condition>_track_0/output/temporal_features.csv
 ```
 
-### Processing logs for SAM2
+---
 
-GPU: NVIDIA L4
-Per-frame processing time: ~0.403 s/frame (≈403 ms, ~2.48 fps)
-Mask resolution: 146 × 146 (uint8 {0, 255})
+## 8. Troubleshooting
 
-### Opening Jupyter-Notebooks on server for later grouped analysis
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Log warns `track.txt unusable -- local clock ... ABSOLUTE gas alignment NOT guaranteed` | The SWC position log wasn't found for a crop | Ensure `rename_tracks.py` ran and each track dir has `track.txt` (or the SWC `*_track_N.txt`). The extractor globs `*_track_*.txt` as a fallback; if that warning still appears the crop has **no** position file. Without it, gas alignment is wrong. |
+| All crops seem shifted onto the wrong gas phase | `t0_offset_s` wrong, or the recording doesn't start at protocol t=0 | Set `t0_offset_s` to the absolute recording time (s) when the gas protocol begins. Verify: `head track.txt` → `time_imputed_seconds` is the absolute clock. |
+| `O2_State` is all `pre_protocol` | `t0_offset_s` larger than the recording times | Lower `t0_offset_s`; check units (seconds). |
+| `Forward_Velocity` magnitude looks wrong | `factor_px_to_mm` not calibrated for this rig | Set `factor_px_to_mm` = arena_mm / arena_px. Here 25 mm / 2048 px ≈ `0.01221`. Velocity scales linearly, so it's a one-number fix. |
+| `Bend_Frequency` / `Bend_Amplitude` all NaN | Hilbert files empty (kymogram had too many NaNs) or centerline poor for that crop | Usually a bad crop; it will also look poor elsewhere. Bend columns are optional — the rest of the row is still valid. |
+| `> 150 crops` in a recording / thousands of tiny crops | Cropper latched onto bubbles | Run the bubble filter (step 5); inspect and delete bubble crops before running. |
+| `No subfolders with RUNME_cluster.sh found!` | `run_...` script executed from the wrong directory, or step 3 not run | `cd` to the working dir that contains the `*_new/` folders; run step 3 first. |
+| Snakemake: `Directory cannot be locked ...` | A previous run died | From the `*_new/` folder: `snakemake --unlock --configfile config.yaml` (the runner does this automatically). |
+| `create_results_dict`: `No temporal_features.csv found` | Analysis rule hasn't produced outputs yet, or wrong folder | Check `quick_status.sh`; run from the dataset root. |
+| `Metadata generation failed` / `tiffinfo not found` | `libtiff-tools` missing on the node | Ensure the `autoscope_behaviour_shared` env is active (provides `tiffinfo`). |
+| Jobs stuck in queue | Cluster busy / too many jobs | Reduce `--folders`/`--jobs`; keep total ≤ 200; `squeue -u $USER`. |
+| A rule fails only for some crops | Bad/short tracks (few frames, mostly NaN centerline) | Expected for junk crops; `--keep-going` continues. Filter them in downstream QC. |
 
-```bash
-   conda activate Jupyter_SHARED
+**Where to look:** per-job logs in each `*_new/log/log_*.out`; Snakemake log in
+`.snakemake/log/`; `grep -i "error\|fail" log/log_*.out`.
 
-   cd <to notebook folder>
+---
 
-   jupyter notebook --no-browser --port=9997 -> pick a port e.g 9997 and stick to it
+## 9. Configuration reference
 
-   ssh -CNL localhost:9997:localhost:9997 schaar@login01.lisc.univie.ac.at -> use same port as before when opening the notebook
+Key `config.yaml` parameters for this pipeline (others feed the untouched upstream rules):
 
+| Key | Default | Notes |
+|---|---|---|
+| `fps` | `10` | Frame rate; must match the recording (`parameters.yaml` from the SWC). |
+| `factor_px_to_mm` | `'0.01221'` | px→mm; **confirm per rig** (25 mm arena / 2048 px). Scales `Forward_Velocity` only. |
+| `aerotaxis.t0_offset_s` | `0.0` | Absolute recording time (s) at protocol start. |
+| `aerotaxis.baseline_duration_s` | `240` | Baseline length (s). |
+| `aerotaxis.baseline_state` | `7pct_O2` | Baseline gas label. |
+| `aerotaxis.cycle` | 30 s 21 % / 60 s 7 % | Ordered repeating phase list. |
+| `aerotaxis.n_cycles` | `null` | Cap on cycles (`null` = to end of recording). |
+
+Cluster resources for the analysis rule are in `cluster_config.yaml` under
+`aerotaxis_temporal_analysis` (light: 2 CPU / 16 G — no large arrays are loaded).
+
+### Processing note (SAM2, upstream)
+GPU NVIDIA L4 · ~0.403 s/frame (~2.48 fps) · mask 146 × 146 (uint8 {0,255}).
 ```

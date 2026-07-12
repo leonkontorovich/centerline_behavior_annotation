@@ -25,7 +25,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-FEATURES = ["Forward_Velocity", "Reversal_Active", "Turn_Active"]
+# continuous per-frame features suitable for transition-triggered averaging
+FEATURES = ["Forward_Velocity", "Reversal_Active", "Turn_Active", "Bend_Frequency", "Bend_Amplitude"]
 GROUP_KEYS = ["Condition", "Recording", "Crop_ID"]
 
 
@@ -66,21 +67,64 @@ def load_results(path):
 # ----------------------------------------------------------------------
 # Per-state summary (reversal / turn rates + mean speed per O2 state)
 # ----------------------------------------------------------------------
-def per_state_summary(df, by=("Condition", "O2_State")):
+def per_state_summary(df, by=("Condition", "O2_State"), fps=10.0):
     """
     Mean behaviour per gas state (and condition). Reversal_Active / Turn_Active
     are 0/1 so their means are fractions of time spent in that state.
+    Bend metrics and reversal-onset rate are included when present.
     """
     by = list(by)
     g = df.groupby(by)
-    out = g.agg(
+    agg = dict(
         mean_forward_velocity=("Forward_Velocity", "mean"),
         reversal_fraction=("Reversal_Active", "mean"),
         turn_fraction=("Turn_Active", "mean"),
         n_frames=("Frame", "size"),
-    ).reset_index()
+    )
+    if "Bend_Frequency" in df:
+        agg["mean_bend_frequency_hz"] = ("Bend_Frequency", "mean")
+    if "Reversal_Onset" in df:
+        agg["reversal_onsets"] = ("Reversal_Onset", "sum")
+    out = g.agg(**agg).reset_index()
     out["n_crops"] = g[GROUP_KEYS[-1]].nunique().values
+    if "reversal_onsets" in out:
+        # onsets per minute of observation in that state
+        out["reversal_onsets_per_min"] = out["reversal_onsets"] / (out["n_frames"] / fps / 60.0)
     return out
+
+
+def reversal_reaction(df, to_state, window_s=15.0, fps=10.0):
+    """
+    Reversal reaction to a gas shift: for every transition INTO `to_state`
+    (e.g. the 21% O2 pulse onset), per crop, measure the latency (s) from the
+    shift to the first reversal onset within `window_s`. Generalises the
+    LED-specific curvature/src/rev_reaction.py to the config-driven protocol.
+
+    Returns one tidy row per (crop, transition):
+        [<GROUP_KEYS>, Time_Seconds, latency_s, reacted]
+    latency_s is NaN when no reversal onset occurs within the window (reacted=0).
+    """
+    if "Reversal_Onset" not in df:
+        raise KeyError("Reversal_Onset column required (re-run the extractor).")
+    win_f = int(round(window_s * fps))
+    trans = find_transitions(df)
+    trans = trans[trans.to_state == to_state]
+
+    rows = []
+    for keys, sub in df.groupby(GROUP_KEYS, sort=False):
+        sub = sub.sort_values("Frame").reset_index(drop=True)
+        onset_frames = sub.loc[sub.Reversal_Onset == 1, "Frame"].to_numpy()
+        key_dict = dict(zip(GROUP_KEYS, keys if isinstance(keys, tuple) else (keys,)))
+        ev = trans
+        for k, v in key_dict.items():
+            ev = ev[ev[k] == v]
+        for _, e in ev.iterrows():
+            f0 = e["Frame"]
+            after = onset_frames[(onset_frames >= f0) & (onset_frames <= f0 + win_f)]
+            latency = (after[0] - f0) / fps if len(after) else np.nan
+            rows.append({**key_dict, "Time_Seconds": e["Time_Seconds"],
+                         "latency_s": latency, "reacted": int(len(after) > 0)})
+    return pd.DataFrame(rows)
 
 
 # ----------------------------------------------------------------------
@@ -182,6 +226,8 @@ def main():
     ap.add_argument("--fps", type=float, default=10.0)
     ap.add_argument("--pre_s", type=float, default=10.0)
     ap.add_argument("--post_s", type=float, default=30.0)
+    ap.add_argument("--pulse_state", default=None,
+                    help="gas state whose onset triggers the reversal-reaction analysis, e.g. 21pct_O2")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
@@ -191,31 +237,47 @@ def main():
     print(f"Loaded {len(df):,} rows, {df.groupby(GROUP_KEYS).ngroups} crops, "
           f"states={sorted(df.O2_State.unique())}")
 
-    summary = per_state_summary(df)
+    summary = per_state_summary(df, fps=args.fps)
     summary.to_csv(outdir / "per_state_summary.csv", index=False)
     print(summary.to_string(index=False))
 
-    tta = transition_triggered_average(
-        df, feature="Forward_Velocity", pre_s=args.pre_s, post_s=args.post_s, fps=args.fps
-    )
-    tta.to_csv(outdir / "transition_triggered_forward_velocity.csv", index=False)
+    # transition-triggered averages for every continuous feature present + populated
+    ttas = {}
+    for feat in ["Forward_Velocity", "Bend_Frequency", "Reversal_Active"]:
+        if feat in df and df[feat].notna().any():
+            t = transition_triggered_average(df, feature=feat, pre_s=args.pre_s,
+                                             post_s=args.post_s, fps=args.fps)
+            t.to_csv(outdir / f"transition_triggered_{feat.lower()}.csv", index=False)
+            ttas[feat] = t
+
+    # reversal reaction to the pulse onset (generalises rev_reaction.py)
+    if args.pulse_state and "Reversal_Onset" in df:
+        rr = reversal_reaction(df, to_state=args.pulse_state, fps=args.fps)
+        rr.to_csv(outdir / "reversal_reaction.csv", index=False)
+        if len(rr):
+            print(f"\nReversal reaction to {args.pulse_state} onset: "
+                  f"{rr.reacted.mean()*100:.0f}% reacted, "
+                  f"median latency {rr.latency_s.median():.2f}s")
 
     # figures (best-effort; skip if plotting libs unavailable)
     try:
         import matplotlib
         matplotlib.use("Agg")
         import matplotlib.pyplot as plt
-        fig, axes = plt.subplots(1, 3, figsize=(16, 4))
-        for ax, m in zip(axes, ["mean_forward_velocity", "reversal_fraction", "turn_fraction"]):
+        metrics = [m for m in ["mean_forward_velocity", "reversal_fraction", "turn_fraction",
+                               "mean_bend_frequency_hz", "reversal_onsets_per_min"] if m in summary]
+        fig, axes = plt.subplots(1, len(metrics), figsize=(4 * len(metrics), 4))
+        for ax, m in zip(np.atleast_1d(axes), metrics):
             plot_per_state_summary(summary, metric=m, ax=ax)
         fig.tight_layout()
         fig.savefig(outdir / "per_state_summary.png", dpi=150)
 
-        if len(tta):
-            fig2, ax2 = plt.subplots(figsize=(8, 4))
-            plot_transition_triggered(tta, ax=ax2)
-            fig2.tight_layout()
-            fig2.savefig(outdir / "transition_triggered_forward_velocity.png", dpi=150)
+        for feat, t in ttas.items():
+            if len(t):
+                fig2, ax2 = plt.subplots(figsize=(8, 4))
+                plot_transition_triggered(t, feature=feat, ax=ax2)
+                fig2.tight_layout()
+                fig2.savefig(outdir / f"transition_triggered_{feat.lower()}.png", dpi=150)
         print(f"Wrote summaries + figures to {outdir}/")
     except Exception as e:  # noqa: BLE001
         print(f"[warn] plotting skipped ({e}); CSV summaries still written to {outdir}/")

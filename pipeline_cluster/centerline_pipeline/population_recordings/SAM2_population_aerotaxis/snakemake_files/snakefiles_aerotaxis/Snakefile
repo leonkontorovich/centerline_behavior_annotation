@@ -499,6 +499,9 @@ rule aerotaxis_temporal_analysis:
         turn_annotation          = "{dataset}/{track_dir}/output/turn_annotation_by_roundness.csv",
         skeleton_spline_X_coords = "{dataset}/{track_dir}/output/skeleton_spline_X_coords_new.csv",
         skeleton_spline_Y_coords = "{dataset}/{track_dir}/output/skeleton_spline_Y_coords_new.csv",
+        # Body-bend metrics from the existing Hilbert rule (locomotor arousal)
+        hilbert_inst_freq        = "{dataset}/{track_dir}/output/hilbert_inst_freq.csv",
+        hilbert_inst_amplitude   = "{dataset}/{track_dir}/output/hilbert_inst_amplitude.csv",
     params:
         factor_px_to_mm     = config["factor_px_to_mm"],
         fps                 = config["fps"],
@@ -529,6 +532,8 @@ rule aerotaxis_temporal_analysis:
             --skeleton_x "{input.skeleton_spline_X_coords}" \
             --skeleton_y "{input.skeleton_spline_Y_coords}" \
             --worm_pos "{params.worm_pos}" \
+            --bend_freq "{input.hilbert_inst_freq}" \
+            --bend_amplitude "{input.hilbert_inst_amplitude}" \
             --fps "{params.fps}" \
             --factor_px_to_mm "{params.factor_px_to_mm}" \
             --t0_offset_s "{params.t0_offset_s}" \
