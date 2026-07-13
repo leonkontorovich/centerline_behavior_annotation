@@ -76,7 +76,15 @@ def main():
     # Load config to get fps
     with open('config.yaml') as f:
         config = yaml.safe_load(f)
-    fps = config['fps']
+    fps = config.get('fps', 10)
+    
+    # Override with SWC parameters if available
+    if Path('parameters.yaml').exists():
+        with open('parameters.yaml') as f:
+            swc_params = yaml.safe_load(f)
+            if swc_params and 'recording' in swc_params and 'fps' in swc_params['recording']:
+                fps = swc_params['recording']['fps']
+                print(f"🔄 Overriding fps with {fps} from parameters.yaml")
     
     print(f"🔍 Scanning for track.tif files...")
     print(f"📊 Using FPS: {fps}")

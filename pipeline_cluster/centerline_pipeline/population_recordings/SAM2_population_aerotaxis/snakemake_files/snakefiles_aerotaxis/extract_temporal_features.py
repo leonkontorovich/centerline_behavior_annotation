@@ -10,6 +10,7 @@ pulse/return cycles).
 
 Reads only artifacts already produced by the upstream (untouched) pipeline:
     track.txt                        (SWC tracker log)  -> ABSOLUTE clock + arena position
+    <crop>_metadata.json             (SWC crop ledger, optional)   -> Occluded (per-frame mask)
     reversal_annotation.csv          (annotate_reversals)          -> Reversal_Active/Onset, velocity sign
     turn_annotation_by_roundness.csv (calc_turns_by_roundness)     -> Turn_Active
     hilbert_inst_freq.csv            (hilbert_transform_on_kymogram)-> Bend_Frequency (optional)
@@ -29,20 +30,30 @@ Clock / alignment (important):
       * Time_Seconds / O2_State come from the ABSOLUTE recording time
       * Forward_Velocity is computed from the arena X, Y trajectory (px -> mm)
     The behaviour arrays (reversal/turn) are aligned to that clock from the
-    first frame (they are derived from the crop tif, which can be off by ~1
-    frame vs track.txt -- we trim to the common length).
+    first frame. Current SWC (>= the crop off-by-one fix) writes the crop tif
+    and track.txt at the SAME length, so alignment is 1:1; we still trim to the
+    common length as a safety net for older data or partial writes.
 
     If track.txt is missing/unparseable, we fall back to a local clock
     (Frame/fps) and crop-centroid speed, and warn -- so the script still runs.
 
+Occlusion: gap-tolerant SWC tracking emits a blank crop frame (and a NaN arena
+position) whenever the animal is lost/occluded, flagging it per frame in the
+crop's `<crop>_metadata.json` ("is_missing_frame"). We surface that as an
+`Occluded` column (1 = occluded) so downstream population stats can drop those
+frames -- their reversal/turn/bend values are derived from a blank frame and
+are not real behaviour. If the metadata file is absent (older data), Occluded
+is 0 everywhere and the output is identical to before.
+
 Output: a tidy, flat per-frame CSV with columns
     [Crop_ID, Frame, Time_Seconds, O2_State,
      Forward_Velocity, Reversal_Active, Turn_Active,
-     Reversal_Onset, Bend_Frequency, Bend_Amplitude]
+     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded]
 where Frame / Time_Seconds are ABSOLUTE (recording-wide) when track.txt is
 available, so crops share one clock for gas-locked population analysis. The
-first seven columns are the originally-specified schema; the last three are
-enrichments from existing pipeline tools (reversal onsets + Hilbert body bends).
+first seven columns are the originally-specified schema; the rest are
+enrichments from existing pipeline tools (reversal onsets, Hilbert body bends,
+and the SWC per-frame occlusion mask).
 """
 
 import argparse
@@ -199,6 +210,42 @@ def load_track_txt(track_txt, fps):
     return {"frame": frame, "abs_time": abs_time, "x": x, "y": y}
 
 
+def load_missing_frames(crop_dir):
+    """
+    Read the SWC crop ledger `<crop>_metadata.json` and return its per-frame
+    `is_missing_frame` list (True = animal occluded/lost -> blank crop frame),
+    or None if no ledger is found / it lacks the key.
+
+    The ledger's `frame_indices` are contiguous first..last, exactly like the
+    crop tif and (current SWC) track.txt, so the returned mask is aligned to the
+    behaviour/position arrays by POSITION -- no reindexing needed.
+
+    We search the crop dir for `track_metadata.json` first (if rename_tracks.py
+    renamed it to the pipeline convention), then the native SWC
+    `*_track_*_metadata.json`, then any `*_metadata.json`.
+    """
+    d = Path(crop_dir)
+    if not d.is_dir():
+        return None
+    candidates = (
+        sorted(d.glob("track_metadata.json"))
+        or sorted(d.glob("*_track_*_metadata.json"))
+        or sorted(d.glob("*_metadata.json"))
+    )
+    if not candidates:
+        return None
+    try:
+        with open(candidates[0]) as f:
+            meta = json.load(f)
+    except Exception as e:  # noqa: BLE001
+        print(f"[warn] could not read crop ledger {candidates[0]} ({e}).", file=sys.stderr)
+        return None
+    missing = meta.get("is_missing_frame")
+    if missing is None:
+        return None
+    return np.asarray(missing, dtype=bool)
+
+
 def _signed_velocity(x_mm, y_mm, reversal_active, fps, smooth_win):
     """Speed magnitude (mm/s) signed by reversal state (reversal -> negative)."""
     x = pd.Series(x_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
@@ -279,6 +326,15 @@ def main(arg_list=None):
     if n == 0:
         raise ValueError(f"[{args.crop_id}] no frames to process (empty inputs).")
 
+    # ---- per-frame occlusion mask from the SWC crop ledger (optional) ----
+    # Located next to track.txt (the crop dir). Aligned by position (same
+    # contiguous frame range as the behaviour arrays). Absent -> all-False.
+    missing = load_missing_frames(Path(args.worm_pos).parent)
+    if missing is not None:
+        occluded = (_fit_length(missing.astype(float), n) > 0.5).astype(int)
+    else:
+        occluded = np.zeros(n, dtype=int)
+
     reversal = _fit_length(reversal, n)
     turn = _fit_length(turn, n)
     reversal_active = (reversal == -1).astype(int)
@@ -309,15 +365,18 @@ def main(arg_list=None):
         "O2_State": o2_state,
         "Forward_Velocity": forward_velocity,
         "Reversal_Active": reversal_active,
-        "Turn_Active": turn.astype(int),
+        "Turn_Active": np.nan_to_num(turn, nan=0).astype(int),
         "Reversal_Onset": reversal_onset,
         "Bend_Frequency": bend_freq,
         "Bend_Amplitude": bend_amp,
+        "Occluded": occluded,
     })
     Path(args.out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_csv, index=False)
+    n_occ = int(occluded.sum())
+    occ_note = f", {n_occ} occluded" if n_occ else ""
     print(f"[{args.crop_id}] wrote {len(out)} frames "
-          f"({out.Time_Seconds.iloc[0]:.1f}-{out.Time_Seconds.iloc[-1]:.1f}s) -> {args.out_csv}")
+          f"({out.Time_Seconds.iloc[0]:.1f}-{out.Time_Seconds.iloc[-1]:.1f}s{occ_note}) -> {args.out_csv}")
 
 
 if __name__ == "__main__":

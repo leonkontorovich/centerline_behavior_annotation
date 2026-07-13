@@ -3,6 +3,23 @@ from snakemake.io import glob_wildcards, temp, touch
 # ---- dynamic per-rule resources from cluster_config.yaml ----
 import json, math, re, yaml
 from functools import lru_cache
+import os
+
+# ---- Override config with SWC parameters if available ----
+if os.path.exists("parameters.yaml"):
+    with open("parameters.yaml") as _pf:
+        _swc_params = yaml.safe_load(_pf)
+        if _swc_params:
+            if "recording" in _swc_params:
+                if "fps" in _swc_params["recording"]:
+                    config["fps"] = _swc_params["recording"]["fps"]
+                if "pixel_size_mm" in _swc_params["recording"]:
+                    config["factor_px_to_mm"] = str(_swc_params["recording"]["pixel_size_mm"])
+            if "region_extraction" in _swc_params:
+                if "min_region_size" in _swc_params["region_extraction"]:
+                    config["min_worm_area"] = _swc_params["region_extraction"]["min_region_size"]
+                if "max_region_size" in _swc_params["region_extraction"]:
+                    config["max_worm_area"] = _swc_params["region_extraction"]["max_region_size"]
 
 MAX_CROP_SEC = 1800  # 30 minutes baseline
 

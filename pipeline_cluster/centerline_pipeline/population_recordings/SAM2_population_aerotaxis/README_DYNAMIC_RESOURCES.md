@@ -212,11 +212,19 @@ sam2_segment:
 **Purpose:** Pipeline parameters and paths.
 
 ```yaml
-fps: 10
-factor_px_to_mm: '0.00962'
+fps: 10                       # FALLBACK; real value read from SWC {dataset}/parameters.yaml
+factor_px_to_mm: '0.01221'    # FALLBACK; real value = SWC parameters.yaml pixel_size_mm
 dlc_model_configfile_path: /path/to/model/config.yaml
 # ... other pipeline parameters
 ```
+
+**`fps` and `factor_px_to_mm` are sourced from SWC, not tuned here.** The
+Snakefile reads each recording's `parameters.yaml` (written by SimpleWormCropper,
+sibling of the track dirs) for `recording.fps` and `recording.pixel_size_mm`
+(falling back to `arena_size_cm*10/frame_height_px`, then to these config
+values). This keeps the pipeline locked to whatever was configured in SWC for
+that specific recording. `generate_metadata.py` uses the same per-recording fps
+for its duration/resource estimates.
 
 ---
 

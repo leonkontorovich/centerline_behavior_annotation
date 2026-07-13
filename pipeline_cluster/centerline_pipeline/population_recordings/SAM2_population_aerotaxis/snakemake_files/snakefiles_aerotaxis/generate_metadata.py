@@ -28,6 +28,25 @@ def count_tiff_frames(tiff_path):
         print("❌ tiffinfo not found. Install libtiff-tools", file=sys.stderr)
         sys.exit(1)
 
+def swc_fps_for(tiff_path, fallback_fps):
+    """
+    fps from the recording's SWC parameters.yaml ({dataset}/parameters.yaml,
+    sibling of the track dirs), falling back to the config fps if absent. Keeps
+    the resource-estimate duration consistent with the per-recording SWC fps the
+    Snakefile actually uses.
+    """
+    params_path = tiff_path.parent.parent / 'parameters.yaml'
+    try:
+        with open(params_path) as f:
+            rec = (yaml.safe_load(f) or {}).get('recording', {})
+        fps = float(rec.get('fps'))
+        if fps > 0:
+            return fps
+    except (FileNotFoundError, yaml.YAMLError, TypeError, ValueError):
+        pass
+    return fallback_fps
+
+
 def read_existing_metadata(meta_path):
     """Read duration from existing .meta.json file"""
     try:
@@ -73,13 +92,14 @@ def format_duration(seconds):
         return f"{hours}:{mins:02d}:{secs:02d}"
 
 def main():
-    # Load config to get fps
+    # config fps is only a fallback; the real fps comes per-recording from each
+    # SWC parameters.yaml (see swc_fps_for), matching what the Snakefile uses.
     with open('config.yaml') as f:
         config = yaml.safe_load(f)
-    fps = config['fps']
-    
+    fallback_fps = float(config.get('fps', 10.0))
+
     print(f"🔍 Scanning for track.tif files...")
-    print(f"📊 Using FPS: {fps}")
+    print(f"📊 FPS: per-recording from SWC parameters.yaml (fallback {fallback_fps})")
     print("=" * 60)
     
     # Find all track.tif files
@@ -102,7 +122,10 @@ def main():
         
         # Output path: dataset/track_dir/output/.meta.json
         output_meta = tiff_path.parent / 'output' / '.meta.json'
-        
+
+        # per-recording fps from SWC parameters.yaml (fallback to config)
+        fps = swc_fps_for(tiff_path, fallback_fps)
+
         # Check if metadata already exists
         if output_meta.exists():
             duration, frames = read_existing_metadata(output_meta)

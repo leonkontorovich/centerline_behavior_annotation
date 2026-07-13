@@ -1,11 +1,23 @@
 # Video processing parameters
 fourcc: 0
-fps: 10
-# Pixel -> mm calibration, used only to scale Forward_Velocity (linear).
-# CONFIRM per rig: SWC sensor here is 2048 px and the arena is 2.5 cm (25 mm),
-# so if the frame spans the arena, factor = 25/2048 = 0.01221 mm/px.
-# (0.00962 was inherited from the old chemotaxis rig and implies a 2599 px arena.)
-factor_px_to_mm: '0.01221'
+
+# ------------------------------------------------------------------
+# fps and factor_px_to_mm are SOURCED FROM SWC, not from here.
+# The Snakefile reads each recording's SWC parameters.yaml
+# ({dataset}/parameters.yaml, written by SimpleWormCropper) and uses:
+#   fps             <- recording.fps
+#   factor_px_to_mm <- recording.pixel_size_mm  (SWC's exact px->mm),
+#                      or arena_size_cm*10 / frame_height_px if that key is
+#                      absent (older SWC that didn't persist pixel_size_mm).
+# The two values below are FALLBACKS ONLY, used when parameters.yaml is missing
+# (e.g. hand-assembled datasets). Keep them sane but do not tune them per
+# recording -- tune SWC instead, and the pipeline will follow.
+# NB: swc_config.json's hardware `um_per_pixel` is a SEPARATE crop-buffer
+# calibration -- it is NOT the velocity calibration; do not use it here.
+# ------------------------------------------------------------------
+fps: 10                        # fallback only; real value from SWC parameters.yaml
+factor_px_to_mm: '0.01221'     # fallback only; real value from SWC parameters.yaml
+                               # (2.5 cm arena / 2048 px = 25/2048 = 0.01221 mm/px)
 
 # Model paths and settings
 dlc_model_configfile_path: /lisc/data/scratch/neurobiology/zimmer/schaar/code/DLC/population_nose_neck_vulva_tail_elpiniki_chanuka_itamar-elpi-2024-09-23/config.yaml

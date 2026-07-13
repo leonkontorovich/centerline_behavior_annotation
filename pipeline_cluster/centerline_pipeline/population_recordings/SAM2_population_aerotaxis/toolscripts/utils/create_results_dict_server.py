@@ -14,7 +14,12 @@ Output (in the dataset folder):
 Columns:
     Condition, Recording, Crop_ID, Frame, Time_Seconds, O2_State,
     Forward_Velocity, Reversal_Active, Turn_Active,
-    Reversal_Onset, Bend_Frequency, Bend_Amplitude
+    Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded
+
+`Occluded` (1 = animal lost/occluded on that frame, from the SWC crop ledger)
+is a per-frame quality flag: filter `Occluded == 0` before computing behaviour
+rates, since occluded frames carry blank-crop-derived values. Absent for data
+cropped by older SWC versions (then it is 0 everywhere).
 
 The `Condition` / `Recording` columns are recovered from the folder structure
     <condition>/<recording>/<crop>/output/temporal_features.csv

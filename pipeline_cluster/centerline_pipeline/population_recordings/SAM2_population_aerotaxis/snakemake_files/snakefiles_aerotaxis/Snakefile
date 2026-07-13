@@ -20,6 +20,91 @@ def get_cluster_config_value(rule_name, config_key, default=None):
         return value if value is not None else default
     return default
 
+# --------------------------------------------------------------
+# SWC (SimpleWormCropper) is the source of truth for per-recording settings.
+# The cropper writes parameters.yaml into each recording folder (a sibling of
+# the track dirs, i.e. {dataset}/parameters.yaml). We READ fps and the px->mm
+# calibration from there so the pipeline never overwrites what was configured in
+# SWC for that specific recording. config.yaml values are FALLBACKS only (used
+# when parameters.yaml is missing, e.g. data cropped by an older SWC).
+# --------------------------------------------------------------
+@lru_cache(None)
+def get_swc_recording_params(dataset):
+    """Read SWC parameters.yaml's `recording` block for a dataset ({}: if absent)."""
+    path = f"{dataset}/parameters.yaml"
+    try:
+        with open(path) as f:
+            loaded = yaml.safe_load(f) or {}
+        rec = loaded.get("recording", {})
+        return rec if isinstance(rec, dict) else {}
+    except (FileNotFoundError, yaml.YAMLError):
+        return {}
+
+
+def swc_fps(dataset):
+    """fps from SWC parameters.yaml (recording.fps); fall back to config['fps']."""
+    rec = get_swc_recording_params(dataset)
+    try:
+        fps = float(rec.get("fps"))
+        if fps > 0:
+            return fps
+    except (TypeError, ValueError):
+        pass
+    return float(config["fps"])
+
+
+def swc_factor_px_to_mm(dataset):
+    """
+    px->mm from SWC parameters.yaml, preferring the exact `pixel_size_mm` SWC
+    persisted; else derive it the SWC way (arena_size_cm*10 / frame_height_px);
+    else fall back to config['factor_px_to_mm'].
+    """
+    rec = get_swc_recording_params(dataset)
+    try:
+        pix = float(rec.get("pixel_size_mm"))
+        if pix > 0:
+            return pix
+    except (TypeError, ValueError):
+        pass
+    try:
+        arena_cm = float(rec.get("arena_size_cm"))
+        frame_px = float(rec.get("frame_height_px"))
+        if arena_cm > 0 and frame_px > 0:
+            return arena_cm * 10.0 / frame_px
+    except (TypeError, ValueError):
+        pass
+    return float(config["factor_px_to_mm"])
+
+
+def swc_min_worm_area(dataset):
+    """min_worm_area from SWC parameters.yaml (region_extraction.min_region_size); fall back to config."""
+    path = f"{dataset}/parameters.yaml"
+    try:
+        with open(path) as f:
+            loaded = yaml.safe_load(f) or {}
+        val = loaded.get("region_extraction", {}).get("min_region_size")
+        if val is not None:
+            return int(val)
+    except (FileNotFoundError, yaml.YAMLError, ValueError, TypeError):
+        pass
+    return int(config.get("min_worm_area", 400))
+
+
+def swc_max_worm_area(dataset):
+    """max_worm_area from SWC parameters.yaml (region_extraction.max_region_size); fall back to config."""
+    path = f"{dataset}/parameters.yaml"
+    try:
+        with open(path) as f:
+            loaded = yaml.safe_load(f) or {}
+        val = loaded.get("region_extraction", {}).get("max_region_size")
+        if val is not None:
+            return int(val)
+    except (FileNotFoundError, yaml.YAMLError, ValueError, TypeError):
+        pass
+    return int(config.get("max_worm_area", 1000))
+
+
+
 def parse_memory_to_mb(memory_string):
     """Convert memory string (e.g., '64G', '64000M') to megabytes"""
     if isinstance(memory_string, (int, float)): 
@@ -188,7 +273,7 @@ rule tiff2avi:
     params:
         function = "tiff2avi",
         fourcc   = config["fourcc"],
-        fps      = config["fps"]
+        fps      = lambda wildcards: swc_fps(wildcards.dataset)
     run:
         from imutils.src import imutils_parser_main
         imutils_parser_main.main([
@@ -247,8 +332,8 @@ rule correct_SAM2_DLC_errors:
         gres=create_gres_function("correct_SAM2_DLC_errors")
     params:
         sam2_conda_env_name = "/lisc/data/scratch/neurobiology/zimmer/.conda/envs/SAM2_shared",
-        min_worm_area = config["min_worm_area"],
-        max_worm_area = config["max_worm_area"]
+        min_worm_area = lambda wildcards: swc_min_worm_area(wildcards.dataset),
+        max_worm_area = lambda wildcards: swc_max_worm_area(wildcards.dataset)
     shell:
         '''
         # Check and set xml_catalog_files_libxml2 variable if needed
@@ -439,9 +524,9 @@ rule calc_turns_by_roundness:
     params:
         min_round_threshold = config["min_round_threshold"],
         max_round_threshold = config["max_round_threshold"],
-        smoothing_window    = config["fps"],
-        min_worm_area       = config["min_worm_area"],
-        max_worm_area       = config["max_worm_area"]
+        smoothing_window    = lambda wildcards: int(round(swc_fps(wildcards.dataset))),
+        min_worm_area       = lambda wildcards: swc_min_worm_area(wildcards.dataset),
+        max_worm_area       = lambda wildcards: swc_max_worm_area(wildcards.dataset)
     run:
         from centerline_behavior_annotation.curvature.src import annotate_turns_coils_by_mask_roundness_snakemake
         annotate_turns_coils_by_mask_roundness_snakemake.main([
@@ -473,8 +558,8 @@ rule hilbert_transform_on_kymogram:
         gres=create_gres_function("hilbert_transform_on_kymogram")
     params:
         output_path = "{dataset}/{track_dir}/output/", # Ulises' functions expect the final slash
-        fs = config["fps"], 
-        window = config["fps"]
+        fs = lambda wildcards: swc_fps(wildcards.dataset),
+        window = lambda wildcards: int(round(swc_fps(wildcards.dataset)))
     run:
         from centerline_behavior_annotation.behavior_analysis.src import hilbert_transform
 
@@ -503,8 +588,8 @@ rule aerotaxis_temporal_analysis:
         hilbert_inst_freq        = "{dataset}/{track_dir}/output/hilbert_inst_freq.csv",
         hilbert_inst_amplitude   = "{dataset}/{track_dir}/output/hilbert_inst_amplitude.csv",
     params:
-        factor_px_to_mm     = config["factor_px_to_mm"],
-        fps                 = config["fps"],
+        factor_px_to_mm     = lambda wildcards: swc_factor_px_to_mm(wildcards.dataset),
+        fps                 = lambda wildcards: swc_fps(wildcards.dataset),
         worm_pos            = "{dataset}/{track_dir}/track.txt",
         crop_id             = "{track_dir}",
         # Global gas protocol (see config["aerotaxis"]) -- edit per assay, no code change
@@ -525,7 +610,7 @@ rule aerotaxis_temporal_analysis:
         gres      = create_gres_function("aerotaxis_temporal_analysis")
     shell:
         '''
-        python "{params.script}" \
+        python "{workflow.basedir}/{params.script}" \
             --crop_id "{params.crop_id}" \
             --reversal_annotation "{input.reversal_annotation}" \
             --turn_annotation "{input.turn_annotation}" \

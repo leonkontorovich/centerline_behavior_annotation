@@ -5,7 +5,8 @@ Reusable temporal-analysis helpers for the aerotaxis (global gas-shift) pipeline
 Operates on the tidy per-frame table produced by create_results_dict_server.py
 (aerotaxis_results.{parquet,csv,pkl}) with columns:
     Condition, Recording, Crop_ID, Frame, Time_Seconds, O2_State,
-    Forward_Velocity, Reversal_Active, Turn_Active
+    Forward_Velocity, Reversal_Active, Turn_Active, ... , Occluded
+Occluded frames (SWC-flagged animal loss) are dropped on load by default.
 
 Everything here is plain Pandas / Seaborn so it drops straight into a notebook,
 a script, or an R hand-off (the summary tables are tidy CSVs).
@@ -33,23 +34,31 @@ GROUP_KEYS = ["Condition", "Recording", "Crop_ID"]
 # ----------------------------------------------------------------------
 # Loading
 # ----------------------------------------------------------------------
-def load_results(path):
+def load_results(path, drop_occluded=True):
     """
     Load the tidy results table.
 
     `path` may be a combined results file (.parquet/.csv/.pkl) OR a dataset
     folder, in which case every */output/temporal_features.csv is concatenated
     (Condition/Recording recovered from the folder tree).
+
+    `drop_occluded` (default True): if the SWC-derived `Occluded` column is
+    present, drop frames where the animal was lost/occluded -- their behaviour
+    values come from a blank crop frame and would bias per-state means. Pass
+    False to keep every frame (e.g. to inspect occlusion itself). No-op for data
+    from older SWC versions that lacks the column.
     """
     path = Path(path)
     if path.is_file():
         if path.suffix == ".parquet":
-            return pd.read_parquet(path)
-        if path.suffix == ".csv":
-            return pd.read_csv(path)
-        if path.suffix in (".pkl", ".pickle"):
-            return pd.read_pickle(path)
-        raise ValueError(f"Unsupported results file type: {path.suffix}")
+            df = pd.read_parquet(path)
+        elif path.suffix == ".csv":
+            df = pd.read_csv(path)
+        elif path.suffix in (".pkl", ".pickle"):
+            df = pd.read_pickle(path)
+        else:
+            raise ValueError(f"Unsupported results file type: {path.suffix}")
+        return _apply_occlusion_filter(df, drop_occluded)
 
     # directory: scan per-crop CSVs
     frames = []
@@ -61,7 +70,14 @@ def load_results(path):
         frames.append(df)
     if not frames:
         raise SystemExit(f"No temporal_features.csv found under {path}")
-    return pd.concat(frames, ignore_index=True)
+    return _apply_occlusion_filter(pd.concat(frames, ignore_index=True), drop_occluded)
+
+
+def _apply_occlusion_filter(df, drop_occluded):
+    """Drop occluded frames if requested and the `Occluded` column exists."""
+    if drop_occluded and "Occluded" in df.columns:
+        return df[df["Occluded"] == 0].reset_index(drop=True)
+    return df
 
 
 # ----------------------------------------------------------------------

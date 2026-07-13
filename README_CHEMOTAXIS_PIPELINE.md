@@ -38,63 +38,64 @@ ________________________________________________________________________________
 ## Start here if you already did set up your conda on user login!
 
    ## RUN
-1. Navigate to the experiment folder:
+
+**Step 1: Transfer Data to the Cluster (LISC)**
+Since the centerline pipeline relies on heavy GPU models (SAM2, DeepLabCut), it must be run on the cluster.
+1. Run the Simple Worm Cropper (SWC) locally on your machine to generate your cropped tracks.
+2. Transfer your output dataset folder (e.g. `2026-06-20_11-00-53_N2_A`) to your workspace on the LISC cluster via SCP/FileZilla.
+
+**Step 2: Connect and Navigate**
+1. SSH into the LISC cluster.
+2. Navigate directly into your newly uploaded experiment folder.
    ```bash
    cd "path/to/folder/of/cropped/recordings"
    ```
+   *Important: run every subsequent command from within this dataset working directory!*
 
-   Important: for this pipeline run every command from within the dataset working directory (path/to/folder/of/cropped/recordings) !
-      e.g type PWD in shell
-   
-2. Activate the centerline environment:
+**Step 3: Activate Environment & Prepare Files**
+1. Activate the centerline environment:
    ```bash
    conda activate autoscope_behaviour_shared
    ```
-
-3. Rename TIFF files in the experiment folder:
+2. Rename TIFF files in the experiment folder (to fit pipeline needs):
    ```bash
    python /lisc/data/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
    ```
-   This script renames the TIFF files to fit the pipeline's needs.
 
-4. Create folder structures and copy pipeline files (don't run this if folder structure already exists, but use alternative that just copies!):
-
-   ```bash
-   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/create_folders_and_copy_chemotaxis_population_pipeline.sh
-   ```
-
-**4.1 Just copy new Files**
+**Step 4: Copy Pipeline Files**
+Copy the required Snakemake execution scripts into your current directory. 
+*(Note: You do not need to manually edit `config.yaml`. The pipeline now automatically detects your SWC `parameters.yaml` file and dynamically updates your `fps`, `pixel_size_mm`, and `region_size` thresholds!)*
 ```bash
-bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
+cp -r /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis/* .
 ```
 
-5. **Use `annotate_odor_pos` GUI to annotate `top_left` and `odor_pos`**  
-   - If no odor is used, only annotate the `top_left` position with the GUI.  
-   - A config file will be created in the dataset folder that saves the positions, and Snakemake will access these positions automatically for the corresponding experiments.
-  
-6. **Run the cluster based Bublefilter with default settings if not done so locally already, local bubblefilter has a better bubble/worm ratio andn early removes all bubbles **
+**Step 5: Annotate Odor Positions (Chemotaxis Only)**
+Use the `annotate_odor_pos` GUI to annotate `top_left` and `odor_pos`.
+- If no odor is used, only annotate the `top_left` position with the GUI.
+- A config file will be created in the dataset folder, and Snakemake will access these positions automatically.
 
-  # Dry-run first:
+**Step 6: Bubble Filter (Optional but Recommended)**
+Run the cluster-based Bubblefilter.
 ```bash
+# Dry-run first:
 python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0
-```
 
 # Then delete:
-```bash
 python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0 --delete
 ```
 
+**Step 7: Run the Pipeline**
+Run the analysis by submitting it to the cluster queue. (e.g. up to 50 concurrent jobs):
+```bash
+bash RUNME_cluster.sh -j 50
+```
 
-7. Run the analysis - Define parallelism but don't go above 200 -> e.g 20 folders with 10 paralell jobs = 200 jobs:
-   ```bash
-   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/run_chemotaxis_population_pipeline.sh -- --folders 20 --jobs 10
-   ```
-
-8. When analysis is finished, create results_dict.pkl for downstream analysis notebooks:
-   ```bash
-   python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/utils/create_results_dict_server.py .
-   ```
-   Output: `results_dict.pkl` saved in current dataset folder.
+**Step 8: Finalize Results**
+When analysis is finished, create `results_dict.pkl` for downstream analysis notebooks:
+```bash
+python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/utils/create_results_dict_server.py .
+```
+Output: `results_dict.pkl` saved in current dataset folder.
 
 ## Additional Commands for the Experiment Folder (run everything from experiment folder as current pwd)
 
