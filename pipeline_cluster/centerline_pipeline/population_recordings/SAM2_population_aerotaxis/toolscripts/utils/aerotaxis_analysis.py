@@ -21,32 +21,67 @@ produces per-state summary + gas-transition-triggered averages as CSV + PNG.
 """
 
 import argparse
+import os
+import re
+import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
+# Reuse the provenance parsing (Condition/Genotype/Recording/Plate + `_new`
+# stripping) from the table builder so both agree on how folders map to columns.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    from create_results_dict_server import _strip_new, parse_recording_name, DEFAULT_NAME_RE
+    _NAME_RE = re.compile(DEFAULT_NAME_RE)
+except Exception:  # pragma: no cover - fallback if run in isolation
+    _NAME_RE = None
+
+    def _strip_new(name):
+        return name[:-4] if name.endswith("_new") else name
+
+    def parse_recording_name(recording, name_re):
+        return recording, ""
+
 # continuous per-frame features suitable for transition-triggered averaging
 FEATURES = ["Forward_Velocity", "Reversal_Active", "Turn_Active", "Bend_Frequency", "Bend_Amplitude"]
 GROUP_KEYS = ["Condition", "Recording", "Crop_ID"]
+
+# Motility QC defaults: keep only crops that are tracked long enough AND that
+# actually travelled -- i.e. live, moving worms, not dead animals, debris, or
+# bubbles. Non-destructive (filters the table; never deletes files) and
+# duration-aware (uses integrated speed, not raw positional SD like the
+# irreversible step-5 bubble filter). Tune via load_results()/CLI.
+MIN_TRACK_SECONDS = 10.0   # a crop shorter than this (post-occlusion) is too brief to trust
+MIN_PATH_MM = 0.5          # total distance travelled below this = didn't move (dead/bubble)
 
 
 # ----------------------------------------------------------------------
 # Loading
 # ----------------------------------------------------------------------
-def load_results(path, drop_occluded=True):
+def load_results(path, drop_occluded=True, require_motile=True, fps=10.0,
+                 min_track_seconds=MIN_TRACK_SECONDS, min_path_mm=MIN_PATH_MM,
+                 verbose=True):
     """
     Load the tidy results table.
 
     `path` may be a combined results file (.parquet/.csv/.pkl) OR a dataset
     folder, in which case every */output/temporal_features.csv is concatenated
-    (Condition/Recording recovered from the folder tree).
+    (Condition/Genotype/Recording/Plate recovered from the folder tree, with the
+    setup `_new` wrapper stripped -- see create_results_dict_server).
 
     `drop_occluded` (default True): if the SWC-derived `Occluded` column is
     present, drop frames where the animal was lost/occluded -- their behaviour
     values come from a blank crop frame and would bias per-state means. Pass
     False to keep every frame (e.g. to inspect occlusion itself). No-op for data
     from older SWC versions that lacks the column.
+
+    `require_motile` (default True): keep only crops that are LIVE, MOVING worms
+    -- tracked for at least `min_track_seconds` and that travelled at least
+    `min_path_mm` total (dead worms, debris and bubbles sit near zero). This runs
+    AFTER the occlusion filter, on real frames only. See `filter_motile`. Pass
+    False to keep every crop.
     """
     path = Path(path)
     if path.is_file():
@@ -58,19 +93,31 @@ def load_results(path, drop_occluded=True):
             df = pd.read_pickle(path)
         else:
             raise ValueError(f"Unsupported results file type: {path.suffix}")
-        return _apply_occlusion_filter(df, drop_occluded)
+    else:
+        # directory: scan per-crop CSVs, recovering provenance the same way the
+        # table builder does (so the two code paths never disagree).
+        frames = []
+        for csv in sorted(path.rglob("*/output/temporal_features.csv")):
+            d = pd.read_csv(csv)
+            crop_dir = csv.parents[1]
+            recording = _strip_new(crop_dir.parent.name)
+            condition_raw = _strip_new(crop_dir.parents[1].name)
+            genotype, plate = parse_recording_name(recording, _NAME_RE) if _NAME_RE else (recording, "")
+            condition = genotype if condition_raw == recording else condition_raw
+            d.insert(0, "Plate", plate)
+            d.insert(0, "Recording", recording)
+            d.insert(0, "Genotype", genotype)
+            d.insert(0, "Condition", condition)
+            frames.append(d)
+        if not frames:
+            raise SystemExit(f"No temporal_features.csv found under {path}")
+        df = pd.concat(frames, ignore_index=True)
 
-    # directory: scan per-crop CSVs
-    frames = []
-    for csv in sorted(path.rglob("*/output/temporal_features.csv")):
-        df = pd.read_csv(csv)
-        crop_dir = csv.parents[1]
-        df.insert(0, "Recording", crop_dir.parent.name)
-        df.insert(0, "Condition", crop_dir.parent.parent.name)
-        frames.append(df)
-    if not frames:
-        raise SystemExit(f"No temporal_features.csv found under {path}")
-    return _apply_occlusion_filter(pd.concat(frames, ignore_index=True), drop_occluded)
+    df = _apply_occlusion_filter(df, drop_occluded)
+    if require_motile:
+        df = filter_motile(df, fps=fps, min_track_seconds=min_track_seconds,
+                           min_path_mm=min_path_mm, verbose=verbose)
+    return df
 
 
 def _apply_occlusion_filter(df, drop_occluded):
@@ -78,6 +125,60 @@ def _apply_occlusion_filter(df, drop_occluded):
     if drop_occluded and "Occluded" in df.columns:
         return df[df["Occluded"] == 0].reset_index(drop=True)
     return df
+
+
+# ----------------------------------------------------------------------
+# Motility QC -- keep only live worms that moved
+# ----------------------------------------------------------------------
+def crop_motility(df, fps=10.0):
+    """Per-crop motility summary from the (already occlusion-filtered) table.
+
+    Returns one row per crop with:
+      n_frames, duration_s, total_path_mm (integral of |Forward_Velocity|),
+      mean_speed_mm_s (mean |Forward_Velocity|).
+    `total_path_mm` is the distance the worm actually travelled -- a dead animal,
+    a bubble, or debris sits near zero regardless of how long it was tracked,
+    while a brief real track isn't penalised just for being short (that is what
+    the separate duration gate is for). NaN velocities are ignored.
+    """
+    rows = []
+    for keys, sub in df.groupby(GROUP_KEYS, sort=False):
+        v = np.abs(pd.to_numeric(sub.get("Forward_Velocity"), errors="coerce").to_numpy())
+        n = len(sub)
+        total_path = np.nansum(v) / fps
+        mean_speed = np.nanmean(v) if np.isfinite(v).any() else 0.0
+        rows.append((*keys, n, n / fps, total_path, mean_speed))
+    return pd.DataFrame(rows, columns=GROUP_KEYS +
+                        ["n_frames", "duration_s", "total_path_mm", "mean_speed_mm_s"])
+
+
+def filter_motile(df, fps=10.0, min_track_seconds=MIN_TRACK_SECONDS,
+                  min_path_mm=MIN_PATH_MM, verbose=True):
+    """Drop crops that are not live, moving worms.
+
+    A crop is KEPT only if it was tracked for >= `min_track_seconds` AND its
+    `total_path_mm` >= `min_path_mm`. This is the non-destructive, duration-aware
+    analysis-time counterpart to the step-5 bubble filter: dead worms, debris and
+    bubbles (near-zero path) and unusably short fragments are excluded from every
+    downstream summary, but nothing is deleted on disk and the thresholds are
+    tunable. Logs exactly what was dropped (never a silent cut).
+    """
+    if "Forward_Velocity" not in df.columns or df.empty:
+        return df
+    m = crop_motility(df, fps=fps)
+    keep = (m.duration_s >= min_track_seconds) & (m.total_path_mm >= min_path_mm)
+    kept_keys = set(map(tuple, m.loc[keep, GROUP_KEYS].to_numpy()))
+    mask = df.set_index(GROUP_KEYS).index.isin(kept_keys)
+    out = df[mask].reset_index(drop=True)
+    if verbose:
+        n_drop = (~keep).sum()
+        too_short = (m.duration_s < min_track_seconds).sum()
+        didnt_move = ((m.duration_s >= min_track_seconds) & (m.total_path_mm < min_path_mm)).sum()
+        print(f"[motility QC] kept {keep.sum()}/{len(m)} crops "
+              f"(dropped {n_drop}: {too_short} too short <{min_track_seconds}s, "
+              f"{didnt_move} didn't move <{min_path_mm}mm); "
+              f"{len(df) - len(out):,} of {len(df):,} frames removed")
+    return out
 
 
 # ----------------------------------------------------------------------
@@ -244,12 +345,19 @@ def main():
     ap.add_argument("--post_s", type=float, default=30.0)
     ap.add_argument("--pulse_state", default=None,
                     help="gas state whose onset triggers the reversal-reaction analysis, e.g. 21pct_O2")
+    ap.add_argument("--keep_immotile", action="store_true",
+                    help="disable the motility QC (by default only live worms that moved are analysed)")
+    ap.add_argument("--min_track_seconds", type=float, default=MIN_TRACK_SECONDS,
+                    help=f"motility QC: min tracked duration to keep a crop (default {MIN_TRACK_SECONDS})")
+    ap.add_argument("--min_path_mm", type=float, default=MIN_PATH_MM,
+                    help=f"motility QC: min total distance travelled to keep a crop (default {MIN_PATH_MM})")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    df = load_results(args.results)
+    df = load_results(args.results, require_motile=not args.keep_immotile, fps=args.fps,
+                      min_track_seconds=args.min_track_seconds, min_path_mm=args.min_path_mm)
     print(f"Loaded {len(df):,} rows, {df.groupby(GROUP_KEYS).ngroups} crops, "
           f"states={sorted(df.O2_State.unique())}")
 

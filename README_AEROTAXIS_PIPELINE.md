@@ -168,13 +168,37 @@ bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotatio
 **4. Double-check your configs (Optional)** 
 If you want to be safe, you can look inside one of the `config.yaml` files inside a `*_new` folder to verify the `aerotaxis:` block was populated correctly. You do **not** set `fps` or `factor_px_to_mm` here: the pipeline reads them per recording from the SWC `parameters.yaml` that ships beside the crops (`{dataset}/parameters.yaml`); the `config.yaml` values are only fallbacks (see [§9](#9-configuration-reference)). Tune those in SWC, not here.
 
-**5. Quality-gate the crops — run the bubble filter.**
-> ⚠️ If a recording has **> 150 crops**, inspect it first: certain cropper settings
-> latch onto bubbles and jitter into thousands of junk crops that flood the queue.
+**5. (Optional) Quality-gate the crops — run the bubble filter.**
+> ⚠️ This step is **optional** and its main purpose is to stop **thousands** of
+> junk bubble crops from flooding the cluster queue. If every recording has only
+> a few hundred crops, you can safely **skip it** — junk tracks just produce poor
+> output that you filter in downstream QC (`Occluded`, NaN bend columns, near-zero
+> speed). Only reach for it when a recording has **> 150 crops** because the
+> cropper jittered on bubbles.
+
+**How it works & its limits (read before `--delete`, it is irreversible):**
+The filter deletes any track whose **absolute arena-position SD**
+(`sqrt(SD(X)² + SD(Y)²)` from `track.txt`) is `≤ --threshold` **pixels**. Real
+crawling worms sit far above the default 15 px (typically 50–500 px), and bubbles
+sit near 0, so the default cleanly separates them **in well-behaved recordings**.
+Two caveats:
+> - **It is duration-blind.** SD is not normalised by track length, so a genuine
+>   worm that was only tracked for a few seconds (near `min_track_duration`) can
+>   have a small SD and be deleted alongside true bubbles. Inspect the borderline
+>   band (SD ≈ 10–20 px) rather than trusting the cut blindly.
+> - **High deletion % usually means a junky recording, not an over-harsh
+>   threshold.** (In the reference dataset, one plate was ~77 % low-motion
+>   detections — those really were stationary debris, median total path ~130 px.)
+>   But confirm per recording.
+
+Every run writes `Output_Bubble_Filter/{SD_Summary.csv, Clustering_Results.csv,
+clustering_plot.html}` next to the crops — **open the plot / CSV and eyeball the
+Stationary/Non-Stationary split before deleting.** Lower `--threshold` (e.g. 10)
+if you see real short tracks in the cut.
 ```bash
-# Dry-run (shows what would be deleted):
+# Dry-run (shows what would be deleted; writes the SD summary + plot to inspect):
 python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0
-# Then delete:
+# Then delete (irreversible — the track folders are rm -rf'd):
 python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0 --delete
 ```
 
@@ -201,8 +225,10 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 
 | Column | Meaning |
 |---|---|
-| `Condition` | top-level folder (genotype / paradigm) — *added by create_results_dict* |
-| `Recording` | recording folder — *added by create_results_dict* |
+| `Condition` | grouping key — *added by create_results_dict*. With the `*_new`-per-recording layout this pipeline creates, it resolves to the parsed `Genotype` (so `groupby("Condition")` gives N2 vs rde vs nprrde). If you use a genuine condition folder, its name (minus any trailing `_new`) is kept. |
+| `Genotype` | parsed from the recording name via `--genotype-regex` (default `<date>_<time>_<genotype>_<plate>`) — *added by create_results_dict*; falls back to the full recording name if it doesn't match |
+| `Plate` | plate/replicate token from the recording name (e.g. `A`/`B`) — *added by create_results_dict*; blank if the name doesn't match |
+| `Recording` | recording folder (unique per recording, `_new` stripped) — *added by create_results_dict* |
 | `Crop_ID` | per-worm track id |
 | `Frame` | **absolute** recording frame (shared clock across crops) |
 | `Time_Seconds` | **absolute** recording time (s) |
@@ -227,10 +253,24 @@ Everything is plain Pandas/Seaborn and lives in
 `toolscripts/utils/aerotaxis_analysis.py` (import in a notebook, run as a CLI, or
 feed the tidy CSVs to R).
 
+**Analyse only live worms that moved (motility QC, on by default).**
+`load_results()` / the CLI keep only crops that are **live, moving worms** before
+any summary is computed: a crop is kept only if it was tracked for
+`≥ --min_track_seconds` (default 10 s) **and** travelled `≥ --min_path_mm` total
+(default 0.5 mm, the integral of `|Forward_Velocity|`). Dead animals, debris and
+bubbles sit near zero path and are dropped; unusably short fragments are dropped
+by the duration gate. This is **non-destructive** (it filters the loaded table,
+never deletes files) and **duration-aware**, unlike the irreversible step-5
+bubble filter — so prefer it. Every run logs exactly what was cut
+(`[motility QC] kept N/M crops ...`). Disable with `--keep_immotile`, or tune the
+two thresholds; from a notebook call `load_results(path, require_motile=False)`
+or pass `min_track_seconds=` / `min_path_mm=`.
+
 **CLI (quick standard readouts):**
 ```bash
 python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/utils/aerotaxis_analysis.py" \
-    aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2
+    aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2 \
+    --min_track_seconds 10 --min_path_mm 0.5
 ```
 Writes to `analysis/`:
 - `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`
@@ -292,6 +332,7 @@ snakemake --configfile config.yaml --latency-wait 500 \
 | `Forward_Velocity` magnitude looks wrong | SWC `parameters.yaml` missing/incomplete, so calibration fell back to `config.yaml` | The pipeline reads px→mm from `{dataset}/parameters.yaml` (`recording.pixel_size_mm`, or `arena_size_cm*10/frame_height_px`). Check that file exists beside the crops and its `arena_size_cm` is right; re-crop in SWC if not. Only if it's genuinely absent, set the `config.yaml` fallback. (Do **not** use `swc_config.json`'s `um_per_pixel` — that's a separate crop-buffer calibration.) |
 | `Bend_Frequency` / `Bend_Amplitude` all NaN | Hilbert files empty (kymogram had too many NaNs) or centerline poor for that crop | Usually a bad crop; it will also look poor elsewhere. Bend columns are optional — the rest of the row is still valid. |
 | `> 150 crops` in a recording / thousands of tiny crops | Cropper latched onto bubbles | Run the bubble filter (step 5); inspect and delete bubble crops before running. |
+| One recording's workflow ends with `❌ No track.tif files found! / Metadata generation failed!` and `❌ Failed` in its `workflow_*.log` | The SWC cropper produced **zero crops** for that recording — its `<recording>/tracks.json` is `{"active_tracks": {}, "inactive_tracks": {}}` | Fails **in isolation** (other recordings keep running — each is its own SLURM array task). **First decide whether the plate was really empty or the cropper failed:** open `<recording>/report/tracking_report.mp4` — if worms are clearly visible but *not* colour-tracked, it's a cropper failure, not an empty plate. A reliable tell is a contaminated background: `python -c "import tifffile,numpy as np; a=tifffile.imread('<rec>/avg_background.tif').astype(float)[100:-100,100:-100]; print(a.std())"` — good recordings read ~4–8; a value of ~40+ means worms got averaged **into** the background, so background-subtraction cancels them and segmentation finds nothing. **Fix:** re-crop that recording in SWC with a worm-robust background (temporal **median**, or more/decorrelated background frames) and/or a lower `thresh_min`; verify the re-cropped background std drops back to single digits. If the plate genuinely had no motile worms, just drop it. |
 | `No subfolders with RUNME_cluster.sh found!` | `run_...` script executed from the wrong directory, or step 3 not run | `cd` to the working dir that contains the `*_new/` folders; run step 3 first. |
 | Snakemake: `Directory cannot be locked ...` | A previous run died | From the `*_new/` folder: `snakemake --unlock --configfile config.yaml` (the runner does this automatically). |
 | `create_results_dict`: `No temporal_features.csv found` | Analysis rule hasn't produced outputs yet, or wrong folder | Check `quick_status.sh`; run from the dataset root. |
