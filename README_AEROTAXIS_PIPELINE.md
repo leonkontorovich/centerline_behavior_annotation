@@ -115,6 +115,7 @@ To ensure your temporal alignment is flawless, beware of these common pitfalls:
 
 ## 3. One-time setup
 
+### 3.1. Conda Setup
 Only needed the first time you use conda on the LISC login.
 ```bash
 module load conda
@@ -123,6 +124,17 @@ conda config --append envs_dirs /lisc/data/scratch/neurobiology/zimmer/.conda/en
 conda env list      # confirm environments are visible
 ```
 
+### 3.2. Clone Your Isolated Repository (CRITICAL)
+Because the aerotaxis pipeline is still under active development on your personal branch, **do not run this code using the shared lab repository** (`/lisc/data/scratch/neurobiology/zimmer/autoscope/...`). That can cause merge conflicts and break other people's pipelines.
+
+Instead, clone your fork directly into your personal scratch space (e.g. `LeonK`) and switch to the correct branch:
+```bash
+cd /lisc/data/scratch/neurobiology/zimmer/LeonK
+git clone https://github.com/leonkontorovich/centerline_behavior_annotation.git
+cd centerline_behavior_annotation
+git checkout aerotaxis-temporal-pipeline
+```
+All commands in this guide assume your clone is located at `/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation`. If you clone it elsewhere, simply adjust the paths accordingly.
 ---
 
 ## 4. Step-by-step run protocol
