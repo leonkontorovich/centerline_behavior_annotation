@@ -181,7 +181,7 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 **6. Run the pipeline.** Keep total parallel jobs ≤ 200
 (e.g. 20 recordings × 10 jobs).
 ```bash
-bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh" -- --folders 20 --jobs 10
+bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh" --folders 20 --jobs 10
 ```
 *Local test run (one recording, no cluster): from inside a `*_new/` folder run
 `bash RUNME_cluster.sh -c`.*
