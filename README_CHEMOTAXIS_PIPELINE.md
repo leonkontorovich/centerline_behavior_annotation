@@ -59,14 +59,14 @@ Since the centerline pipeline relies on heavy GPU models (SAM2, DeepLabCut), it 
    ```
 2. Rename TIFF files in the experiment folder (to fit pipeline needs):
    ```bash
-   python /lisc/data/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py $PWD
+   python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/tool_scripts/rename_tracks.py" "$PWD"
    ```
 
 **Step 4: Copy Pipeline Files**
 Copy the required Snakemake execution scripts into your current directory. 
 *(Note: You do not need to manually edit `config.yaml`. The pipeline now automatically detects your SWC `parameters.yaml` file and dynamically updates your `fps`, `pixel_size_mm`, and `region_size` thresholds!)*
 ```bash
-cp -r /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis/* .
+cp -r /lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_chemotaxis/* .
 ```
 
 **Step 5: Annotate Odor Positions (Chemotaxis Only)**
@@ -78,10 +78,10 @@ Use the `annotate_odor_pos` GUI to annotate `top_left` and `odor_pos`.
 Run the cluster-based Bubblefilter.
 ```bash
 # Dry-run first:
-python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0
+python /lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0
 
 # Then delete:
-python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0 --delete
+python /lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/bubble_filter/NTF_compact.py --src . --threshold 15.0 --delete
 ```
 
 **Step 7: Run the Pipeline**
@@ -93,7 +93,7 @@ bash RUNME_cluster.sh -j 50
 **Step 8: Finalize Results**
 When analysis is finished, create `results_dict.pkl` for downstream analysis notebooks:
 ```bash
-python /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/utils/create_results_dict_server.py .
+python /lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/toolscripts/utils/create_results_dict_server.py .
 ```
 Output: `results_dict.pkl` saved in current dataset folder.
 
@@ -102,13 +102,13 @@ Output: `results_dict.pkl` saved in current dataset folder.
 
 Show current status of pipeline:
    ```bash
-   bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/quick_status.sh
+   bash /lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/quick_status.sh
    ```
 
 ### Copy Files Only
 To copy files into an existing folder structure:
 ```bash
-bash /lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
+bash /lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/bash_scripts/copy_chemotaxis_population_pipeline.sh
 ```
 
 ### Essential Shell Count Commands

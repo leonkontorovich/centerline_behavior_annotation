@@ -33,7 +33,7 @@ replaces the final analysis with a temporal one.
 
 ```
 raw recording ──► SWC cropper ──► one folder per worm track
-                                   (track.tif  + track.txt position log)
+                                   (<...>_track_N.tif + <...>_track_N.txt position log)
         │
         ▼  (upstream, unchanged: SAM2 → DLC → centerline → curvature →
         │   reversals → turns → Hilbert body-bends)
@@ -59,9 +59,11 @@ is derived from the arena `X,Y` trajectory (px→mm, signed by reversal state).
 ```
 Working_dir/
 ├── 2026-06-20_11-00-53_N2_A/         (condition / recording 1)
-│   ├── <...>_track_0/  ├── track.tif  └── track.txt
+│   ├── parameters.yaml               (auto-parsed by the pipeline)
+│   ├── tracks.json                   (SWC ledger)
+│   ├── <...>_track_0/  ├── <...>_track_0.tif  └── <...>_track_0.txt
 │   ├── <...>_track_1/  └── ...
-│   └── ...
+│   └── ...                           (other SWC outputs: logs, report/, etc.)
 ├── 2026-06-20_12-10-05_gcy35_A/      (condition / recording 2)
 └── ...
 ```
@@ -128,11 +130,6 @@ conda env list      # confirm environments are visible
 > Run **every** command from within the working directory that contains your
 > recording folders (`cd` there first; check with `pwd`).
 
-**Set a shortcut to the pipeline root (optional, keeps commands short):**
-```bash
-AERO=/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis
-```
-
 **1. Go to the dataset and activate the environment**
 ```bash
 cd "path/to/folder/of/cropped/recordings"
@@ -141,48 +138,45 @@ conda activate autoscope_behaviour_shared
 
 **2. Rename the SWC files to the pipeline convention** (`*_track_N.tif` → `track.tif`)
 ```bash
-python /lisc/data/scratch/neurobiology/zimmer/schaar/code/tool_scripts/rename_tracks.py "$PWD"
+python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/tool_scripts/rename_tracks.py" "$PWD"
 ```
 
-**3. Create the folder structure and copy the pipeline files**
-(skip if the structure already exists — use the copy-only script in step 3a instead)
+**3. Automate the folder structure and gas protocol configurations**
+This single master script will create the necessary nested `*_new` folders, copy the entire pipeline into them, and automatically read your Alicat `.txt` gas script to perfectly populate every `config.yaml` file across the dataset.
 ```bash
-bash "$AERO/bash_scripts/create_folders_and_copy_aerotaxis_population_pipeline.sh"
+python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/tool_scripts/setup_aerotaxis_dataset.py" "$PWD" "PATH_TO_YOUR_GAS_SCRIPT.txt"
 ```
-*3a. Copy/refresh pipeline files only (existing structure):*
+*(Replace `PATH_TO_YOUR_GAS_SCRIPT.txt` with the path to the Alicat `.txt` file you used for this specific experiment).*
+
+*3a. Need to re-copy pipeline files only? (existing structure):*
 ```bash
-bash "$AERO/bash_scripts/copy_aerotaxis_population_pipeline.sh"
+bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/copy_aerotaxis_population_pipeline.sh"
 ```
 
-**4. Confirm the gas protocol** in each `config.yaml` (`aerotaxis:` block) matches
-this experiment. There is **no GUI / position-annotation step** — gas shifts are
-global, so alignment is purely temporal. You do **not** set `fps` or
-`factor_px_to_mm` here: the pipeline reads them per recording from the SWC
-`parameters.yaml` that ships beside the crops (`{dataset}/parameters.yaml`);
-the `config.yaml` values are only fallbacks (see [§9](#9-configuration-reference)).
-Tune those in SWC, not here.
+**4. Double-check your configs (Optional)** 
+If you want to be safe, you can look inside one of the `config.yaml` files inside a `*_new` folder to verify the `aerotaxis:` block was populated correctly. You do **not** set `fps` or `factor_px_to_mm` here: the pipeline reads them per recording from the SWC `parameters.yaml` that ships beside the crops (`{dataset}/parameters.yaml`); the `config.yaml` values are only fallbacks (see [§9](#9-configuration-reference)). Tune those in SWC, not here.
 
 **5. Quality-gate the crops — run the bubble filter.**
 > ⚠️ If a recording has **> 150 crops**, inspect it first: certain cropper settings
 > latch onto bubbles and jitter into thousands of junk crops that flood the queue.
 ```bash
 # Dry-run (shows what would be deleted):
-python "$AERO/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0
+python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0
 # Then delete:
-python "$AERO/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0 --delete
+python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/bubble_filter/NTF_compact.py" --src . --threshold 15.0 --delete
 ```
 
 **6. Run the pipeline.** Keep total parallel jobs ≤ 200
 (e.g. 20 recordings × 10 jobs).
 ```bash
-bash "$AERO/bash_scripts/run_aerotaxis_population_pipeline.sh" -- --folders 20 --jobs 10
+bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh" -- --folders 20 --jobs 10
 ```
 *Local test run (one recording, no cluster): from inside a `*_new/` folder run
 `bash RUNME_cluster.sh -c`.*
 
 **7. Build the combined tidy table** for downstream analysis:
 ```bash
-python "$AERO/toolscripts/utils/create_results_dict_server.py" . --format parquet
+python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/utils/create_results_dict_server.py" . --format parquet
 ```
 → `aerotaxis_results.parquet` in the dataset folder (use `--format csv` or `pkl` if preferred).
 
@@ -223,7 +217,7 @@ feed the tidy CSVs to R).
 
 **CLI (quick standard readouts):**
 ```bash
-python "$AERO/toolscripts/utils/aerotaxis_analysis.py" \
+python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/utils/aerotaxis_analysis.py" \
     aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2
 ```
 Writes to `analysis/`:
@@ -251,7 +245,7 @@ ssh -CNL localhost:9997:localhost:9997 <user>@login01.lisc.univie.ac.at
 
 **Pipeline status:**
 ```bash
-bash "$AERO/bash_scripts/quick_status.sh"
+bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/quick_status.sh"
 ```
 
 **Count things (read-only):**
