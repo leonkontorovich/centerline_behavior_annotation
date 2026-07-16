@@ -48,7 +48,11 @@ is 0 everywhere and the output is identical to before.
 Output: a tidy, flat per-frame CSV with columns
     [Crop_ID, Frame, Time_Seconds, O2_State, Cycle_Index, Time_In_Phase_s,
      Forward_Velocity, Reversal_Active, Turn_Active,
-     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded, X_mm, Y_mm]
+     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded, X_mm, Y_mm, fps]
+The trailing `fps` column records the TRUE per-recording frame rate (read from
+the SWC parameters.yaml by the Snakefile) so downstream analysis converts frames
+to seconds with the real rate instead of silently assuming 10 fps. It is a
+constant per crop; the combined table carries it through unchanged.
 where Frame / Time_Seconds are ABSOLUTE (recording-wide) when track.txt is
 available, so crops share one clock for gas-locked population analysis.
 `Cycle_Index` (0-based repeat number, -1 for baseline/pre/post) and
@@ -269,13 +273,30 @@ def load_missing_frames(crop_dir):
     return np.asarray(missing, dtype=bool)
 
 
-def _signed_velocity(x_mm, y_mm, reversal_active, fps, smooth_win):
-    """Speed magnitude (mm/s) signed by reversal state (reversal -> negative)."""
-    x = pd.Series(x_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
-    y = pd.Series(y_mm).rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
-    speed = np.sqrt(np.gradient(x) ** 2 + np.gradient(y) ** 2) * fps
+def _signed_velocity(x_mm, y_mm, reversal_active, fps, smooth_win, occluded=None):
+    """Speed magnitude (mm/s) signed by reversal state (reversal -> negative).
+
+    Occluded frames carry a NaN arena position (the animal was lost). A raw
+    np.gradient would spread that NaN onto the two *neighbouring*, non-occluded
+    frames and silently blank their velocity even though they were tracked fine.
+    We therefore interpolate the position gaps before differentiating -- so real
+    neighbours keep a valid (gap-spanning) speed -- and then re-mask the occluded
+    frames themselves to NaN (they are dropped at analysis time anyway, and their
+    velocity is not real). If every position is NaN, the result is all-NaN.
+    """
+    xs = pd.Series(x_mm, dtype=float).interpolate(limit_direction="both")
+    ys = pd.Series(y_mm, dtype=float).interpolate(limit_direction="both")
+    x = xs.rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
+    y = ys.rolling(smooth_win, min_periods=1, center=True).mean().to_numpy()
+    if len(x) >= 2:
+        speed = np.sqrt(np.gradient(x) ** 2 + np.gradient(y) ** 2) * fps
+    else:
+        speed = np.zeros(len(x))
     direction = np.where(reversal_active == 1, -1.0, 1.0)
-    return speed * direction
+    vel = speed * direction
+    if occluded is not None:
+        vel = np.where(np.asarray(occluded) > 0.5, np.nan, vel)
+    return vel
 
 
 def _fit_length(arr, n):
@@ -366,7 +387,8 @@ def main(arg_list=None):
     reversal_onset = np.zeros(n, dtype=int)
     reversal_onset[1:] = ((reversal_active[1:] == 1) & (reversal_active[:-1] == 0)).astype(int)
 
-    forward_velocity = _signed_velocity(x_mm, y_mm, reversal_active, args.fps, smooth_win)
+    forward_velocity = _signed_velocity(x_mm, y_mm, reversal_active, args.fps,
+                                        smooth_win, occluded=occluded)
 
     # ---- body-bend metrics from the existing Hilbert outputs (optional) ----
     bend_freq = load_hilbert_per_frame(args.bend_freq, take_abs=True)      # Hz
@@ -400,6 +422,10 @@ def main(arg_list=None):
         # displacement / positional spread per crop without re-reading track.txt.
         "X_mm": x_mm,
         "Y_mm": y_mm,
+        # TRUE per-recording frame rate (from SWC parameters.yaml via the
+        # Snakefile). Constant per crop; lets downstream analysis convert frames
+        # to seconds with the real rate instead of assuming 10 fps.
+        "fps": float(args.fps),
     })
     Path(args.out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_csv, index=False)

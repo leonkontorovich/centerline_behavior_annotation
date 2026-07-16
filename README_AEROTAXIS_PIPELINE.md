@@ -258,6 +258,7 @@ statistics described in [§6](#6-downstream-analysis). To only build the table
 | `Bend_Amplitude` | body-bend amplitude (curvature units), from Hilbert envelope |
 | `Occluded` | 1 = animal lost/occluded on that frame (from the SWC crop ledger `<crop>_metadata.json`). Filter `Occluded == 0` before computing behaviour rates — occluded frames carry blank-crop-derived values. 0 everywhere for data cropped by older SWC versions. |
 | `X_mm`, `Y_mm` | absolute arena position (mm), for analysis-time displacement QC (see [§6](#6-downstream-analysis)). Crop centroid in the track.txt fallback. |
+| `fps` | the **true per-recording frame rate** (read from SWC `parameters.yaml`), embedded so downstream analysis converts frames↔seconds with the real rate instead of assuming 10 fps. Constant per crop; absent (→ analysis falls back to `--fps`) for tables from older pipeline versions. |
 
 The core behaviour columns are the originally-specified schema; the rest are
 enrichments computed from artifacts already in the pipeline (reversal onsets, the
@@ -298,11 +299,29 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 ```
 (`finalize_aerotaxis_dataset.sh` in step 7 runs exactly this for you.) Writes to `analysis/`:
 - `crop_qc.csv` — per-crop QC signals + the `alive` flag (inspect the cropper's output here)
-- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`
+- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted** (each worm counts once, so a long recording no longer dominates the mean); carries `<metric>_sem`, `n_crops`, `n_recordings`. Add `--frame_pooled` for the old frame-weighted means.
 - `transition_triggered_<feature>.csv` + `.png` — feature aligned to each gas shift (mean ± 95 % CI)
 - `per_cycle_summary.csv` — mean feature per successive cycle (**habituation** across pulses, via `Cycle_Index`)
 - `reversal_reaction.csv` — latency from each pulse onset to the first reversal
-- `condition_stats.csv` — Condition comparison per gas state (nonparametric test at the **Recording** level, so plates/crops aren't pseudo-replicated)
+- `condition_stats.csv` — Condition comparison per gas state (nonparametric test at the **Recording** level, so plates/crops aren't pseudo-replicated). Includes `p_adj` (**Benjamini–Hochberg FDR** across the whole metric×state family) + a `reject_fdr_0.05` flag, and machine-readable `n_units`/`n_per_condition`.
+
+> **Frame rate is automatic.** The analysis reads the true fps from the `fps`
+> column the extractor embeds, so you never pass `--fps` for current data — the
+> CLI prints `[fps] using N fps (from data)`. `--fps` is only a fallback for
+> legacy tables that predate the column, and it warns whenever it is used. This
+> closes a latent bug where every rate/duration/latency was silently computed at
+> 10 fps regardless of the real recording rate.
+
+> **A crop is a track fragment, not a unique animal.** SWC tracks by
+> nearest-centroid proximity with **no re-identification**: short occlusions are
+> bridged within a track (the `Occluded` frames), but once a worm is lost long
+> enough for its track to end — or blobs merge, or it leaves/re-enters the ~5 px
+> gate — the re-detection gets a **new** `_track_N` id. So one worm can become
+> several crops and `n_crops` over-counts animals. Crop-weighting (the default
+> `per_state_summary`) removes frame-level pseudoreplication but is per-fragment,
+> not per-animal — so **base statistical claims on the Recording-level tests**
+> (`condition_stats.csv`), which are robust to fragmentation. True per-animal
+> counting would require track stitching/re-ID, which SWC does not do.
 
 **Notebook:** `jupyter_notebooks/Aerotaxis_population_grouped.ipynb`
 (load → per-state summary → transition-triggered averages → reversal reaction →

@@ -15,9 +15,10 @@ Columns:
     Condition, Genotype, Recording, Plate, Crop_ID, Frame, Time_Seconds,
     O2_State, Cycle_Index, Time_In_Phase_s, Forward_Velocity, Reversal_Active,
     Turn_Active, Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded,
-    X_mm, Y_mm
+    X_mm, Y_mm, fps
 (Cycle_Index/Time_In_Phase_s enable habituation analysis across pulses; X_mm/Y_mm
-are the arena position for analysis-time displacement QC. Both are absent for
+are the arena position for analysis-time displacement QC; `fps` is the true
+per-recording frame rate so the analysis never assumes 10 fps. All are absent for
 tables built by older pipeline versions — downstream code tolerates that.)
 
 `Occluded` (1 = animal lost/occluded on that frame, from the SWC crop ledger)

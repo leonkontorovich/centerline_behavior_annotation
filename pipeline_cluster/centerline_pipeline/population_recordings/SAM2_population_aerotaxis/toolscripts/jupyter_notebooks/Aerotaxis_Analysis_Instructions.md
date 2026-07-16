@@ -28,7 +28,7 @@ aerotaxis_results.{parquet,csv,pkl}
 |---|---|
 | `Condition` | top-level folder (e.g. genotype / paradigm) |
 | `Recording` | recording folder |
-| `Crop_ID` | per-worm track id |
+| `Crop_ID` | per-**track** id — one continuous trajectory fragment (see "What counts as an animal?" below); **not** a guaranteed unique worm |
 | `Frame` | **absolute** recording frame (from SWC `track.txt`), so crops share one clock |
 | `Time_Seconds` | **absolute** recording time (s), from `track.txt` `time_imputed_seconds` |
 | `O2_State` | gas state from the `aerotaxis:` protocol at that absolute time (e.g. `7pct_O2`, `21pct_O2`, `pre_protocol`) |
@@ -42,12 +42,36 @@ aerotaxis_results.{parquet,csv,pkl}
 | `Bend_Amplitude` | body-bend amplitude (curvature units) from the Hilbert envelope |
 | `Occluded` | 1 = SWC-flagged animal loss on that frame; dropped by default on load |
 | `X_mm`, `Y_mm` | absolute arena position (mm); used for the aliveness QC (net displacement / spread) |
+| `fps` | **true per-recording frame rate** (from SWC `parameters.yaml`), so the analysis converts frames↔seconds with the real rate instead of assuming 10 fps |
+
+### What counts as an animal? (important for interpreting counts + stats)
+
+A `Crop_ID` is **one SWC track = one continuous trajectory fragment, not a unique
+worm.** SWC associates detections frame-to-frame by nearest-centroid proximity
+(gate ≈ 5 px) with **no re-identification**. Short occlusions are bridged inside a
+track (the `Occluded` frames), but once a worm is lost long enough for its track to
+end — or two worms' blobs merge, or a worm leaves and re-enters the gate — the
+re-detection is given a **brand-new track id**. So:
+
+- **one physical worm can appear as several crops** over a recording (each pause,
+  coil, blob-merge or dropout can start a new id), and two worms that cross within
+  the gate can swap ids;
+- `n_crops` therefore **over-counts animals** — read it as a fragment count;
+- crop-weighting (`per_state_summary`, default) fixes the *frame-level*
+  pseudoreplication (a long recording no longer dominates), but it is
+  per-fragment, not strictly per-animal;
+- the **fragmentation-robust replication unit is the Recording (plate)** — which is
+  exactly what `compare_conditions_per_state` uses. **Report fragment/crop counts
+  descriptively, but base statistical claims on the Recording-level tests.**
+
+(True per-animal counting would need track re-identification/stitching, which SWC
+does not do — a possible future upstream improvement.)
 
 Assumptions: one row per frame; `Reversal_Active`/`Turn_Active` are 0/1 so their
 means are fractions of time. `Bend_*` may be NaN for crops whose kymogram was too
 poor for the Hilbert transform. `Cycle_Index`/`Time_In_Phase_s`/`X_mm`/`Y_mm`/
-`Occluded` are absent for tables built by older pipeline versions; every helper
-tolerates that.
+`Occluded`/`fps` are absent for tables built by older pipeline versions; every
+helper tolerates that (and falls back to `--fps`, default 10, with a warning).
 
 ## Quick start (CLI)
 
@@ -59,14 +83,17 @@ python /path/to/toolscripts/utils/aerotaxis_analysis.py \
 
 Writes to `analysis/`:
 - `crop_qc.csv` — per-crop QC signals + the `alive` flag
-- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`
+- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted by default** (each worm counts once, so a long recording no longer dominates); carries a `<metric>_sem` plus `n_crops` and `n_recordings`. Pass `--frame_pooled` for the old frame-weighted means.
 - `transition_triggered_<feature>.csv` + `.png` — each feature aligned to the gas shifts
 - `per_cycle_summary.csv` — mean feature per successive cycle (habituation)
 - `reversal_reaction.csv` — latency from each `--pulse_state` onset to the first reversal
-- `condition_stats.csv` — Condition comparison per state (Recording-level nonparametric test)
+- `condition_stats.csv` — Condition comparison per state (Recording-level nonparametric test). Includes `p_adj` (Benjamini–Hochberg FDR across the whole metric×state family) with a `reject_fdr_0.05` flag, and `n_units`/`n_per_condition` replication counts.
 
-(`finalize_aerotaxis_dataset.sh` runs `create_results_dict_server.py` + this CLI
-for a whole dataset in one command.)
+**Frame rate:** the analysis reads the true fps from the `fps` column, so you do
+**not** pass `--fps` for current data (the CLI prints `[fps] using N fps (from
+data)`). `--fps` is only a fallback for legacy tables that lack the column, and a
+warning fires whenever it is used. (`finalize_aerotaxis_dataset.sh` runs
+`create_results_dict_server.py` + this CLI for a whole dataset in one command.)
 
 ## The analysis primitives (`aerotaxis_analysis.py`)
 
@@ -83,9 +110,12 @@ for a whole dataset in one command.)
   `crop_qc(df)` (one row per crop, all signals + `alive`) to pick thresholds.
   Non-destructive; `require_alive=False` disables it. (`filter_motile`/`crop_motility`
   remain as aliases.)
-- **`per_state_summary(df, by=("Condition","O2_State"), fps=10)`** — mean
+- **`per_state_summary(df, by=("Condition","O2_State"), crop_level=True)`** — mean
   `Forward_Velocity`, `reversal_fraction`, `turn_fraction`, `mean_bend_frequency_hz`,
-  `reversal_onsets_per_min`, frame/crop counts.
+  `reversal_onsets_per_min`, plus `<metric>_sem`, `n_crops`, `n_recordings`.
+  Crop-weighted (each animal once) by default to avoid frame-level
+  pseudoreplication; `crop_level=False` reproduces the old frame-pooled means.
+  Observation time for the onset rate uses each crop's true fps.
 - **`find_transitions(df)`** — one row per gas shift per crop
   (`from_state`, `to_state`, `Frame`, `Time_Seconds`).
 - **`transition_triggered_average(df, feature, pre_s, post_s, fps, transition=None)`**
@@ -103,8 +133,13 @@ for a whole dataset in one command.)
 - **`compare_conditions_per_state(df, metric, states=None, unit="Recording")`** —
   nonparametric Condition comparison within each gas state, run at the Recording
   level so frames/crops aren't pseudo-replicated (Mann–Whitney for 2 Conditions,
-  Kruskal–Wallis for >2). Needs scipy.
+  Kruskal–Wallis for >2). Returns raw `p_value` + `n_units`/`n_per_condition`; the
+  CLI adds Benjamini–Hochberg `p_adj` across the whole metric×state family. Needs scipy.
 - **`plot_per_state_summary` / `plot_transition_triggered`** — seaborn helpers.
+
+**Tests:** `tests/` holds a pytest suite for the gas-state mapping and every
+analysis primitive changed here (`pytest` from the pipeline root). Run it after
+editing the analysis or the extractor.
 
 ## Notebook steps
 

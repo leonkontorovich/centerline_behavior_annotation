@@ -48,6 +48,102 @@ except Exception:  # pragma: no cover - fallback if run in isolation
 FEATURES = ["Forward_Velocity", "Reversal_Active", "Turn_Active", "Bend_Frequency", "Bend_Amplitude"]
 GROUP_KEYS = ["Condition", "Recording", "Crop_ID"]
 
+# IMPORTANT -- what a Crop_ID actually is (drives the replication unit below).
+# A `Crop_ID` (SWC `<recording>_track_N`) is ONE continuous trajectory fragment,
+# NOT a guaranteed-unique animal. SWC tracks by greedy nearest-centroid proximity
+# (gate ~max_dist=5 px) with NO re-identification: short occlusions are bridged
+# within a track (the `Occluded` frames), but once a worm is lost long enough for
+# its track to end -- or two blobs merge, or it leaves/re-enters the gate -- the
+# re-detection gets a BRAND-NEW track id. So one physical worm can appear as
+# several crops, and two worms that swap within the gate can swap ids. Therefore:
+#   * `n_crops` counts track fragments, not animals (it over-counts worms);
+#   * crop-weighting (per_state_summary crop_level=True) removes the frame-level
+#     pseudoreplication that lets a long recording dominate, but it is per-FRAGMENT,
+#     not strictly per-animal;
+#   * the only fragmentation-robust replication unit is the RECORDING (plate) --
+#     which is exactly what compare_conditions_per_state uses for inference.
+# Report crop/fragment counts descriptively; do formal condition tests at the
+# Recording level.
+
+# The extractor now embeds the TRUE per-recording frame rate as an `fps` column.
+# Analysis reads it from the data; the scalar `fps=` arguments below are only a
+# FALLBACK for legacy tables that predate the column. DEFAULT_FPS is that legacy
+# assumption -- using it silently miscalibrates any recording that was not 10 fps,
+# so `_resolve_fps` warns loudly whenever the column is missing.
+FPS_COL = "fps"
+DEFAULT_FPS = 10.0
+
+
+def _resolve_fps(df, fps_fallback=DEFAULT_FPS, verbose=True):
+    """Single frame rate for the whole table, preferring the per-recording `fps`
+    column the extractor writes over the caller-supplied fallback.
+
+    Used where one shared rate is needed (the transition-triggered-average time
+    grid). Per-crop computations use each crop's own fps via `_crop_fps` instead.
+    Returns (fps, source) with source in {"data", "fallback"} and warns if the
+    column is absent (legacy 10-fps assumption) or carries multiple rates.
+    """
+    if FPS_COL in df.columns:
+        vals = pd.to_numeric(df[FPS_COL], errors="coerce").dropna().to_numpy()
+        vals = np.unique(vals[vals > 0])
+        if len(vals) == 1:
+            return float(vals[0]), "data"
+        if len(vals) > 1:
+            if verbose:
+                print(f"[fps] WARNING: multiple frame rates in one table "
+                      f"({[round(float(v), 3) for v in vals]}); per-crop stats use "
+                      f"each crop's fps, but transition-triggered averages assume a "
+                      f"single grid -> using the median {float(np.median(vals)):.3f} fps.",
+                      file=sys.stderr)
+            return float(np.median(vals)), "data"
+    if verbose:
+        print(f"[fps] WARNING: no `fps` column in the results table; assuming "
+              f"{fps_fallback} fps. If any recording was not {fps_fallback} fps, its "
+              f"rates/durations/latencies are miscalibrated -- re-run the extractor "
+              f"to embed the true fps (or pass --fps).", file=sys.stderr)
+    return float(fps_fallback), "fallback"
+
+
+def _crop_fps(sub, fallback):
+    """The frame rate for a single crop: its `fps` column value if present and
+    valid, else the fallback scalar."""
+    if FPS_COL in sub.columns:
+        v = pd.to_numeric(sub[FPS_COL], errors="coerce").dropna()
+        if len(v) and v.iloc[0] > 0:
+            return float(v.iloc[0])
+    return float(fallback)
+
+
+def _per_frame_dt(df, fps_fallback):
+    """Per-frame time step (seconds) as a Series aligned to df: 1/fps using the
+    per-recording `fps` column when present, else 1/fallback. Summing this over a
+    group gives that group's true observation time even with per-crop rates."""
+    if FPS_COL in df.columns:
+        rate = pd.to_numeric(df[FPS_COL], errors="coerce")
+        rate = rate.where(rate > 0)
+        return (1.0 / rate).fillna(1.0 / float(fps_fallback))
+    return pd.Series(1.0 / float(fps_fallback), index=df.index)
+
+
+def _bh_fdr(pvals):
+    """Benjamini-Hochberg FDR-adjusted p-values (dependency-free so it runs on
+    any scipy). NaNs pass through as NaN and are excluded from the correction."""
+    p = np.asarray(pvals, dtype=float)
+    out = np.full(p.shape, np.nan)
+    idx = np.where(np.isfinite(p))[0]
+    if len(idx) == 0:
+        return out
+    ps = p[idx]
+    order = np.argsort(ps)
+    m = len(ps)
+    adj = ps[order] * m / np.arange(1, m + 1)
+    adj = np.minimum.accumulate(adj[::-1])[::-1]  # enforce monotonic non-decreasing
+    adj = np.clip(adj, 0.0, 1.0)
+    restored = np.empty(m)
+    restored[order] = adj
+    out[idx] = restored
+    return out
+
 # ----------------------------------------------------------------------------
 # Aliveness QC (deliberately LENIENT) -- the goal is to keep every real worm,
 # slow OR fast, and remove only inert objects (dead animals, bubbles, debris).
@@ -77,7 +173,7 @@ MIN_EVENTS = 1             # >= this many reversal+turn onsets = it behaved
 # ----------------------------------------------------------------------
 # Loading
 # ----------------------------------------------------------------------
-def load_results(path, drop_occluded=True, require_alive=True, fps=10.0,
+def load_results(path, drop_occluded=True, require_alive=True, fps=DEFAULT_FPS,
                  min_track_seconds=MIN_TRACK_SECONDS, min_path_mm=MIN_PATH_MM,
                  min_displacement_mm=MIN_DISPLACEMENT_MM,
                  min_bend_amplitude=MIN_BEND_AMPLITUDE, min_events=MIN_EVENTS,
@@ -158,9 +254,15 @@ def _apply_occlusion_filter(df, drop_occluded):
 # Aliveness QC -- keep every real worm (slow or fast), drop inert junk
 # ----------------------------------------------------------------------
 def _event_count(binary_series):
-    """Number of 0->1 onsets in a per-frame 0/1 series (event count, not frames)."""
+    """Number of 0->1 onsets in a per-frame 0/1 series (event count, not frames).
+
+    Counts only observed rising edges. A crop that begins already in the active
+    state is NOT credited with an onset -- that transition happened before the
+    crop started, so counting it (as the old code did) inflated `n_events` for
+    every crop that opened mid-reversal/turn.
+    """
     a = pd.to_numeric(binary_series, errors="coerce").fillna(0).to_numpy() > 0.5
-    return int(np.count_nonzero(a[1:] & ~a[:-1])) + int(a[:1].sum()) if len(a) else 0
+    return int(np.count_nonzero(a[1:] & ~a[:-1])) if len(a) else 0
 
 
 def _nanmean(series):
@@ -169,7 +271,7 @@ def _nanmean(series):
     return float(np.nanmean(a)) if np.isfinite(a).any() else np.nan
 
 
-def crop_qc(df, fps=10.0):
+def crop_qc(df, fps=DEFAULT_FPS):
     """Per-crop QC summary from the (already occlusion-filtered) table.
 
     One row per crop with the signals the aliveness gate uses, so you can eyeball
@@ -187,9 +289,10 @@ def crop_qc(df, fps=10.0):
     have_pos = {"X_mm", "Y_mm"}.issubset(df.columns)
     rows = []
     for keys, sub in df.groupby(GROUP_KEYS, sort=False):
+        crop_fps = _crop_fps(sub, fps)
         v = np.abs(pd.to_numeric(sub.get("Forward_Velocity"), errors="coerce").to_numpy())
         n = len(sub)
-        total_path = np.nansum(v) / fps
+        total_path = np.nansum(v) / crop_fps
         mean_speed = np.nanmean(v) if np.isfinite(v).any() else 0.0
         if have_pos:
             x = pd.to_numeric(sub["X_mm"], errors="coerce").to_numpy()
@@ -212,7 +315,7 @@ def crop_qc(df, fps=10.0):
             n_events += _event_count(sub["Reversal_Active"])
         if "Turn_Active" in sub:
             n_events += _event_count(sub["Turn_Active"])
-        rows.append((*keys, n, n / fps, total_path, mean_speed, net_disp, pos_spread,
+        rows.append((*keys, n, n / crop_fps, total_path, mean_speed, net_disp, pos_spread,
                      bend_amp, bend_freq, n_events))
     return pd.DataFrame(rows, columns=GROUP_KEYS + [
         "n_frames", "duration_s", "total_path_mm", "mean_speed_mm_s",
@@ -220,7 +323,7 @@ def crop_qc(df, fps=10.0):
         "mean_bend_frequency_hz", "n_events"])
 
 
-def filter_alive(df, fps=10.0, min_track_seconds=MIN_TRACK_SECONDS,
+def filter_alive(df, fps=DEFAULT_FPS, min_track_seconds=MIN_TRACK_SECONDS,
                  min_path_mm=MIN_PATH_MM, min_displacement_mm=MIN_DISPLACEMENT_MM,
                  min_bend_amplitude=MIN_BEND_AMPLITUDE, min_events=MIN_EVENTS,
                  verbose=True, return_qc=False):
@@ -269,33 +372,84 @@ filter_motile = filter_alive
 # ----------------------------------------------------------------------
 # Per-state summary (reversal / turn rates + mean speed per O2 state)
 # ----------------------------------------------------------------------
-def per_state_summary(df, by=("Condition", "O2_State"), fps=10.0):
+def per_state_summary(df, by=("Condition", "O2_State"), fps=DEFAULT_FPS,
+                      crop_level=True):
     """
     Mean behaviour per gas state (and condition). Reversal_Active / Turn_Active
-    are 0/1 so their means are fractions of time spent in that state.
-    Bend metrics and reversal-onset rate are included when present.
+    are 0/1 so their means are fractions of time spent in that state; bend metrics
+    and reversal-onset rate are included when present.
+
+    crop_level=True (default, RECOMMENDED): each crop is summarised once per group,
+    then those crop values are averaged -- so a single crop gets equal weight and a
+    long recording no longer dominates the mean (frames within a crop are pseudo-
+    replicates). NOTE a crop is a trajectory FRAGMENT, not a guaranteed unique
+    animal (see the GROUP_KEYS note), so this removes frame-level pseudoreplication
+    but is not strictly per-animal; treat `n_crops` as a fragment count and run
+    formal condition tests at the Recording level (compare_conditions_per_state).
+    The output carries a `<metric>_sem` (spread across crops), `n_crops`, and
+    `n_recordings` per row. Observation time (for the onset rate) uses each crop's
+    true fps.
+
+    crop_level=False reproduces the old frame-pooled behaviour (every frame equal
+    weight) for comparison; not recommended for reporting.
     """
     by = list(by)
-    g = df.groupby(by)
+    metric_cols = ["mean_forward_velocity", "reversal_fraction", "turn_fraction"]
+
+    if not crop_level:
+        g = df.groupby(by, observed=True)
+        agg = dict(
+            mean_forward_velocity=("Forward_Velocity", "mean"),
+            reversal_fraction=("Reversal_Active", "mean"),
+            turn_fraction=("Turn_Active", "mean"),
+            n_frames=("Frame", "size"),
+        )
+        if "Bend_Frequency" in df:
+            agg["mean_bend_frequency_hz"] = ("Bend_Frequency", "mean")
+        if "Reversal_Onset" in df:
+            agg["reversal_onsets"] = ("Reversal_Onset", "sum")
+        out = g.agg(**agg).reset_index()
+        out["n_crops"] = g[GROUP_KEYS[-1]].nunique().values
+        obs = df.assign(_dt=_per_frame_dt(df, fps)).groupby(by, observed=True)["_dt"].sum()
+        out = out.merge(obs.rename("obs_seconds").reset_index(), on=by, how="left")
+        if "reversal_onsets" in out:
+            out["reversal_onsets_per_min"] = out["reversal_onsets"] / (out["obs_seconds"] / 60.0)
+        return out
+
+    # crop-level: one row per crop first (the biological replication unit).
+    crop_keys = list(dict.fromkeys(by + GROUP_KEYS))
+    d = df.assign(_dt=_per_frame_dt(df, fps))
     agg = dict(
         mean_forward_velocity=("Forward_Velocity", "mean"),
         reversal_fraction=("Reversal_Active", "mean"),
         turn_fraction=("Turn_Active", "mean"),
         n_frames=("Frame", "size"),
+        obs_seconds=("_dt", "sum"),
     )
     if "Bend_Frequency" in df:
         agg["mean_bend_frequency_hz"] = ("Bend_Frequency", "mean")
+        metric_cols.append("mean_bend_frequency_hz")
     if "Reversal_Onset" in df:
         agg["reversal_onsets"] = ("Reversal_Onset", "sum")
-    out = g.agg(**agg).reset_index()
-    out["n_crops"] = g[GROUP_KEYS[-1]].nunique().values
-    if "reversal_onsets" in out:
-        # onsets per minute of observation in that state
-        out["reversal_onsets_per_min"] = out["reversal_onsets"] / (out["n_frames"] / fps / 60.0)
+    per_crop = d.groupby(crop_keys, observed=True).agg(**agg).reset_index()
+    if "reversal_onsets" in per_crop:
+        per_crop["reversal_onsets_per_min"] = (
+            per_crop["reversal_onsets"] / (per_crop["obs_seconds"] / 60.0))
+        metric_cols.append("reversal_onsets_per_min")
+
+    g = per_crop.groupby(by, observed=True)
+    out = g[metric_cols].mean().reset_index()
+    sem = (g[metric_cols].sem().reset_index()
+           .rename(columns={c: f"{c}_sem" for c in metric_cols}))
+    out = out.merge(sem, on=by, how="left")
+    out["n_crops"] = g.size().values
+    out["n_frames"] = df.groupby(by, observed=True)["Frame"].size().values
+    if "Recording" in df.columns:
+        out["n_recordings"] = df.groupby(by, observed=True)["Recording"].nunique().values
     return out
 
 
-def reversal_reaction(df, to_state, window_s=15.0, fps=10.0):
+def reversal_reaction(df, to_state, window_s=15.0, fps=DEFAULT_FPS):
     """
     Reversal reaction to a gas shift: for every transition INTO `to_state`
     (e.g. the 21% O2 pulse onset), per crop, measure the latency (s) from the
@@ -308,13 +462,14 @@ def reversal_reaction(df, to_state, window_s=15.0, fps=10.0):
     """
     if "Reversal_Onset" not in df:
         raise KeyError("Reversal_Onset column required (re-run the extractor).")
-    win_f = int(round(window_s * fps))
     trans = find_transitions(df)
     trans = trans[trans.to_state == to_state]
 
     rows = []
     for keys, sub in df.groupby(GROUP_KEYS, sort=False):
         sub = sub.sort_values("Frame").reset_index(drop=True)
+        crop_fps = _crop_fps(sub, fps)  # true rate for this crop -> window + latency
+        win_f = int(round(window_s * crop_fps))
         onset_frames = sub.loc[sub.Reversal_Onset == 1, "Frame"].to_numpy()
         key_dict = dict(zip(GROUP_KEYS, keys if isinstance(keys, tuple) else (keys,)))
         ev = trans
@@ -323,7 +478,7 @@ def reversal_reaction(df, to_state, window_s=15.0, fps=10.0):
         for _, e in ev.iterrows():
             f0 = e["Frame"]
             after = onset_frames[(onset_frames >= f0) & (onset_frames <= f0 + win_f)]
-            latency = (after[0] - f0) / fps if len(after) else np.nan
+            latency = (after[0] - f0) / crop_fps if len(after) else np.nan
             rows.append({**key_dict, "Time_Seconds": e["Time_Seconds"],
                          "latency_s": latency, "reacted": int(len(after) > 0)})
     return pd.DataFrame(rows)
@@ -355,7 +510,7 @@ def find_transitions(df):
 
 
 def transition_triggered_average(df, feature="Forward_Velocity",
-                                 pre_s=10.0, post_s=30.0, fps=10.0,
+                                 pre_s=10.0, post_s=30.0, fps=DEFAULT_FPS,
                                  transition=None):
     """
     Align `feature` to gas transitions and return a long tidy DataFrame with a
@@ -363,9 +518,15 @@ def transition_triggered_average(df, feature="Forward_Velocity",
     (which will show mean +/- 95% CI across crops).
 
     transition: optional "from->to" filter, e.g. "7pct_O2->21pct_O2".
+
+    All events share ONE relative-time grid so seaborn can average them, so this
+    uses a single dataset frame rate (the true `fps` column when present, else the
+    `fps` fallback). A dataset that genuinely mixes frame rates would need
+    resampling to a common grid -- `_resolve_fps` warns in that case.
     """
-    pre_f, post_f = int(round(pre_s * fps)), int(round(post_s * fps))
-    rel_time = np.arange(-pre_f, post_f + 1) / fps
+    grid_fps, _ = _resolve_fps(df, fps_fallback=fps, verbose=False)
+    pre_f, post_f = int(round(pre_s * grid_fps)), int(round(post_s * grid_fps))
+    rel_time = np.arange(-pre_f, post_f + 1) / grid_fps
     trans = find_transitions(df)
     if transition is not None:
         f, t = transition.split("->")
@@ -399,7 +560,7 @@ def transition_triggered_average(df, feature="Forward_Velocity",
 # Habituation / adaptation across successive gas pulses (uses Cycle_Index)
 # ----------------------------------------------------------------------
 def per_cycle_summary(df, feature="Forward_Velocity", state=None,
-                      by=("Condition",), fps=10.0):
+                      by=("Condition",), fps=DEFAULT_FPS):
     """
     Mean `feature` per successive cycle, to test whether the O2 response
     habituates/adapts over repeated pulses.
@@ -452,8 +613,10 @@ def compare_conditions_per_state(df, metric="Forward_Velocity",
     default the metric is first averaged per crop, then per `unit` (Recording),
     and the test runs across those unit-level values — Kruskal–Wallis for >2
     Conditions, Mann–Whitney U for exactly 2. Returns a tidy table
-    [O2_State, metric, test, statistic, p_value, n per condition]. Requires
-    scipy; raises a clear error if it is unavailable.
+    [O2_State, metric, test, statistic, p_value, n_units, n_per_condition].
+    p-values are RAW here; the CLI adds a Benjamini-Hochberg `p_adj` across the
+    whole metric×state family (see `_bh_fdr`). Requires scipy; raises a clear
+    error if it is unavailable.
     """
     try:
         from scipy import stats
@@ -471,9 +634,14 @@ def compare_conditions_per_state(df, metric="Forward_Velocity",
         groups = [g for g in groups if len(g) > 0]
         labels = [c for c, g in unit_means.groupby("Condition", observed=True) if len(g[metric].dropna())]
         n_by = {c: int(len(g[metric].dropna())) for c, g in unit_means.groupby("Condition", observed=True)}
+        # machine-readable replication counts: a total int + a "cond=n; cond=n"
+        # string (a dict-in-a-cell serialises unpredictably to CSV/parquet).
+        n_units = int(sum(n_by.values()))
+        n_per_condition = "; ".join(f"{c}={n}" for c, n in sorted(n_by.items()))
         if len(groups) < 2 or all(len(g) < 2 for g in groups):
             rows.append(dict(O2_State=state, metric=metric, test="n/a",
-                             statistic=np.nan, p_value=np.nan, n=n_by))
+                             statistic=np.nan, p_value=np.nan,
+                             n_units=n_units, n_per_condition=n_per_condition))
             continue
         if len(groups) == 2:
             stat, p = stats.mannwhitneyu(groups[0], groups[1], alternative="two-sided")
@@ -482,7 +650,8 @@ def compare_conditions_per_state(df, metric="Forward_Velocity",
             stat, p = stats.kruskal(*groups)
             test = f"Kruskal-Wallis ({unit}-level)"
         rows.append(dict(O2_State=state, metric=metric, test=test,
-                         statistic=float(stat), p_value=float(p), n=n_by))
+                         statistic=float(stat), p_value=float(p),
+                         n_units=n_units, n_per_condition=n_per_condition))
     return pd.DataFrame(rows)
 
 
@@ -516,7 +685,13 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("results", help="aerotaxis_results.{parquet,csv,pkl} or a dataset folder")
     ap.add_argument("--outdir", default="analysis")
-    ap.add_argument("--fps", type=float, default=10.0)
+    ap.add_argument("--fps", type=float, default=DEFAULT_FPS,
+                    help="FALLBACK frame rate only. The true per-recording fps is "
+                         "read from the `fps` column the extractor now writes; this "
+                         f"value is used only for legacy tables that lack it (default {DEFAULT_FPS}).")
+    ap.add_argument("--frame_pooled", action="store_true",
+                    help="per-state summary: pool all frames (legacy behaviour) instead "
+                         "of the default crop-weighted mean (each animal counts once).")
     ap.add_argument("--pre_s", type=float, default=10.0)
     ap.add_argument("--post_s", type=float, default=30.0)
     ap.add_argument("--pulse_state", default=None,
@@ -552,7 +727,13 @@ def main():
     print(f"Loaded {len(df):,} rows, {df.groupby(GROUP_KEYS).ngroups} crops, "
           f"states={sorted(df.O2_State.unique())}")
 
-    summary = per_state_summary(df, fps=args.fps)
+    # Resolve the frame rate ONCE up front so the operator sees where it came
+    # from (the embedded per-recording `fps` column, or the fallback) before any
+    # rate/duration is computed. Per-crop functions still use each crop's own fps.
+    fps_used, fps_source = _resolve_fps(df, fps_fallback=args.fps, verbose=True)
+    print(f"[fps] using {fps_used:g} fps ({'from data' if fps_source == 'data' else 'FALLBACK'})")
+
+    summary = per_state_summary(df, fps=args.fps, crop_level=not args.frame_pooled)
     summary.to_csv(outdir / "per_state_summary.csv", index=False)
     print(summary.to_string(index=False))
 
@@ -593,8 +774,14 @@ def main():
                     break
         if stats_rows:
             stats_tbl = pd.concat(stats_rows, ignore_index=True)
+            # Benjamini-Hochberg across the WHOLE metric x state family (these are
+            # many simultaneous tests; a raw p<0.05 among dozens is not evidence).
+            stats_tbl["p_adj"] = _bh_fdr(stats_tbl["p_value"].to_numpy())
+            stats_tbl["reject_fdr_0.05"] = stats_tbl["p_adj"] < 0.05
             stats_tbl.to_csv(outdir / "condition_stats.csv", index=False)
-            print("\nCondition comparison (Recording-level nonparametric tests):")
+            n_tests = int(stats_tbl["p_value"].notna().sum())
+            print(f"\nCondition comparison (Recording-level nonparametric tests; "
+                  f"Benjamini-Hochberg FDR across {n_tests} tests):")
             print(stats_tbl.to_string(index=False))
 
     # figures (best-effort; skip if plotting libs unavailable)
