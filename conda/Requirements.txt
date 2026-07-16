@@ -1,11 +1,18 @@
+# Core third-party dependencies of the centerline_behavior_annotation package.
+# NOTE: this is a coarse dependency hint, not a locked environment. For a
+# reproducible setup use one of the conda env files in this folder (see
+# conda/README.md): `aerotaxis_analysis.yaml` for the analysis/orchestration
+# layer, or the legacy `centerline_behavior_annotations.yaml` / `openCV.yaml`.
+#
+# Stdlib modules (csv, os, re, ...) are NOT dependencies and were removed; `cv2`
+# is imported from the `opencv-python` distribution, and `skimage` from
+# `scikit-image`.
 matplotlib
 numpy
-cv2==3.4.2
+opencv-python
 tifffile
-csv
-os
 natsort
-re
 scipy
-skimage
+scikit-image
 pandas
+pyarrow

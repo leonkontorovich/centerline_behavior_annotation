@@ -12,7 +12,9 @@ N='\033[0m'    # No color
 
 # Config
 SOURCE="${1:-$(pwd)}"
-NETWORK="${2:-DLC_resnet50_population_nose_necitamarSep23shuffle2_1030000}"
+# Must match config.yaml `network_string` exactly, or the DLC-filtered stage is
+# under-reported. (The previous default was truncated/mangled.)
+NETWORK="${2:-DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_itamarSep23shuffle2_1030000}"
 
 echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
 echo -e "${B}           SNAKEMAKE PIPELINE STATUS CHECK${N}"
