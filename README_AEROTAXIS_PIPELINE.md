@@ -76,12 +76,15 @@ Working_dir/
 
 ## 2. The gas protocol (config)
 
-> **⚠️ Hardware Gas Scripts (.txt):** The pipeline does **NOT** directly read your Alicat `.txt` mass flow controller scripts (e.g., `7_21_gasscript.txt`). 
-> Instead, the logic from your `.txt` script must be manually mapped into `config.yaml` under the `aerotaxis:` section. 
-> *Pro-Tip:* Create "master" config files (e.g., `config_7_21.yaml`, `config_21_7.yaml`) for your standard assay paradigms, and simply copy the correct one into your dataset folder before running.
-
 The assay timing lives in `config.yaml` under `aerotaxis:` and is applied per
-frame from the **absolute** recording time. Edit it freely — no code change.
+frame from the **absolute** recording time. You normally **don't edit it by
+hand**: the setup script in [§4](#4-step-by-step-run-protocol) (step 3) writes
+this block for you by parsing your Alicat `.txt` gas script. It reads the
+standard **baseline → pulse → return** shape (line 1 = baseline, line 2 = pulse,
+line 3 = return). For anything more elaborate — extra cycle phases, a
+camera/gas start offset, or capping the number of cycles — edit the block
+directly afterwards; no code change is needed and `O2_State` follows
+automatically.
 
 ```yaml
 aerotaxis:
@@ -165,16 +168,22 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/copy_aerotaxis_population_pipeline.sh"
 ```
 
-**4. Double-check your configs (Optional)** 
-If you want to be safe, you can look inside one of the `config.yaml` files inside a `*_new` folder to verify the `aerotaxis:` block was populated correctly. You do **not** set `fps` or `factor_px_to_mm` here: the pipeline reads them per recording from the SWC `parameters.yaml` that ships beside the crops (`{dataset}/parameters.yaml`); the `config.yaml` values are only fallbacks (see [§9](#9-configuration-reference)). Tune those in SWC, not here.
+**4. Double-check your config (optional).**
+Open one `config.yaml` inside a `*_new/` folder and confirm the `aerotaxis:`
+block matches your assay. Do **not** set `fps` or `factor_px_to_mm` here — they
+are read per recording from SWC (see [§2.1](#21-critical-nuances-for-a-bullet-proof-analysis)
+and [§9](#9-configuration-reference)).
 
-**5. (Optional) Quality-gate the crops — run the bubble filter.**
-> ⚠️ This step is **optional** and its main purpose is to stop **thousands** of
-> junk bubble crops from flooding the cluster queue. If every recording has only
-> a few hundred crops, you can safely **skip it** — junk tracks just produce poor
-> output that you filter in downstream QC (`Occluded`, NaN bend columns, near-zero
-> speed). Only reach for it when a recording has **> 150 crops** because the
-> cropper jittered on bubbles.
+**5. (Optional) Bubble filter — throughput only, NOT biological QC.**
+> ⚠️ This step's **only** purpose is to stop **thousands** of junk bubble crops
+> from flooding the cluster queue. It is **not** how you quality-control worms:
+> the biological QC is the lenient, non-destructive **aliveness gate** applied at
+> analysis time ([§6](#6-downstream-analysis)), which keeps slow *and* fast real
+> worms and drops only inert objects — nothing is deleted on disk. So:
+> **skip this step** unless a recording has ballooned to many hundreds/thousands
+> of crops because the cropper jittered on bubbles. If your SWC `min/max` region
+> sizes already keep crop counts reasonable (a few hundred per recording), you do
+> not need it at all.
 
 **How it works & its limits (read before `--delete`, it is irreversible):**
 The filter deletes any track whose **absolute arena-position SD**
@@ -205,16 +214,22 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 **6. Run the pipeline.** Keep total parallel jobs ≤ 200
 (e.g. 20 recordings × 10 jobs).
 ```bash
-bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh" --folders 20 --jobs 10
+bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh" --folders 20 --jobs 10 --finalize --pulse_state 21pct_O2
 ```
-*Local test run (one recording, no cluster): from inside a `*_new/` folder run
-`bash RUNME_cluster.sh -c`.*
+`--finalize` submits a **dependent** SLURM job that runs step 7 automatically
+once every recording has finished (so you can launch and walk away); drop it if
+you'd rather run step 7 by hand. *Local test run (one recording, no cluster):
+from inside a `*_new/` folder run `bash RUNME_cluster.sh -c`.*
 
-**7. Build the combined tidy table** for downstream analysis:
+**7. Finalize the dataset** — combine every crop's table and run the standard
+analysis in one step (skip if you used `--finalize` above):
 ```bash
-python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/utils/create_results_dict_server.py" . --format parquet
+bash "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/finalize_aerotaxis_dataset.sh" . --pulse_state 21pct_O2
 ```
-→ `aerotaxis_results.parquet` in the dataset folder (use `--format csv` or `pkl` if preferred).
+This writes `aerotaxis_results.parquet` (the combined tidy table) in the dataset
+folder and an `analysis/` folder with the summaries, figures, QC table and
+statistics described in [§6](#6-downstream-analysis). To only build the table
+(no analysis), run `create_results_dict_server.py . --format parquet` instead.
 
 ---
 
@@ -233,6 +248,8 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 | `Frame` | **absolute** recording frame (shared clock across crops) |
 | `Time_Seconds` | **absolute** recording time (s) |
 | `O2_State` | gas state at that time (`7pct_O2`, `21pct_O2`, `pre_protocol`, `post_protocol`) |
+| `Cycle_Index` | 0-based pulse/return repeat number; `-1` for baseline/pre/post. Enables habituation analysis across successive pulses. |
+| `Time_In_Phase_s` | seconds since the current gas phase began (0 at each phase onset) |
 | `Forward_Velocity` | signed speed (mm/s); negative during reversals |
 | `Reversal_Active` | 1 while reversing, else 0 |
 | `Turn_Active` | 1 during a turn/coil, else 0 |
@@ -240,10 +257,12 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 | `Bend_Frequency` | body-bend frequency (Hz), median \|Hilbert inst. freq\| across segments |
 | `Bend_Amplitude` | body-bend amplitude (curvature units), from Hilbert envelope |
 | `Occluded` | 1 = animal lost/occluded on that frame (from the SWC crop ledger `<crop>_metadata.json`). Filter `Occluded == 0` before computing behaviour rates — occluded frames carry blank-crop-derived values. 0 everywhere for data cropped by older SWC versions. |
+| `X_mm`, `Y_mm` | absolute arena position (mm), for analysis-time displacement QC (see [§6](#6-downstream-analysis)). Crop centroid in the track.txt fallback. |
 
-The first seven columns are the originally-specified schema; the rest are
+The core behaviour columns are the originally-specified schema; the rest are
 enrichments computed from artifacts already in the pipeline (reversal onsets, the
-Hilbert body-bend transform, and the SWC per-frame occlusion mask).
+Hilbert body-bend transform, the SWC per-frame occlusion mask, the gas-cycle
+index, and the arena position for QC).
 
 ---
 
@@ -253,29 +272,37 @@ Everything is plain Pandas/Seaborn and lives in
 `toolscripts/utils/aerotaxis_analysis.py` (import in a notebook, run as a CLI, or
 feed the tidy CSVs to R).
 
-**Analyse only live worms that moved (motility QC, on by default).**
-`load_results()` / the CLI keep only crops that are **live, moving worms** before
-any summary is computed: a crop is kept only if it was tracked for
-`≥ --min_track_seconds` (default 10 s) **and** travelled `≥ --min_path_mm` total
-(default 0.5 mm, the integral of `|Forward_Velocity|`). Dead animals, debris and
-bubbles sit near zero path and are dropped; unusably short fragments are dropped
-by the duration gate. This is **non-destructive** (it filters the loaded table,
-never deletes files) and **duration-aware**, unlike the irreversible step-5
-bubble filter — so prefer it. Every run logs exactly what was cut
-(`[motility QC] kept N/M crops ...`). Disable with `--keep_immotile`, or tune the
-two thresholds; from a notebook call `load_results(path, require_motile=False)`
-or pass `min_track_seconds=` / `min_path_mm=`.
+**Aliveness QC — keep every real worm (slow OR fast), drop only inert junk (on by default).**
+`load_results()` / the CLI apply a deliberately **lenient** gate before any
+summary: a crop is kept if it was tracked for `≥ --min_track_seconds` (default
+5 s) **and shows ANY sign of life** — it *moved* (integrated path `≥ --min_path_mm`
+OR net displacement `≥ --min_displacement_mm`), *bent its body* (mean Hilbert
+amplitude `≥ --min_bend_amplitude`), or *behaved* (`≥ --min_events` reversal/turn
+onsets). Only crops flat on **all** of these — the definitive dead / bubble /
+debris signature — are removed. This deliberately keeps a slow dwelling worm
+(barely translocates but keeps bending) just like a fast roamer, so you capture
+both extremes of real biology. It is **non-destructive** (filters the loaded
+table, deletes nothing), **duration-aware**, and uses body-bend and behavioural
+signals a bubble can't fake — unlike the irreversible, movement-only step-5
+bubble filter, which is now only a throughput tool. Every run logs what was cut
+(`[aliveness QC] kept N/M crops ...`) and writes a per-crop `crop_qc.csv` with
+all the signals (path, net displacement, positional spread, bend amplitude/freq,
+event count, `alive`) so you can eyeball the cropper's output and retune. Disable
+with `--keep_all`; from a notebook call `load_results(path, require_alive=False)`
+or pass any `min_*` threshold.
 
 **CLI (quick standard readouts):**
 ```bash
 python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/toolscripts/utils/aerotaxis_analysis.py" \
-    aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2 \
-    --min_track_seconds 10 --min_path_mm 0.5
+    aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2
 ```
-Writes to `analysis/`:
+(`finalize_aerotaxis_dataset.sh` in step 7 runs exactly this for you.) Writes to `analysis/`:
+- `crop_qc.csv` — per-crop QC signals + the `alive` flag (inspect the cropper's output here)
 - `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`
 - `transition_triggered_<feature>.csv` + `.png` — feature aligned to each gas shift (mean ± 95 % CI)
+- `per_cycle_summary.csv` — mean feature per successive cycle (**habituation** across pulses, via `Cycle_Index`)
 - `reversal_reaction.csv` — latency from each pulse onset to the first reversal
+- `condition_stats.csv` — Condition comparison per gas state (nonparametric test at the **Recording** level, so plates/crops aren't pseudo-replicated)
 
 **Notebook:** `jupyter_notebooks/Aerotaxis_population_grouped.ipynb`
 (load → per-state summary → transition-triggered averages → reversal reaction →
@@ -317,7 +344,7 @@ find "$(pwd)" -type f \( -name "temporal_features.csv" -o -name "aerotaxis_tempo
 snakemake --configfile config.yaml --latency-wait 500 \
   --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {cluster.gres} {rule}" \
   --cluster-config cluster_config.yaml --jobs 1 --keep-going --rerun-incomplete -p \
-  <condition>/<condition>_track_0/output/temporal_features.csv
+  <recording>/<recording>_track_0/output/temporal_features.csv
 ```
 
 ---

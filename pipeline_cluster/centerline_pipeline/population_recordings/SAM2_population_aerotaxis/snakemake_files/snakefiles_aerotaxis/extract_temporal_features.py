@@ -46,14 +46,17 @@ are not real behaviour. If the metadata file is absent (older data), Occluded
 is 0 everywhere and the output is identical to before.
 
 Output: a tidy, flat per-frame CSV with columns
-    [Crop_ID, Frame, Time_Seconds, O2_State,
+    [Crop_ID, Frame, Time_Seconds, O2_State, Cycle_Index, Time_In_Phase_s,
      Forward_Velocity, Reversal_Active, Turn_Active,
-     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded]
+     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded, X_mm, Y_mm]
 where Frame / Time_Seconds are ABSOLUTE (recording-wide) when track.txt is
-available, so crops share one clock for gas-locked population analysis. The
-first seven columns are the originally-specified schema; the rest are
-enrichments from existing pipeline tools (reversal onsets, Hilbert body bends,
-and the SWC per-frame occlusion mask).
+available, so crops share one clock for gas-locked population analysis.
+`Cycle_Index` (0-based repeat number, -1 for baseline/pre/post) and
+`Time_In_Phase_s` (seconds since the current gas phase began) make
+habituation/adaptation across successive pulses directly analysable. The
+Frame..O2_State columns plus the four behaviour columns are the originally-
+specified schema; the rest are enrichments from existing pipeline tools
+(reversal onsets, Hilbert body bends, and the SWC per-frame occlusion mask).
 """
 
 import argparse
@@ -71,24 +74,37 @@ import pandas as pd
 def build_o2_state(protocol_time_s, baseline_duration_s, baseline_state, cycle, n_cycles=None):
     """
     Map an array of PROTOCOL-relative timestamps (seconds; 0 = protocol start)
-    to gas states.
+    to gas states, cycle indices and time-within-phase.
 
     Protocol = one baseline block, then `cycle` (an ordered list of
     {state, duration_s} phases) repeated. Fully vectorised and generic: any
     oxygen-sensing paradigm is expressed by editing baseline_* and cycle in
     config.yaml -- no code change needed here.
 
-    Times before protocol start (t < 0) are labelled "pre_protocol".
+    Returns three aligned arrays:
+      * states           : gas-state label per frame ("pre_protocol" for t < 0,
+                           baseline_state during the baseline block, the cycle
+                           phase labels afterwards, "post_protocol" once n_cycles
+                           is exceeded).
+      * cycle_index      : 0-based index of the repeat the frame falls in, or -1
+                           for baseline / pre_protocol / post_protocol. This is
+                           what lets downstream code test habituation/adaptation
+                           of the response ACROSS successive pulses.
+      * time_in_phase_s  : seconds since the current phase block began (0 at each
+                           phase onset), for phase-locked averaging.
     """
     t = np.asarray(protocol_time_s, dtype=float)
     states = np.empty(t.shape, dtype=object)
+    cycle_index = np.full(t.shape, -1, dtype=int)
+    time_in_phase = np.zeros(t.shape, dtype=float)
 
     cycle_durations = np.array([float(p["duration_s"]) for p in cycle], dtype=float)
     cycle_states = [p["state"] for p in cycle]
     cycle_period = cycle_durations.sum()
     if cycle_period <= 0:
         raise ValueError("aerotaxis.cycle total duration must be > 0")
-    phase_edges = np.cumsum(cycle_durations)  # boundaries within one cycle
+    phase_starts = np.concatenate(([0.0], np.cumsum(cycle_durations)[:-1]))  # start of each phase within a cycle
+    phase_edges = np.cumsum(cycle_durations)                                 # end boundaries within one cycle
 
     pre = t < 0
     in_baseline = (~pre) & (t < baseline_duration_s)
@@ -96,6 +112,7 @@ def build_o2_state(protocol_time_s, baseline_duration_s, baseline_state, cycle, 
 
     states[pre] = "pre_protocol"
     states[in_baseline] = baseline_state
+    time_in_phase[in_baseline] = t[in_baseline]  # time since baseline onset (t=0)
 
     t_cyc = t[in_cycles] - baseline_duration_s
     cyc_index = np.floor(t_cyc / cycle_period).astype(int)
@@ -103,10 +120,16 @@ def build_o2_state(protocol_time_s, baseline_duration_s, baseline_state, cycle, 
     phase_idx = np.clip(np.searchsorted(phase_edges, t_in_cycle, side="right"),
                         0, len(cycle_states) - 1)
     cyc_states = np.array([cycle_states[i] for i in phase_idx], dtype=object)
+    cyc_time_in_phase = t_in_cycle - phase_starts[phase_idx]
     if n_cycles is not None:
-        cyc_states[cyc_index >= n_cycles] = "post_protocol"
+        past = cyc_index >= n_cycles
+        cyc_states[past] = "post_protocol"
+        cyc_index = np.where(past, -1, cyc_index)
+        cyc_time_in_phase = np.where(past, 0.0, cyc_time_in_phase)
     states[in_cycles] = cyc_states
-    return states
+    cycle_index[in_cycles] = cyc_index
+    time_in_phase[in_cycles] = cyc_time_in_phase
+    return states, cycle_index, time_in_phase
 
 
 # ======================================================================
@@ -353,7 +376,7 @@ def main(arg_list=None):
 
     # ---- gas state from ABSOLUTE time, offset to protocol start ----
     protocol_time = abs_time - args.t0_offset_s
-    o2_state = build_o2_state(
+    o2_state, cycle_index, time_in_phase = build_o2_state(
         protocol_time, args.baseline_duration_s, args.baseline_state, cycle, n_cycles
     )
 
@@ -363,6 +386,8 @@ def main(arg_list=None):
         "Frame": abs_frame.astype(int),
         "Time_Seconds": abs_time,
         "O2_State": o2_state,
+        "Cycle_Index": cycle_index,
+        "Time_In_Phase_s": time_in_phase,
         "Forward_Velocity": forward_velocity,
         "Reversal_Active": reversal_active,
         "Turn_Active": np.nan_to_num(turn, nan=0).astype(int),
@@ -370,6 +395,11 @@ def main(arg_list=None):
         "Bend_Frequency": bend_freq,
         "Bend_Amplitude": bend_amp,
         "Occluded": occluded,
+        # Absolute arena position (mm). From track.txt when available, else the
+        # crop centroid (fallback). Kept so analysis-time QC can measure absolute
+        # displacement / positional spread per crop without re-reading track.txt.
+        "X_mm": x_mm,
+        "Y_mm": y_mm,
     })
     Path(args.out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_csv, index=False)

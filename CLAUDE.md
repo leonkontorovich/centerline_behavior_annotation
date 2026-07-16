@@ -24,23 +24,21 @@ pip install -e .
 ## Key Development Commands
 
 ### Running Snakemake Workflows
-The main computational pipelines are managed through Snakemake workflows located in `pipeline_cluster/centerline_pipeline/`:
+The population behavior pipeline is specialized for **aerotaxis / O₂-sensing**
+assays and lives in
+`pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/`.
+The full start-to-finish protocol is documented in `README_AEROTAXIS_PIPELINE.md`
+(repo root). In brief:
 
-**Local execution:**
+**Single recording** (from inside a `<recording>_new/` folder):
 ```bash
-cd pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/snakemake_files/snakefiles_basic/
-./RUNME_cluster.sh -c
+./RUNME_cluster.sh        # cluster (default)
+./RUNME_cluster.sh -c     # local, for testing
 ```
 
-**Cluster execution:**
+**Whole dataset** (from the dataset root):
 ```bash
-./RUNME_cluster.sh
-```
-
-**Population-level analysis:**
-```bash
-cd pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_chemotaxis/
-bash bash_scripts/run_chemotaxis_population_pipeline.sh
+bash pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/bash_scripts/run_aerotaxis_population_pipeline.sh --folders 4 --jobs 50
 ```
 
 ### Pipeline Workflow Management
@@ -88,7 +86,7 @@ bash bash_scripts/run_chemotaxis_population_pipeline.sh
 - Post-processing workflows
 
 **population_recordings/** - Population-level analysis
-- Chemotaxis behavior analysis
+- `SAM2_population_aerotaxis/` — aerotaxis / O₂-sensing behavior analysis (temporal, gas-shift-locked)
 - Population statistics and modeling
 - Batch processing of multiple recordings
 

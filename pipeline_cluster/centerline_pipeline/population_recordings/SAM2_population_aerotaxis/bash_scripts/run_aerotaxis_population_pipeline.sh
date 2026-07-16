@@ -16,6 +16,10 @@ current_dir="$PWD"
 # Default values
 MAX_CONCURRENT_WORKFLOWS=4
 MAX_JOBS_PER_WORKFLOW=50
+FINALIZE=false
+PULSE_STATE=""
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Parse command line arguments
 while [[ $# -gt 0 ]]; do
@@ -28,10 +32,21 @@ while [[ $# -gt 0 ]]; do
       MAX_JOBS_PER_WORKFLOW="$2"
       shift 2
       ;;
+    --finalize)
+      FINALIZE=true
+      shift
+      ;;
+    --pulse_state)
+      PULSE_STATE="$2"
+      shift 2
+      ;;
     *)
-      echo "Usage: $0 [--folders|-f NUM] [--jobs|-j NUM]" >&2
-      echo "  --folders, -f NUM  Max concurrent workflows (default: 4)" >&2
-      echo "  --jobs, -j NUM     Max jobs per workflow (default: 50)" >&2
+      echo "Usage: $0 [--folders|-f NUM] [--jobs|-j NUM] [--finalize] [--pulse_state STATE]" >&2
+      echo "  --folders, -f NUM   Max concurrent workflows (default: 4)" >&2
+      echo "  --jobs, -j NUM      Max jobs per workflow (default: 50)" >&2
+      echo "  --finalize          After the array finishes, submit a dependent job that" >&2
+      echo "                      combines results + runs the analysis (finalize_aerotaxis_dataset.sh)" >&2
+      echo "  --pulse_state STATE gas state for the reversal-reaction analysis (e.g. 21pct_O2)" >&2
       exit 1
       ;;
   esac
@@ -120,6 +135,23 @@ job_id=$(sbatch --parsable \
     --mem=4G \
     --array="0-$((NUM_FOLDERS-1))%${MAX_CONCURRENT_WORKFLOWS}" \
     workflow_runner.sh)
+
+# Optional dependent finalize job: combine results + run analysis once every
+# recording has finished (afterany so it still runs if some recordings failed,
+# since the per-recording runs use --keep-going).
+if $FINALIZE; then
+    FINALIZE_ARGS=("$current_dir")
+    [[ -n "$PULSE_STATE" ]] && FINALIZE_ARGS+=(--pulse_state "$PULSE_STATE")
+    finalize_id=$(sbatch --parsable \
+        --job-name="aero_finalize" \
+        --output="finalize_%j.log" \
+        --time=0-02:00:00 \
+        --cpus-per-task=2 \
+        --mem=16G \
+        --dependency="afterany:${job_id}" \
+        --wrap "bash '${SCRIPT_DIR}/finalize_aerotaxis_dataset.sh' ${FINALIZE_ARGS[*]}")
+    echo "🧾 Submitted dependent finalize job: $finalize_id (runs after array ${job_id})"
+fi
 
 echo ""
 echo "=========================================="

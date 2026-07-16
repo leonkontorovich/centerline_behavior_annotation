@@ -19,10 +19,8 @@ The main starting point for running the full pipelines is the "pipeline_cluster"
 
 Please see https://github.com/Zimmer-lab/protocols/blob/master/computational/zimmer_lab_code_pipeline/04-installing_personal_python_packages.md
 
-## Chemotaxis Pipeline Guide
-If you are running the Chemotaxis Pipeline based on the output of the Simple Worm Cropper (SWC), please see the detailed step-by-step instructions located at:
-[README_CHEMOTAXIS_PIPELINE.md](./README_CHEMOTAXIS_PIPELINE.md)
-
 ## Aerotaxis Pipeline Guide
-If you are running the Aerotaxis Pipeline based on the output of the Simple Worm Cropper (SWC), please see the detailed step-by-step instructions located at:
+The population behavior pipeline is specialized for **aerotaxis / O₂-sensing**
+assays (global plate-level gas shifts) based on the output of the Simple Worm
+Cropper (SWC). For the full start-to-finish protocol see:
 [README_AEROTAXIS_PIPELINE.md](./README_AEROTAXIS_PIPELINE.md)

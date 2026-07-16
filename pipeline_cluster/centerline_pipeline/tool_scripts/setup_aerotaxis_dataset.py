@@ -22,54 +22,105 @@ import re
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_FOLDER = os.path.join(SCRIPT_DIR, "../population_recordings/SAM2_population_aerotaxis/snakemake_files/snakefiles_aerotaxis")
 
-def parse_gas_script(script_path):
+def parse_gas_script(script_path, o2_col=3, dur_col=0):
+    """
+    Parse an Alicat mass-flow-controller script into (baseline, cycle).
+
+    The script is comma-separated, one phase per line; column `dur_col`
+    (default 0) is the phase duration in seconds and column `o2_col` (default 3)
+    is the O2 fraction (0-1). Lines that are blank or start with `@` are ignored.
+
+    The FIRST phase becomes the baseline; ALL remaining phases become the
+    repeating cycle (not just the first two) -- so scripts with more than one
+    pulse level, or a longer repeating unit, are handled. Every line is
+    validated (duration > 0, O2 fraction in [0, 1]); a malformed line raises a
+    clear error naming the offending line rather than silently skewing timing.
+
+    Returns (baseline_dur, baseline_state, cycle) where cycle is a list of
+    (state_label, duration_s) tuples.
+    """
     with open(script_path, 'r') as f:
-        lines = [l.strip() for l in f if l.strip() and not l.startswith('@')]
-    
-    def get_state(line):
+        raw = [(i + 1, l.strip()) for i, l in enumerate(f)]
+    lines = [(n, l) for n, l in raw if l and not l.startswith('@')]
+
+    def get_state(lineno, line):
         parts = line.split(',')
-        if len(parts) < 4:
-            raise ValueError(f"Unexpected line format: {line}")
-        o2_frac = float(parts[3])
+        if len(parts) <= max(o2_col, dur_col):
+            raise ValueError(
+                f"gas script line {lineno} has {len(parts)} columns, need > "
+                f"{max(o2_col, dur_col)}: {line!r}")
+        try:
+            duration = int(round(float(parts[dur_col])))
+            o2_frac = float(parts[o2_col])
+        except ValueError:
+            raise ValueError(f"gas script line {lineno}: non-numeric duration/O2: {line!r}")
+        if duration <= 0:
+            raise ValueError(f"gas script line {lineno}: duration must be > 0 (got {duration}): {line!r}")
+        if not 0.0 <= o2_frac <= 1.0:
+            raise ValueError(
+                f"gas script line {lineno}: O2 fraction {o2_frac} not in [0,1]; "
+                f"is column {o2_col} really the O2 fraction? line: {line!r}")
         o2_pct = int(round(o2_frac * 100))
-        return f"{o2_pct}pct_O2", int(parts[0])
+        return f"{o2_pct}pct_O2", duration
 
     if not lines:
         raise ValueError("No data lines found in gas script.")
 
-    baseline_state, baseline_dur = get_state(lines[0])
-    cycle = []
-    
-    if len(lines) > 1:
-        pulse_state, pulse_dur = get_state(lines[1])
-        cycle.append((pulse_state, pulse_dur))
-    if len(lines) > 2:
-        return_state, return_dur = get_state(lines[2])
-        cycle.append((return_state, return_dur))
-        
+    baseline_state, baseline_dur = get_state(*lines[0])
+    cycle = [(get_state(n, l)) for n, l in lines[1:]]
+
+    if not cycle:
+        print("Warning: gas script has only a baseline phase; no repeating cycle "
+              "was detected. Add pulse/return lines or edit config.yaml by hand.")
     return baseline_dur, baseline_state, cycle
 
-def update_config_file(config_path, baseline_dur, baseline_state, cycle):
-    with open(config_path, 'r') as f:
-        content = f.read()
-    
-    new_block = f"""aerotaxis:
-  t0_offset_s: 0.0             # absolute recording time (s) at which the protocol starts
-  baseline_duration_s: {baseline_dur}
-  baseline_state: "{baseline_state}"
-  cycle:
-"""
-    for state, dur in cycle:
-        new_block += f'    - {{state: "{state}", duration_s: {dur}}}\n'
-    new_block += "  n_cycles: null               # null = repeat to end of recording\n"
+def _build_aerotaxis_block(baseline_dur, baseline_state, cycle):
+    block = [
+        "aerotaxis:",
+        "  t0_offset_s: 0.0             # absolute recording time (s) at which the protocol starts",
+        f"  baseline_duration_s: {baseline_dur}",
+        f'  baseline_state: "{baseline_state}"',
+        "  cycle:",
+    ]
+    block += [f'    - {{state: "{state}", duration_s: {dur}}}' for state, dur in cycle]
+    block.append("  n_cycles: null               # null = repeat to end of recording")
+    return "\n".join(block) + "\n"
 
-    if "aerotaxis:" in content:
-        content = re.sub(r'aerotaxis:.*', new_block, content, flags=re.DOTALL)
+
+def update_config_file(config_path, baseline_dur, baseline_state, cycle):
+    """
+    Replace ONLY the top-level `aerotaxis:` block in config.yaml, leaving any
+    keys before or after it untouched.
+
+    The previous implementation used `re.sub('aerotaxis:.*', ..., DOTALL)`, which
+    deletes everything from `aerotaxis:` to end-of-file -- safe only while
+    `aerotaxis:` happens to be the last block. This scans line-by-line instead:
+    it finds the `aerotaxis:` line and replaces it together with the indented /
+    blank / comment lines that belong to it, stopping at the next top-level key.
+    """
+    with open(config_path, 'r') as f:
+        lines = f.read().splitlines()
+
+    new_block = _build_aerotaxis_block(baseline_dur, baseline_state, cycle).splitlines()
+
+    start = next((i for i, l in enumerate(lines) if re.match(r'^aerotaxis\s*:', l)), None)
+    if start is None:
+        # append (keep a blank separator line)
+        out = lines + ([""] if lines and lines[-1].strip() else []) + new_block
     else:
-        content += "\n" + new_block
+        # consume the block body: subsequent indented / blank / comment lines,
+        # up to (not including) the next top-level (column-0, non-comment) key.
+        end = start + 1
+        while end < len(lines):
+            l = lines[end]
+            if l.strip() == "" or l.startswith((" ", "\t")) or l.lstrip().startswith("#"):
+                end += 1
+            else:
+                break
+        out = lines[:start] + new_block + lines[end:]
 
     with open(config_path, 'w') as f:
-        f.write(content)
+        f.write("\n".join(out) + "\n")
 
 def main():
     if len(sys.argv) < 3:
