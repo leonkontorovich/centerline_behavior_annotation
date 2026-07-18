@@ -75,7 +75,11 @@ else
   fi
   
   chmod +x ./submit_wrapper.sh
-  
+
+  # SLURM will not create the --output directory; make it up front or every
+  # job's stdout/stderr redirect fails and logs are lost.
+  mkdir -p log
+
   snakemake \
     --configfile config.yaml \
     --latency-wait 500 \

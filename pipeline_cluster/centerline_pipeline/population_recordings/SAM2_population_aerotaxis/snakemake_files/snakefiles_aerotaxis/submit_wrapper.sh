@@ -12,18 +12,6 @@ CONSTRAINT="$7"
 JOB="$8"
 shift 8
 
-# DEBUG: Print all received parameters
-echo "=== DEBUG submit_wrapper.sh ===" >&2
-echo "TIME=$TIME" >&2
-echo "PART=$PART" >&2
-echo "CPU=$CPU" >&2
-echo "MEM=$MEM" >&2
-echo "OUT=$OUT" >&2
-echo "GRES=$GRES" >&2
-echo "CONSTRAINT=$CONSTRAINT" >&2
-echo "JOB=$JOB" >&2
-echo "===============================" >&2
-
 # Build sbatch command
 CMD="sbatch -t $TIME -p $PART --cpus-per-task $CPU --mem ${MEM}M --output $OUT --job-name=$JOB --nice=0"
 
@@ -37,10 +25,9 @@ if [ -n "$CONSTRAINT" ] && [ "$CONSTRAINT" != "None" ] && [ "$CONSTRAINT" != "" 
     CMD="$CMD --constraint=$CONSTRAINT"
 fi
 
-# DEBUG: Print final command
-echo "=== FINAL SBATCH COMMAND ===" >&2
-echo "$CMD" >&2
-echo "============================" >&2
+# One concise line per submission (kept for troubleshooting; the verbose per-arg
+# dump was removed as it flooded the controller log at ~200 concurrent jobs).
+echo "[submit_wrapper] $CMD" >&2
 
 # Execute
 exec $CMD "$@"

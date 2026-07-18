@@ -7,8 +7,11 @@
 #   ./copy_aerotaxis_population_pipeline.sh
 #   Run this script from the directory containing the subfolders to process.
 
-# Define source folder (universal pipeline)
-src_folder="/lisc/data/scratch/neurobiology/zimmer/autoscope/code/centerline_behavior_annotation/pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_aerotaxis/snakemake_files/snakefiles_aerotaxis"
+# Source = the pipeline template in THIS clone (derived from the script's own
+# location), so re-copying always uses the same code you run -- not a hardcoded
+# shared-repo path (the README requires running from your isolated clone).
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+src_folder="${script_dir}/../snakemake_files/snakefiles_aerotaxis"
 
 # Get current directory
 current_dir="$PWD"
@@ -51,8 +54,12 @@ for subfolder in "${current_dir}"/*/ ; do
         # Copy documentation
         cp "${src_folder}/README.md" "$subfolder"
 
+        # Make the execution scripts runnable (submit_wrapper.sh is invoked as
+        # ./submit_wrapper.sh by snakemake --cluster).
+        chmod +x "${subfolder}/RUNME_cluster.sh" "${subfolder}/submit_wrapper.sh"
+
         ((processed++))
-        log_message "[$processed/$folder_count] Processed $folder_name - copied 8 files and set permissions"
+        log_message "[$processed/$folder_count] Processed $folder_name - copied 8 files and set +x on the 2 scripts"
     fi
 done
 

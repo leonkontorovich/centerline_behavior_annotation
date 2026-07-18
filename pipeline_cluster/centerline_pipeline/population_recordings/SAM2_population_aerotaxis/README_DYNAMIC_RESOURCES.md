@@ -111,13 +111,15 @@ rule tiff2avi:
 
 #### The Wrapper Script
 
-**Purpose:** Conditionally include `--gres` flag only when it has a valid value.
+**Purpose:** Conditionally include `--gres` and `--constraint` flags only when
+they have a valid value (SLURM rejects them when empty or `None`).
 
-**File:** `submit_wrapper.sh`
+**File:** `submit_wrapper.sh` — takes **8** positional args (adds `CONSTRAINT`
+between `GRES` and `JOB`); see the actual file for the current version.
 ```bash
 #!/usr/bin/env bash
-# Wrapper to conditionally add --gres flag
-# SLURM rejects --gres with empty value or "None"
+# Wrapper to conditionally add --gres and --constraint flags
+# SLURM rejects --gres / --constraint with empty value or "None"
 
 TIME="$1"
 PART="$2"
@@ -125,8 +127,9 @@ CPU="$3"
 MEM="$4"
 OUT="$5"
 GRES="$6"
-JOB="$7"
-shift 7
+CONSTRAINT="$7"
+JOB="$8"
+shift 8
 
 # Build sbatch command
 CMD="sbatch -t $TIME -p $PART --cpus-per-task $CPU --mem ${MEM}M --output $OUT --job-name=$JOB --nice=0"
@@ -134,6 +137,11 @@ CMD="sbatch -t $TIME -p $PART --cpus-per-task $CPU --mem ${MEM}M --output $OUT -
 # Only add --gres if it has a value AND is not the string "None"
 if [ -n "$GRES" ] && [ "$GRES" != "None" ]; then
     CMD="$CMD --gres $GRES"
+fi
+
+# Only add --constraint if it has a value AND is not empty/None
+if [ -n "$CONSTRAINT" ] && [ "$CONSTRAINT" != "None" ]; then
+    CMD="$CMD --constraint=$CONSTRAINT"
 fi
 
 # Execute
@@ -148,7 +156,7 @@ sbatch ... --gres ...       # ❌ SLURM: "Invalid TRES specification"
 
 # With wrapper:
 sbatch ...                  # ✅ No --gres flag (correct for non-GPU jobs)
-sbatch ... --gres gpu:1     # ✅ GRES flag included (correct for GPU jobs)
+sbatch ... --gres gpu:1 --constraint=l40s|a30|t4|l4   # ✅ GPU jobs get both
 ```
 
 ### 4. Main Execution Script
@@ -163,16 +171,17 @@ python3 ./generate_metadata.py
 
 # STEP 2: Run Snakemake with wrapper
 snakemake \
-  --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out {cluster.gres} {rule}" \
+  --cluster "./submit_wrapper.sh {resources.time} {resources.partition} {threads} {resources.mem_mb} log/log_%x_%A_%a_%j.out '{cluster.gres}' '{cluster.constraint}' {rule}" \
   --cluster-config cluster_config.yaml \
   ...
 ```
 
 **Critical details:**
 - Uses `{resources.*}` for **dynamically scaled** values (time, partition, threads, mem_mb)
-- Uses `{cluster.gres}` for **static** GRES value (always substituted, no argument shift)
+- Uses `{cluster.gres}` and `{cluster.constraint}` for **static** values (quoted, so empty ones pass through as an empty arg the wrapper can skip)
 - Memory needs `M` suffix: `{resources.mem_mb}M`
 - Wrapper path must be relative: `./submit_wrapper.sh`
+- `RUNME_cluster.sh` runs `mkdir -p log` before submitting so SLURM's `--output` dir exists
 
 ---
 
