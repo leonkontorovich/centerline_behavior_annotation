@@ -396,8 +396,8 @@ chmod +x submit_wrapper.sh
 | `Snakefile` | Define rules with dynamic resource functions |
 | `cluster_config.yaml` | Baseline (maximum) resources per rule |
 | `config.yaml` | Pipeline parameters |
-| `submit_wrapper.sh` | Conditionally add --gres flag for SLURM |
-| `RUNME_cluster.sh` | Main execution script |
+| `submit_wrapper.sh` | Conditionally add `--gres` / `--constraint` for SLURM |
+| `RUNME_cluster.sh` | Main execution script (also `mkdir -p log` before submit) |
 
 ---
 
@@ -406,8 +406,3 @@ chmod +x submit_wrapper.sh
 - Snakemake cluster execution: https://snakemake.readthedocs.io/en/stable/executing/cluster.html
 - SLURM sbatch: https://slurm.schedmd.com/sbatch.html
 - GRES (Generic Resources): https://slurm.schedmd.com/gres.html
-
----
-
-**Last Updated:** October 2025  
-**Pipeline:** C. elegans behavior analysis with dynamic resource scaling

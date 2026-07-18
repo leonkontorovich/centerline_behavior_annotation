@@ -9,11 +9,15 @@ This is a Python package for analyzing worm behavior through centerline extracti
 ## Environment Setup
 
 ### Conda Environment
-Create the environment using the provided configuration:
+For the **aerotaxis pipeline** (analysis + orchestration), use the maintained env:
 ```bash
-conda env create -f conda/centerline_behavior_annotations.yaml
-conda activate centerline_behavior_annotations
+conda env create -f conda/aerotaxis_analysis.yaml
+conda activate aerotaxis_analysis
 ```
+The GPU inference stack (SAM2, DeepLabCut) lives in separate cluster-only envs;
+`conda/centerline_behavior_annotations.yaml` / `conda/openCV.yaml` are the legacy
+Python 3.7 envs for the wider package (no longer solvable on current channels).
+See `conda/README.md` for all three tiers and how to freeze the GPU envs.
 
 ### Installation
 Install the package in development mode:
@@ -43,7 +47,7 @@ bash pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_
 
 ### Pipeline Workflow Management
 - Snakemake automatically manages dependencies and parallelization
-- Each workflow detects available track directories and adjusts job count accordingly (max 4 parallel jobs)
+- Per recording, `RUNME_cluster.sh` runs `min(#track_dirs, --jobs)` parallel jobs (`--jobs` default 50); the dataset controller runs `--folders` recordings at once (default 4), so total parallelism ≈ `folders × jobs` (keep ≤ ~200)
 - Use `snakemake --unlock --configfile config.yaml` to unlock workflows after failed runs
 
 ## Architecture Overview
@@ -74,21 +78,20 @@ bash pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_
 - Pixel difference analysis for movement detection
 - Specialized tools for identifying periods of inactivity
 
-### Pipeline Structure (`pipeline_cluster/`)
+### Pipeline Structure (`pipeline_cluster/centerline_pipeline/`)
 
-**OAS1/** - Primary segmentation pipeline
-- OpenCV-based segmentation
-- SAM2-based segmentation  
-- U-Net based segmentation options
+**population_recordings/SAM2_population_aerotaxis/** — the maintained pipeline:
+aerotaxis / O₂-sensing behaviour analysis (temporal, gas-shift-locked). SAM2
+segmentation → DLC → centerline → curvature → reversals/turns/Hilbert body-bends →
+gas-locked temporal features → population analysis. Active work happens here; the
+start-to-finish protocol is `README_AEROTAXIS_PIPELINE.md` (repo root).
 
-**OAS2/** - Secondary processing pipeline
-- Background subtraction and normalization
-- Post-processing workflows
+**tool_scripts/** — dataset setup helpers: `rename_tracks.py`,
+`setup_aerotaxis_dataset.py` (idempotent `_new`-folder creation + per-recording
+config), and `parse_gas_script.py` (Alicat `.txt` → the `aerotaxis:` config block).
 
-**population_recordings/** - Population-level analysis
-- `SAM2_population_aerotaxis/` — aerotaxis / O₂-sensing behavior analysis (temporal, gas-shift-locked)
-- Population statistics and modeling
-- Batch processing of multiple recordings
+**OAS1/**, **OAS2/**, **wbfm_variations/** — segmentation and variant pipelines
+retained from before the aerotaxis specialization; not part of the aerotaxis flow.
 
 ## Configuration Management
 
@@ -105,11 +108,11 @@ bash pipeline_cluster/centerline_pipeline/population_recordings/SAM2_population_
 
 ## Data Flow
 
-1. **Video Input** → **OAS1 Segmentation** → Binary masks
+1. **Video Input** → **SAM2 segmentation** (seeded by DLC keypoints) → Binary masks
 2. **Binary masks** → **Centerline extraction** → Skeleton coordinates  
 3. **Skeleton data** → **Curvature analysis** → Principal components
 4. **PC data** → **Behavior annotation** → Classified behaviors (forward, reversal, coil, turn)
-5. **Behavioral data** → **Population analysis** → Statistics and visualizations
+5. **Behavioral data** → **Population analysis** (gas-shift-locked) → Statistics and visualizations
 
 ## Development Notes
 

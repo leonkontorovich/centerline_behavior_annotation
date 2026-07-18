@@ -299,7 +299,7 @@ python "/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotat
 ```
 (`finalize_aerotaxis_dataset.sh` in step 7 runs exactly this for you.) Writes to `analysis/`:
 - `crop_qc.csv` — per-crop QC signals + the `alive` flag (inspect the cropper's output here)
-- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted** (each worm counts once, so a long recording no longer dominates the mean); carries `<metric>_sem`, `n_crops`, `n_recordings`. Add `--frame_pooled` for the old frame-weighted means.
+- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted** (each crop/fragment counts once, so a long recording no longer dominates the mean); carries `<metric>_sem`, `n_crops`, `n_recordings`. Add `--frame_pooled` for the old frame-weighted means.
 - `transition_triggered_<feature>.csv` + `.png` — feature aligned to each gas shift (mean ± 95 % CI)
 - `per_cycle_summary.csv` — mean feature per successive cycle (**habituation** across pulses, via `Cycle_Index`)
 - `reversal_reaction.csv` — latency from each pulse onset to the first reversal

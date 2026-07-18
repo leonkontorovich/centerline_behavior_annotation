@@ -17,61 +17,29 @@ Two entry points, both built on the **same tidy table**:
 
 ## Input: the tidy results table
 
-Produced by `create_results_dict_server.py` from all per-crop
-`temporal_features.csv` files:
+`create_results_dict_server.py` concatenates every per-crop
+`temporal_features.csv` into `aerotaxis_results.{parquet,csv,pkl}`. The **full
+column schema is documented once** in the protocol guide — repo-root
+`README_AEROTAXIS_PIPELINE.md`, §5 *"Outputs & the tidy table"*. This guide only
+recaps what the analysis functions key on:
 
-```
-aerotaxis_results.{parquet,csv,pkl}
-```
+- **Grouping keys** — `Condition`, `Recording`, `Crop_ID` (`GROUP_KEYS`).
+- **Gas state** — `O2_State`, `Cycle_Index`, `Time_In_Phase_s`.
+- **Behaviour** — `Forward_Velocity` (mm/s, signed), `Reversal_Active` / `Turn_Active`
+  (0/1, so their means are time fractions), `Reversal_Onset`, `Bend_Frequency`,
+  `Bend_Amplitude`.
+- **QC / meta** — `Occluded` (dropped on load), `X_mm` / `Y_mm`, `fps`.
 
-| Column | Meaning |
-|---|---|
-| `Condition` | top-level folder (e.g. genotype / paradigm) |
-| `Recording` | recording folder |
-| `Crop_ID` | per-**track** id — one continuous trajectory fragment (see "What counts as an animal?" below); **not** a guaranteed unique worm |
-| `Frame` | **absolute** recording frame (from SWC `track.txt`), so crops share one clock |
-| `Time_Seconds` | **absolute** recording time (s), from `track.txt` `time_imputed_seconds` |
-| `O2_State` | gas state from the `aerotaxis:` protocol at that absolute time (e.g. `7pct_O2`, `21pct_O2`, `pre_protocol`) |
-| `Cycle_Index` | 0-based pulse/return repeat number; `-1` for baseline/pre/post (drives habituation analysis) |
-| `Time_In_Phase_s` | seconds since the current gas phase began (0 at each phase onset) |
-| `Forward_Velocity` | signed speed (mm/s) from the arena X,Y trajectory; negative during reversals |
-| `Reversal_Active` | 1 while reversing, else 0 |
-| `Turn_Active` | 1 during a turn/coil, else 0 |
-| `Reversal_Onset` | 1 on the frame a reversal begins (for reaction-latency analysis) |
-| `Bend_Frequency` | body-bend frequency (Hz) from the Hilbert transform (locomotor arousal) |
-| `Bend_Amplitude` | body-bend amplitude (curvature units) from the Hilbert envelope |
-| `Occluded` | 1 = SWC-flagged animal loss on that frame; dropped by default on load |
-| `X_mm`, `Y_mm` | absolute arena position (mm); used for the aliveness QC (net displacement / spread) |
-| `fps` | **true per-recording frame rate** (from SWC `parameters.yaml`), so the analysis converts frames↔seconds with the real rate instead of assuming 10 fps |
+`Bend_*` may be NaN for crops whose kymogram was too poor for the Hilbert
+transform. `Cycle_Index` / `Time_In_Phase_s` / `X_mm` / `Y_mm` / `Occluded` / `fps`
+are absent for tables from older pipeline versions; every helper tolerates that.
 
-### What counts as an animal? (important for interpreting counts + stats)
-
-A `Crop_ID` is **one SWC track = one continuous trajectory fragment, not a unique
-worm.** SWC associates detections frame-to-frame by nearest-centroid proximity
-(gate ≈ 5 px) with **no re-identification**. Short occlusions are bridged inside a
-track (the `Occluded` frames), but once a worm is lost long enough for its track to
-end — or two worms' blobs merge, or a worm leaves and re-enters the gate — the
-re-detection is given a **brand-new track id**. So:
-
-- **one physical worm can appear as several crops** over a recording (each pause,
-  coil, blob-merge or dropout can start a new id), and two worms that cross within
-  the gate can swap ids;
-- `n_crops` therefore **over-counts animals** — read it as a fragment count;
-- crop-weighting (`per_state_summary`, default) fixes the *frame-level*
-  pseudoreplication (a long recording no longer dominates), but it is
-  per-fragment, not strictly per-animal;
-- the **fragmentation-robust replication unit is the Recording (plate)** — which is
-  exactly what `compare_conditions_per_state` uses. **Report fragment/crop counts
-  descriptively, but base statistical claims on the Recording-level tests.**
-
-(True per-animal counting would need track re-identification/stitching, which SWC
-does not do — a possible future upstream improvement.)
-
-Assumptions: one row per frame; `Reversal_Active`/`Turn_Active` are 0/1 so their
-means are fractions of time. `Bend_*` may be NaN for crops whose kymogram was too
-poor for the Hilbert transform. `Cycle_Index`/`Time_In_Phase_s`/`X_mm`/`Y_mm`/
-`Occluded`/`fps` are absent for tables built by older pipeline versions; every
-helper tolerates that (and falls back to `--fps`, default 10, with a warning).
+> **A `Crop_ID` is a trajectory fragment, not a unique animal.** SWC has no
+> re-identification, so one worm can become several crops: `n_crops` over-counts
+> animals and crop-weighting is per-fragment, not per-animal. Report crop counts
+> descriptively but base statistical claims on the **Recording-level** tests
+> (`compare_conditions_per_state`). Full explanation in
+> `README_AEROTAXIS_PIPELINE.md` §6 ("A crop is a track fragment…").
 
 ## Quick start (CLI)
 
@@ -81,19 +49,15 @@ python /path/to/toolscripts/utils/aerotaxis_analysis.py \
     aerotaxis_results.parquet --outdir analysis --pulse_state 21pct_O2
 ```
 
-Writes to `analysis/`:
-- `crop_qc.csv` — per-crop QC signals + the `alive` flag
-- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted by default** (each crop/fragment counts once, so a long recording no longer dominates); carries a `<metric>_sem` plus `n_crops` and `n_recordings`. Pass `--frame_pooled` for the old frame-weighted means.
-- `transition_triggered_<feature>.csv` + `.png` — each feature aligned to the gas shifts
-- `per_cycle_summary.csv` — mean feature per successive cycle (habituation)
-- `reversal_reaction.csv` — latency from each `--pulse_state` onset to the first reversal
-- `condition_stats.csv` — Condition comparison per state (Recording-level nonparametric test). Includes `p_adj` (Benjamini–Hochberg FDR across the whole metric×state family) with a `reject_fdr_0.05` flag, and `n_units`/`n_per_condition` replication counts.
+Writes `crop_qc.csv`, `per_state_summary.csv`, `transition_triggered_*.csv`,
+`per_cycle_summary.csv`, `reversal_reaction.csv`, and `condition_stats.csv` to
+`analysis/` — the same set `finalize_aerotaxis_dataset.sh` produces. What each file
+contains (crop-weighting, FDR, replication counts) is documented in
+`README_AEROTAXIS_PIPELINE.md` §6.
 
-**Frame rate:** the analysis reads the true fps from the `fps` column, so you do
-**not** pass `--fps` for current data (the CLI prints `[fps] using N fps (from
-data)`). `--fps` is only a fallback for legacy tables that lack the column, and a
-warning fires whenever it is used. (`finalize_aerotaxis_dataset.sh` runs
-`create_results_dict_server.py` + this CLI for a whole dataset in one command.)
+**Frame rate** is read automatically from the `fps` column, so you don't pass
+`--fps` for current data (the CLI prints `[fps] using N fps (from data)`); it is
+only a fallback for legacy tables that lack the column, and warns when used.
 
 ## The analysis primitives (`aerotaxis_analysis.py`)
 
@@ -123,10 +87,12 @@ warning fires whenever it is used. (`finalize_aerotaxis_dataset.sh` runs
   `seaborn.lineplot` for mean ± 95% CI across crops. `feature` can be any continuous
   column (`Forward_Velocity`, `Bend_Frequency`, `Reversal_Active`, …); `transition=
   "7pct_O2->21pct_O2"` filters to one shift type (the O2-up pulse onset).
-- **`per_cycle_summary(df, feature, state=None, by=("Condition",), fps=10)`** —
+- **`per_cycle_summary(df, feature, state=None, by=("Condition",))`** —
   mean `feature` per successive `Cycle_Index`; pass `state="21pct_O2"` for the
-  pulse response only. Plot vs `Cycle_Index` to see **habituation/adaptation**
-  across repeated pulses.
+  pulse response only. Plot vs `Cycle_Index` to see **population habituation**
+  across repeated pulses. This is *not* within-animal adaptation: fragments span
+  only a few cycles, so each `Cycle_Index` aggregates different overlapping
+  fragment sets (see the crop-vs-animal note above).
 - **`reversal_reaction(df, to_state, window_s, fps)`** — per crop/pulse, latency (s)
   from each transition into `to_state` to the first reversal onset within `window_s`
   (generalises `curvature/src/rev_reaction.py` to the config-driven protocol).
@@ -151,8 +117,8 @@ editing the analysis or the extractor.
 4. **Transition-triggered averages** — the O2 on/off response dynamics for speed,
    bend frequency and reversal probability.
 5. **Reversal reaction** — latency distribution to the pulse onset.
-6. **Habituation** — `per_cycle_summary` vs `Cycle_Index` (does the response fade
-   across successive pulses?).
+6. **Habituation** — `per_cycle_summary` vs `Cycle_Index` (does the *population*
+   response fade across successive pulses? — not within-animal; see above).
 7. **Statistics** — `compare_conditions_per_state` across genotypes/conditions.
 8. **Per-crop viewer** — ipywidgets dropdown; time series with the gas protocol shaded.
 9. **Save** — tidy CSV summaries for R / sharing.

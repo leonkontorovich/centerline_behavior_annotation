@@ -44,9 +44,9 @@ there are fallbacks — the real values come per recording from SWC
 | `config.yaml` | pipeline parameters + the `aerotaxis:` gas protocol |
 | `cluster_config.yaml` | baseline SLURM resources per rule |
 | `RUNME_cluster.sh` | run this recording (metadata → unlock → Snakemake) |
-| `submit_wrapper.sh` | SLURM submission helper (conditional `--gres`) |
+| `submit_wrapper.sh` | SLURM submission helper (conditional `--gres` / `--constraint`) |
 | `generate_metadata.py` | pre-compute per-video duration for resource scaling |
-| `extract_temporal_features.py` | build one crop's `temporal_features.csv` |
+| `extract_temporal_features.py` | build one crop's `temporal_features.csv` (embeds true fps, gas state, occlusion) |
 
 For the resource-scaling internals and the SLURM GRES wrapper, see
 `README_DYNAMIC_RESOURCES.md` in the pipeline root
