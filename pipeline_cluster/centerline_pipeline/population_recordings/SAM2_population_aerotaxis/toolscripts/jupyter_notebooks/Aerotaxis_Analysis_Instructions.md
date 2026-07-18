@@ -83,7 +83,7 @@ python /path/to/toolscripts/utils/aerotaxis_analysis.py \
 
 Writes to `analysis/`:
 - `crop_qc.csv` — per-crop QC signals + the `alive` flag
-- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted by default** (each worm counts once, so a long recording no longer dominates); carries a `<metric>_sem` plus `n_crops` and `n_recordings`. Pass `--frame_pooled` for the old frame-weighted means.
+- `per_state_summary.csv` + `.png` — speed, reversal/turn fraction, bend Hz, reversal onsets/min per `O2_State` × `Condition`. **Crop-weighted by default** (each crop/fragment counts once, so a long recording no longer dominates); carries a `<metric>_sem` plus `n_crops` and `n_recordings`. Pass `--frame_pooled` for the old frame-weighted means.
 - `transition_triggered_<feature>.csv` + `.png` — each feature aligned to the gas shifts
 - `per_cycle_summary.csv` — mean feature per successive cycle (habituation)
 - `reversal_reaction.csv` — latency from each `--pulse_state` onset to the first reversal
@@ -113,7 +113,7 @@ warning fires whenever it is used. (`finalize_aerotaxis_dataset.sh` runs
 - **`per_state_summary(df, by=("Condition","O2_State"), crop_level=True)`** — mean
   `Forward_Velocity`, `reversal_fraction`, `turn_fraction`, `mean_bend_frequency_hz`,
   `reversal_onsets_per_min`, plus `<metric>_sem`, `n_crops`, `n_recordings`.
-  Crop-weighted (each animal once) by default to avoid frame-level
+  Crop-weighted (each crop/fragment once) by default to avoid frame-level
   pseudoreplication; `crop_level=False` reproduces the old frame-pooled means.
   Observation time for the onset rate uses each crop's true fps.
 - **`find_transitions(df)`** — one row per gas shift per crop

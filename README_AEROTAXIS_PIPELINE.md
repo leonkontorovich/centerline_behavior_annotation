@@ -244,7 +244,7 @@ statistics described in [§6](#6-downstream-analysis). To only build the table
 | `Genotype` | parsed from the recording name via `--genotype-regex` (default `<date>_<time>_<genotype>_<plate>`) — *added by create_results_dict*; falls back to the full recording name if it doesn't match |
 | `Plate` | plate/replicate token from the recording name (e.g. `A`/`B`) — *added by create_results_dict*; blank if the name doesn't match |
 | `Recording` | recording folder (unique per recording, `_new` stripped) — *added by create_results_dict* |
-| `Crop_ID` | per-worm track id |
+| `Crop_ID` | per-**track** id — one continuous trajectory fragment, **not** a guaranteed unique worm (see the crop-vs-animal note in [§6](#6-downstream-analysis)) |
 | `Frame` | **absolute** recording frame (shared clock across crops) |
 | `Time_Seconds` | **absolute** recording time (s) |
 | `O2_State` | gas state at that time (`7pct_O2`, `21pct_O2`, `pre_protocol`, `post_protocol`) |

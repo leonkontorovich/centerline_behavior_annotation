@@ -570,6 +570,15 @@ def per_cycle_summary(df, feature="Forward_Velocity", state=None,
     "21pct_O2" for the pulse response only). Returns a tidy frame
     [<by>, Cycle_Index, <feature>_mean, n_crops] — feed to seaborn.lineplot with
     x="Cycle_Index" to see the habituation curve.
+
+    CAVEAT (fragment tracking): this is a POPULATION habituation curve, not a
+    within-animal one. A crop is a trajectory fragment, not a tracked individual
+    (see the GROUP_KEYS note), and most fragments span only a few cycles, so the
+    per-cycle means aggregate DIFFERENT (overlapping) sets of fragments at each
+    Cycle_Index rather than following the same worms across all pulses. It shows
+    whether the population response fades with successive pulses; it cannot
+    attribute that to individual adaptation. True within-animal habituation would
+    need track stitching / re-ID, which the cropper does not do.
     """
     if "Cycle_Index" not in df.columns:
         raise KeyError("Cycle_Index column required (re-run the extractor).")
@@ -579,9 +588,9 @@ def per_cycle_summary(df, feature="Forward_Velocity", state=None,
         sub = sub[sub["O2_State"] == state]
     if sub.empty:
         return pd.DataFrame(columns=by + ["Cycle_Index", f"{feature}_mean", "n_crops"])
-    # crop-level mean first (so each worm contributes once per cycle), then group
-    # mean. Dedupe keys so a `by` column that is also a GROUP_KEY (e.g. Condition)
-    # is not listed twice.
+    # crop-level mean first (so each crop/fragment contributes once per cycle),
+    # then group mean. Dedupe keys so a `by` column that is also a GROUP_KEY (e.g.
+    # Condition) is not listed twice.
     crop_keys = list(dict.fromkeys(by + ["Cycle_Index"] + GROUP_KEYS))
     per_crop = sub.groupby(crop_keys, observed=True)[feature].mean().reset_index()
     g = per_crop.groupby(by + ["Cycle_Index"], observed=True)
@@ -691,7 +700,7 @@ def main():
                          f"value is used only for legacy tables that lack it (default {DEFAULT_FPS}).")
     ap.add_argument("--frame_pooled", action="store_true",
                     help="per-state summary: pool all frames (legacy behaviour) instead "
-                         "of the default crop-weighted mean (each animal counts once).")
+                         "of the default crop-weighted mean (each crop/fragment counts once).")
     ap.add_argument("--pre_s", type=float, default=10.0)
     ap.add_argument("--post_s", type=float, default=30.0)
     ap.add_argument("--pulse_state", default=None,
