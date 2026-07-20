@@ -28,15 +28,23 @@ import aerotaxis_analysis as aa  # noqa: E402
 
 
 def _crop(condition, recording, crop_id, n, fps, state="21pct_O2",
-          reversal=0.0, velocity=1.0, start_frame=0):
-    """Build a minimal per-frame crop table."""
+          reversal=0.0, velocity=1.0, start_frame=0, animal_clipped=None):
+    """Build a minimal per-frame crop table.
+
+    `animal_clipped` (scalar 0/1 or length-n array) adds the SWC-derived
+    `Animal_Clipped` per-frame column; left None the column is absent (older
+    data), so crop_qc's graceful-degradation path is exercised too.
+    """
     frames = np.arange(start_frame, start_frame + n)
-    return pd.DataFrame({
+    d = pd.DataFrame({
         "Condition": condition, "Recording": recording, "Crop_ID": crop_id,
         "Frame": frames, "Time_Seconds": frames / fps, "O2_State": state,
         "Forward_Velocity": velocity, "Reversal_Active": reversal,
         "Turn_Active": 0.0, "fps": float(fps),
     })
+    if animal_clipped is not None:
+        d["Animal_Clipped"] = animal_clipped
+    return d
 
 
 # ---------------------------------------------------------------- fps resolution
@@ -75,6 +83,31 @@ def test_crop_qc_falls_back_when_no_fps_column():
     assert qc.loc["C1", "duration_s"] == pytest.approx(2.0)  # 20/10
 
 
+# ---------------------------------------------------------------- clipping QC
+def test_crop_qc_reports_pct_frames_clipped():
+    # 2 of 10 frames flagged clipped -> 20 %
+    df = _crop("A", "R1", "C1", 10, fps=10.0,
+               animal_clipped=[1, 1, 0, 0, 0, 0, 0, 0, 0, 0])
+    qc = aa.crop_qc(df).set_index("Crop_ID")
+    assert qc.loc["C1", "pct_frames_clipped"] == pytest.approx(20.0)
+
+
+def test_crop_qc_pct_clipped_is_nan_without_column():
+    # older data with no Animal_Clipped column -> column present but NaN
+    df = _crop("A", "R1", "C1", 10, fps=10.0)
+    qc = aa.crop_qc(df).set_index("Crop_ID")
+    assert "pct_frames_clipped" in qc.columns
+    assert np.isnan(qc.loc["C1", "pct_frames_clipped"])
+
+
+def test_clipping_never_gates_aliveness():
+    # a fully-clipped but clearly locomoting worm must survive filter_alive:
+    # clipping is a technical flag, not a life signal.
+    df = _crop("A", "R1", "C1", 100, fps=10.0, velocity=1.0, animal_clipped=1)
+    kept = aa.filter_alive(df, verbose=False)
+    assert set(kept["Crop_ID"]) == {"C1"}
+
+
 # ---------------------------------------------------------------- event count
 def test_event_count_ignores_initial_active_state():
     # starts already active (1,1,0,1,1) -> exactly ONE observed 0->1 onset
@@ -83,6 +116,46 @@ def test_event_count_ignores_initial_active_state():
     assert aa._event_count(pd.Series([0, 0, 1, 1, 0])) == 1
     # never active
     assert aa._event_count(pd.Series([0, 0, 0])) == 0
+
+
+# ---------------------------------------------------------------- aliveness gate
+def _qc_crop(crop_id, n=100, fps=10.0, velocity=0.0, x_drift=0.0,
+             bend_amp=0.0, n_onsets=0):
+    """A crop table with the columns the aliveness gate inspects."""
+    frames = np.arange(n)
+    onset = np.zeros(n, dtype=int)
+    onset[1:1 + n_onsets] = 1  # rising edges (n_onsets distinct events)
+    return pd.DataFrame({
+        "Condition": "A", "Recording": "R1", "Crop_ID": crop_id,
+        "Frame": frames, "Time_Seconds": frames / fps, "O2_State": "7pct_O2",
+        "Forward_Velocity": velocity, "Reversal_Active": 0.0, "Turn_Active": 0.0,
+        "Reversal_Onset": onset, "Bend_Amplitude": bend_amp,
+        "X_mm": frames * x_drift, "Y_mm": 0.0, "fps": float(fps),
+    })
+
+
+def test_strict_qc_drops_drifter_keeps_bender():
+    # drifter: translocates (moved) but never bends or behaves -> a bubble.
+    # bender: barely translocates but bends its body -> a real (dwelling) worm.
+    drifter = _qc_crop("drift", velocity=0.5, x_drift=0.05, bend_amp=0.0, n_onsets=0)
+    bender = _qc_crop("bend", velocity=0.0, x_drift=0.0, bend_amp=0.5, n_onsets=0)
+    df = pd.concat([drifter, bender], ignore_index=True)
+
+    lenient = aa.filter_alive(df, verbose=False)
+    strict = aa.filter_alive(df, strict=True, verbose=False)
+
+    kept_lenient = set(lenient.Crop_ID.unique())
+    kept_strict = set(strict.Crop_ID.unique())
+    assert kept_lenient == {"drift", "bend"}   # default union keeps both
+    assert kept_strict == {"bend"}             # strict drops the pure drifter
+
+
+def test_strict_qc_keeps_behaver_without_bends():
+    # a worm that reverses/turns but has no Hilbert bend signal is still kept by
+    # strict gating via the `behaved` branch.
+    behaver = _qc_crop("beh", velocity=0.0, x_drift=0.0, bend_amp=0.0, n_onsets=2)
+    strict = aa.filter_alive(behaver, strict=True, verbose=False)
+    assert set(strict.Crop_ID.unique()) == {"beh"}
 
 
 # ---------------------------------------------------------------- pseudoreplication

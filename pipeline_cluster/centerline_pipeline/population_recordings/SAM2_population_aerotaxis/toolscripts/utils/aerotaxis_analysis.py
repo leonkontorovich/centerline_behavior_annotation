@@ -177,7 +177,7 @@ def load_results(path, drop_occluded=True, require_alive=True, fps=DEFAULT_FPS,
                  min_track_seconds=MIN_TRACK_SECONDS, min_path_mm=MIN_PATH_MM,
                  min_displacement_mm=MIN_DISPLACEMENT_MM,
                  min_bend_amplitude=MIN_BEND_AMPLITUDE, min_events=MIN_EVENTS,
-                 require_motile=None, verbose=True):
+                 strict=False, require_motile=None, verbose=True):
     """
     Load the tidy results table.
 
@@ -239,7 +239,7 @@ def load_results(path, drop_occluded=True, require_alive=True, fps=DEFAULT_FPS,
         df = filter_alive(df, fps=fps, min_track_seconds=min_track_seconds,
                           min_path_mm=min_path_mm, min_displacement_mm=min_displacement_mm,
                           min_bend_amplitude=min_bend_amplitude, min_events=min_events,
-                          verbose=verbose)
+                          strict=strict, verbose=verbose)
     return df
 
 
@@ -283,10 +283,20 @@ def crop_qc(df, fps=DEFAULT_FPS):
       pos_spread_mm       -- sqrt(var(X)+var(Y)), the analysis-time analogue of the
                              bubble filter's positional SD (needs X_mm/Y_mm),
       mean_bend_amplitude, mean_bend_frequency_hz,
-      n_events            -- reversal + turn onsets.
-    Position-derived columns are NaN for tables without X_mm/Y_mm (older runs).
+      n_events            -- reversal + turn onsets,
+      pct_frames_clipped  -- % of frames SWC flagged the animal as exceeding the
+                             crop box (needs Animal_Clipped). A TECHNICAL crop-
+                             quality flag only: it is NOT a life signal and is
+                             deliberately absent from the aliveness gate, since a
+                             clipped worm still locomotes normally. Reported so
+                             downstream QC can spot crop-box-too-small artifacts.
+    Position-derived columns are NaN for tables without X_mm/Y_mm (older runs);
+    pct_frames_clipped is NaN for tables without Animal_Clipped (older runs).
+    The clipped % is over the frames present at QC time -- i.e. observed
+    (non-occluded) frames, since occluded frames are dropped before this runs.
     """
     have_pos = {"X_mm", "Y_mm"}.issubset(df.columns)
+    have_clip = "Animal_Clipped" in df.columns
     rows = []
     for keys, sub in df.groupby(GROUP_KEYS, sort=False):
         crop_fps = _crop_fps(sub, fps)
@@ -315,18 +325,23 @@ def crop_qc(df, fps=DEFAULT_FPS):
             n_events += _event_count(sub["Reversal_Active"])
         if "Turn_Active" in sub:
             n_events += _event_count(sub["Turn_Active"])
+        if have_clip:
+            c = pd.to_numeric(sub["Animal_Clipped"], errors="coerce").to_numpy()
+            pct_clipped = float(100.0 * np.nanmean(c)) if np.isfinite(c).any() else np.nan
+        else:
+            pct_clipped = np.nan
         rows.append((*keys, n, n / crop_fps, total_path, mean_speed, net_disp, pos_spread,
-                     bend_amp, bend_freq, n_events))
+                     bend_amp, bend_freq, n_events, pct_clipped))
     return pd.DataFrame(rows, columns=GROUP_KEYS + [
         "n_frames", "duration_s", "total_path_mm", "mean_speed_mm_s",
         "net_displacement_mm", "pos_spread_mm", "mean_bend_amplitude",
-        "mean_bend_frequency_hz", "n_events"])
+        "mean_bend_frequency_hz", "n_events", "pct_frames_clipped"])
 
 
 def filter_alive(df, fps=DEFAULT_FPS, min_track_seconds=MIN_TRACK_SECONDS,
                  min_path_mm=MIN_PATH_MM, min_displacement_mm=MIN_DISPLACEMENT_MM,
                  min_bend_amplitude=MIN_BEND_AMPLITUDE, min_events=MIN_EVENTS,
-                 verbose=True, return_qc=False):
+                 strict=False, verbose=True, return_qc=False):
     """Drop crops that show NO sign of life; keep every real worm, slow or fast.
 
     KEEP a crop iff it was tracked for >= `min_track_seconds` AND at least one
@@ -340,6 +355,15 @@ def filter_alive(df, fps=DEFAULT_FPS, min_track_seconds=MIN_TRACK_SECONDS,
     loaded table, deletes nothing) and duration-aware. Logs what was dropped and
     why. Set `return_qc=True` to also get the per-crop QC table (with an `alive`
     column) for inspection.
+
+    `strict` (default False): drop the `moved` branch, keeping a crop only if it
+    shows a WORM-SPECIFIC signal -- `bent OR behaved`. Passive translation cannot
+    tell a drifting bubble/debris from a crawling worm (both trip `moved`), so on
+    noisy plates the lenient union lets motile artifacts through. Strict gating
+    rejects them, at the cost of dropping any genuinely quiet worm that neither
+    bends detectably nor reverses/turns. NOTE `bent` needs the (optional) Hilbert
+    `Bend_Amplitude` column; if it is absent/all-NaN, strict mode reduces to
+    events-only (`behaved`) gating and warns.
     """
     if df.empty:
         return (df, crop_qc(df, fps=fps)) if return_qc else df
@@ -348,7 +372,18 @@ def filter_alive(df, fps=DEFAULT_FPS, min_track_seconds=MIN_TRACK_SECONDS,
     moved = (m.total_path_mm >= min_path_mm) | (m.net_displacement_mm.fillna(-np.inf) >= min_displacement_mm)
     bent = m.mean_bend_amplitude.fillna(-np.inf) >= min_bend_amplitude
     behaved = m.n_events >= min_events
-    alive = long_enough & (moved | bent | behaved)
+    if strict:
+        # worm-specific signals only; translation alone cannot separate a worm
+        # from a drifting bubble, so it is not counted here.
+        if verbose and not m.mean_bend_amplitude.notna().any():
+            print("[aliveness QC] WARNING: --strict-qc set but no usable "
+                  "Bend_Amplitude (Hilbert missing/all-NaN); strict gate reduces "
+                  "to events-only (reversal/turn onsets) and may over-cull smooth "
+                  "crawlers.", file=sys.stderr)
+        life = bent | behaved
+    else:
+        life = moved | bent | behaved
+    alive = long_enough & life
     m = m.assign(alive=alive.to_numpy())
 
     kept_keys = set(map(tuple, m.loc[alive, GROUP_KEYS].to_numpy()))
@@ -356,10 +391,13 @@ def filter_alive(df, fps=DEFAULT_FPS, min_track_seconds=MIN_TRACK_SECONDS,
     out = df[mask].reset_index(drop=True)
     if verbose:
         too_short = int((~long_enough).sum())
-        inert = int((long_enough & ~(moved | bent | behaved)).sum())
-        print(f"[aliveness QC] kept {int(alive.sum())}/{len(m)} crops "
+        inert = int((long_enough & ~life).sum())
+        reason = ("no bending/events — strict: translation alone not counted"
+                  if strict else "no movement/bending/events")
+        print(f"[aliveness QC{' (strict)' if strict else ''}] "
+              f"kept {int(alive.sum())}/{len(m)} crops "
               f"(dropped {int((~alive).sum())}: {too_short} too short <{min_track_seconds}s, "
-              f"{inert} inert — no movement/bending/events); "
+              f"{inert} inert — {reason}); "
               f"{len(df) - len(out):,} of {len(df):,} frames removed")
     return (out, m) if return_qc else out
 
@@ -459,6 +497,15 @@ def reversal_reaction(df, to_state, window_s=15.0, fps=DEFAULT_FPS):
     Returns one tidy row per (crop, transition):
         [<GROUP_KEYS>, Time_Seconds, latency_s, reacted]
     latency_s is NaN when no reversal onset occurs within the window (reacted=0).
+
+    DENOMINATOR (important): a row is produced only for fragments that actually
+    WITNESSED the shift -- `find_transitions` detects the change within the crop's
+    own frames, so a fragment that first appears AFTER the onset (already in
+    `to_state`) has no within-crop transition and contributes nothing. This is by
+    design: a late fragment cannot yield an onset-locked latency, and counting it
+    from its own start would fabricate an artificially short one. Consequently the
+    `reacted` fraction and median `latency_s` are conditioned on fragments present
+    ACROSS the transition, not on all fragments seen during `to_state`.
     """
     if "Reversal_Onset" not in df:
         raise KeyError("Reversal_Onset column required (re-run the extractor).")
@@ -707,6 +754,13 @@ def main():
                     help="gas state whose onset triggers the reversal-reaction analysis, e.g. 21pct_O2")
     ap.add_argument("--keep_all", "--keep_immotile", dest="keep_all", action="store_true",
                     help="disable the aliveness QC (by default only live worms are analysed)")
+    ap.add_argument("--strict-qc", dest="strict_qc", action="store_true",
+                    help="stricter aliveness gate for noisy datasets: keep a crop only if "
+                         "it BENT or BEHAVED (worm-specific signals), dropping the "
+                         "translation-only branch. Rejects drifting bubbles/debris that "
+                         "the lenient default keeps, at the cost of dropping genuinely "
+                         "quiet worms. Needs the Hilbert Bend_Amplitude column for the "
+                         "bend signal (else it is events-only; a warning is printed).")
     ap.add_argument("--min_track_seconds", type=float, default=MIN_TRACK_SECONDS,
                     help=f"aliveness QC: min tracked duration to keep a crop (default {MIN_TRACK_SECONDS})")
     ap.add_argument("--min_path_mm", type=float, default=MIN_PATH_MM,
@@ -729,7 +783,7 @@ def main():
     _, qc = filter_alive(raw, fps=args.fps, min_track_seconds=args.min_track_seconds,
                          min_path_mm=args.min_path_mm, min_displacement_mm=args.min_displacement_mm,
                          min_bend_amplitude=args.min_bend_amplitude, min_events=args.min_events,
-                         verbose=True, return_qc=True)
+                         strict=args.strict_qc, verbose=True, return_qc=True)
     qc.to_csv(outdir / "crop_qc.csv", index=False)
     df = raw if args.keep_all else raw[raw.set_index(GROUP_KEYS).index.isin(
         set(map(tuple, qc.loc[qc.alive, GROUP_KEYS].to_numpy())))].reset_index(drop=True)
@@ -760,7 +814,17 @@ def main():
         rr = reversal_reaction(df, to_state=args.pulse_state, fps=args.fps)
         rr.to_csv(outdir / "reversal_reaction.csv", index=False)
         if len(rr):
-            print(f"\nReversal reaction to {args.pulse_state} onset: "
+            # Denominator transparency: latency is conditioned on fragments that
+            # WITNESSED the shift. Report how many fragments were seen in the
+            # pulse state but arrived after its onset (no within-crop transition),
+            # so they are excluded from the reacted-fraction/median by design.
+            n_present = df[df["O2_State"] == args.pulse_state].groupby(GROUP_KEYS).ngroups
+            n_witnessed = rr.groupby(GROUP_KEYS).ngroups
+            n_late = max(0, n_present - n_witnessed)
+            print(f"\nReversal reaction to {args.pulse_state} onset "
+                  f"(fragments present ACROSS the shift only: {n_witnessed} of "
+                  f"{n_present} fragments seen in {args.pulse_state}; {n_late} "
+                  f"arrived after onset and were excluded): "
                   f"{rr.reacted.mean()*100:.0f}% reacted, "
                   f"median latency {rr.latency_s.median():.2f}s")
 

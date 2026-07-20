@@ -10,7 +10,7 @@ pulse/return cycles).
 
 Reads only artifacts already produced by the upstream (untouched) pipeline:
     track.txt                        (SWC tracker log)  -> ABSOLUTE clock + arena position
-    <crop>_metadata.json             (SWC crop ledger, optional)   -> Occluded (per-frame mask)
+    <crop>_metadata.json             (SWC crop ledger, optional)   -> Occluded + Animal_Clipped (per-frame masks)
     reversal_annotation.csv          (annotate_reversals)          -> Reversal_Active/Onset, velocity sign
     turn_annotation_by_roundness.csv (calc_turns_by_roundness)     -> Turn_Active
     hilbert_inst_freq.csv            (hilbert_transform_on_kymogram)-> Bend_Frequency (optional)
@@ -45,10 +45,18 @@ frames -- their reversal/turn/bend values are derived from a blank frame and
 are not real behaviour. If the metadata file is absent (older data), Occluded
 is 0 everywhere and the output is identical to before.
 
+Clipping: SWC also flags, per frame, whether the animal exceeded its crop box
+(`animal_clipped` in the ledger). We surface that as an `Animal_Clipped` column
+(1 = clipped) purely as a TECHNICAL crop-quality signal -- it is summarised
+downstream (pct_frames_clipped in crop_qc.csv) but never drops frames or gates
+aliveness, because a clipped worm still exhibits valid locomotion. Absent
+metadata -> 0 everywhere, identical to before.
+
 Output: a tidy, flat per-frame CSV with columns
     [Crop_ID, Frame, Time_Seconds, O2_State, Cycle_Index, Time_In_Phase_s,
      Forward_Velocity, Reversal_Active, Turn_Active,
-     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded, X_mm, Y_mm, fps]
+     Reversal_Onset, Bend_Frequency, Bend_Amplitude, Occluded, Animal_Clipped,
+     X_mm, Y_mm, fps]
 The trailing `fps` column records the TRUE per-recording frame rate (read from
 the SWC parameters.yaml by the Snakefile) so downstream analysis converts frames
 to seconds with the real rate instead of silently assuming 10 fps. It is a
@@ -98,6 +106,17 @@ def build_o2_state(protocol_time_s, baseline_duration_s, baseline_state, cycle, 
                            phase onset), for phase-locked averaging.
     """
     t = np.asarray(protocol_time_s, dtype=float)
+    # Fail loudly on a broken clock. A single non-finite timestamp is not just a
+    # bad frame: np.floor(nan).astype(int) yields a platform-dependent garbage
+    # sentinel for Cycle_Index, and searchsorted hands NaN a plausible-looking
+    # O2_State -- so the corruption is SILENT. The authoritative clock
+    # (track.txt time_imputed_seconds) being non-finite invalidates every
+    # gas-locked feature for this crop, so we refuse rather than emit garbage.
+    if t.size and not np.all(np.isfinite(t)):
+        raise ValueError(
+            "build_o2_state received non-finite protocol timestamps (NaN/inf); "
+            "the authoritative clock is broken so O2_State/Cycle_Index would be "
+            "garbage. Check track.txt time_imputed_seconds for this crop.")
     states = np.empty(t.shape, dtype=object)
     cycle_index = np.full(t.shape, -1, dtype=int)
     time_in_phase = np.zeros(t.shape, dtype=float)
@@ -237,15 +256,10 @@ def load_track_txt(track_txt, fps):
     return {"frame": frame, "abs_time": abs_time, "x": x, "y": y}
 
 
-def load_missing_frames(crop_dir):
+def _read_crop_ledger(crop_dir):
     """
-    Read the SWC crop ledger `<crop>_metadata.json` and return its per-frame
-    `is_missing_frame` list (True = animal occluded/lost -> blank crop frame),
-    or None if no ledger is found / it lacks the key.
-
-    The ledger's `frame_indices` are contiguous first..last, exactly like the
-    crop tif and (current SWC) track.txt, so the returned mask is aligned to the
-    behaviour/position arrays by POSITION -- no reindexing needed.
+    Locate and parse the SWC crop ledger `<crop>_metadata.json` in `crop_dir`,
+    returning the loaded dict, or None if none is found / it cannot be read.
 
     We search the crop dir for `track_metadata.json` first (if rename_tracks.py
     renamed it to the pipeline convention), then the native SWC
@@ -263,14 +277,28 @@ def load_missing_frames(crop_dir):
         return None
     try:
         with open(candidates[0]) as f:
-            meta = json.load(f)
+            return json.load(f)
     except Exception as e:  # noqa: BLE001
         print(f"[warn] could not read crop ledger {candidates[0]} ({e}).", file=sys.stderr)
         return None
-    missing = meta.get("is_missing_frame")
-    if missing is None:
+
+
+def _ledger_bool_array(meta, key):
+    """
+    Return the ledger's per-frame boolean array `key` as a bool ndarray, or None
+    if the ledger is absent / lacks the key.
+
+    The ledger's frame-aligned arrays (`is_missing_frame`, `animal_clipped`, ...)
+    are indexed first..last contiguous, exactly like the crop tif and (current
+    SWC) track.txt, so the returned mask is aligned to the behaviour/position
+    arrays by POSITION -- no reindexing needed.
+    """
+    if not meta:
         return None
-    return np.asarray(missing, dtype=bool)
+    val = meta.get(key)
+    if val is None:
+        return None
+    return np.asarray(val, dtype=bool)
 
 
 def _signed_velocity(x_mm, y_mm, reversal_active, fps, smooth_win, occluded=None):
@@ -370,14 +398,25 @@ def main(arg_list=None):
     if n == 0:
         raise ValueError(f"[{args.crop_id}] no frames to process (empty inputs).")
 
-    # ---- per-frame occlusion mask from the SWC crop ledger (optional) ----
-    # Located next to track.txt (the crop dir). Aligned by position (same
-    # contiguous frame range as the behaviour arrays). Absent -> all-False.
-    missing = load_missing_frames(Path(args.worm_pos).parent)
+    # ---- per-frame QC masks from the SWC crop ledger (optional) ----
+    # Located next to track.txt (the crop dir), read once. Both arrays are
+    # aligned by position (same contiguous frame range as the behaviour arrays).
+    # Absent ledger / key -> all-False.
+    ledger = _read_crop_ledger(Path(args.worm_pos).parent)
+    missing = _ledger_bool_array(ledger, "is_missing_frame")
     if missing is not None:
         occluded = (_fit_length(missing.astype(float), n) > 0.5).astype(int)
     else:
         occluded = np.zeros(n, dtype=int)
+    # `animal_clipped`: SWC flagged the animal as exceeding the crop box on this
+    # frame. This is a TECHNICAL crop-quality flag, NOT an occlusion/behaviour
+    # signal -- surfaced per frame so analysis-time QC can summarise it, but it
+    # deliberately never gates frames or crops out (a clipped worm still moves).
+    clipped = _ledger_bool_array(ledger, "animal_clipped")
+    if clipped is not None:
+        animal_clipped = (_fit_length(clipped.astype(float), n) > 0.5).astype(int)
+    else:
+        animal_clipped = np.zeros(n, dtype=int)
 
     reversal = _fit_length(reversal, n)
     turn = _fit_length(turn, n)
@@ -417,6 +456,10 @@ def main(arg_list=None):
         "Bend_Frequency": bend_freq,
         "Bend_Amplitude": bend_amp,
         "Occluded": occluded,
+        # Technical crop-quality flag (1 = SWC flagged the animal as exceeding
+        # the crop box on this frame). Summarised downstream as pct_frames_clipped
+        # in crop_qc.csv; never used to drop frames or gate aliveness.
+        "Animal_Clipped": animal_clipped,
         # Absolute arena position (mm). From track.txt when available, else the
         # crop centroid (fallback). Kept so analysis-time QC can measure absolute
         # displacement / positional spread per crop without re-reading track.txt.
@@ -430,9 +473,11 @@ def main(arg_list=None):
     Path(args.out_csv).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.out_csv, index=False)
     n_occ = int(occluded.sum())
+    n_clip = int(animal_clipped.sum())
     occ_note = f", {n_occ} occluded" if n_occ else ""
+    clip_note = f", {n_clip} clipped" if n_clip else ""
     print(f"[{args.crop_id}] wrote {len(out)} frames "
-          f"({out.Time_Seconds.iloc[0]:.1f}-{out.Time_Seconds.iloc[-1]:.1f}s{occ_note}) -> {args.out_csv}")
+          f"({out.Time_Seconds.iloc[0]:.1f}-{out.Time_Seconds.iloc[-1]:.1f}s{occ_note}{clip_note}) -> {args.out_csv}")
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ Focus:
 
 Run:  pytest test_extract_temporal_features.py -q
 """
+import json
 import sys
 from pathlib import Path
 
@@ -126,6 +127,15 @@ def test_empty_input_array():
     assert len(s) == len(ci) == len(tip) == 0
 
 
+def test_non_finite_timestamp_raises():
+    # a broken clock must fail loudly, not silently emit a garbage Cycle_Index
+    # (np.floor(nan).astype(int) is a platform-dependent sentinel).
+    with pytest.raises(ValueError, match="non-finite"):
+        _state([0.0, np.nan, 100.0])
+    with pytest.raises(ValueError, match="non-finite"):
+        _state([BASELINE + 10.0, np.inf])
+
+
 # ---------------------------------------------------------------- signed velocity
 def test_occluded_frame_does_not_poison_neighbours():
     # position with a single NaN (occluded) frame in the middle
@@ -153,3 +163,23 @@ def test_single_frame_velocity_is_safe():
     vel = ex._signed_velocity(np.array([3.0]), np.array([3.0]),
                               np.array([0]), fps=1.0, smooth_win=1)
     assert len(vel) == 1 and np.isfinite(vel[0])
+
+
+# ---------------------------------------------------------------- crop ledger
+def test_ledger_reads_both_qc_arrays(tmp_path):
+    # a single ledger read exposes both the occlusion mask and the clip flag
+    meta = {"is_missing_frame": [False, True, False],
+            "animal_clipped": [True, False, False]}
+    (tmp_path / "worm_track_3_metadata.json").write_text(json.dumps(meta))
+    ledger = ex._read_crop_ledger(tmp_path)
+    assert ledger is not None
+    np.testing.assert_array_equal(
+        ex._ledger_bool_array(ledger, "is_missing_frame"), [False, True, False])
+    np.testing.assert_array_equal(
+        ex._ledger_bool_array(ledger, "animal_clipped"), [True, False, False])
+
+
+def test_ledger_absent_or_keyless_returns_none(tmp_path):
+    assert ex._read_crop_ledger(tmp_path) is None            # no *_metadata.json
+    assert ex._ledger_bool_array(None, "animal_clipped") is None
+    assert ex._ledger_bool_array({"is_missing_frame": [1]}, "animal_clipped") is None

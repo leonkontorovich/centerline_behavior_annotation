@@ -10,7 +10,11 @@
 # folders), or pass the dataset dir as the first argument.
 #
 # Usage:
-#   finalize_aerotaxis_dataset.sh [dataset_dir] [--pulse_state 21pct_O2] [--format parquet] [-- <extra aerotaxis_analysis args>]
+#   finalize_aerotaxis_dataset.sh [dataset_dir] [--pulse_state 21pct_O2] [--format parquet] [--strict-qc] [-- <extra aerotaxis_analysis args>]
+#
+# --strict-qc: stricter aliveness gate for noisy plates -- keep a crop only if it
+#   bent or behaved (worm-specific signals), dropping the translation-only branch
+#   so drifting bubbles/debris are rejected. See aerotaxis_analysis.py --strict-qc.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -19,12 +23,14 @@ UTILS="${SCRIPT_DIR}/../toolscripts/utils"
 DATASET="."
 PULSE_STATE=""
 FORMAT="parquet"
+STRICT_QC=""
 EXTRA=()
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --pulse_state) PULSE_STATE="$2"; shift 2 ;;
     --format)      FORMAT="$2"; shift 2 ;;
+    --strict-qc)   STRICT_QC="--strict-qc"; shift ;;
     --)            shift; EXTRA=("$@"); break ;;
     -*)            echo "Unknown option: $1" >&2; exit 1 ;;
     *)             DATASET="$1"; shift ;;
@@ -44,6 +50,7 @@ python3 "${UTILS}/create_results_dict_server.py" "$DATASET" --format "$FORMAT"
 echo "▶ Step 2/2: running analysis -> ${DATASET}/analysis/ ..."
 ANALYSIS_ARGS=("$RESULTS" --outdir "${DATASET}/analysis")
 [[ -n "$PULSE_STATE" ]] && ANALYSIS_ARGS+=(--pulse_state "$PULSE_STATE")
+[[ -n "$STRICT_QC" ]] && ANALYSIS_ARGS+=("$STRICT_QC")
 # ${EXTRA[@]+...} guards against "unbound variable" for an empty array on bash 3.2
 python3 "${UTILS}/aerotaxis_analysis.py" "${ANALYSIS_ARGS[@]}" ${EXTRA[@]+"${EXTRA[@]}"}
 
