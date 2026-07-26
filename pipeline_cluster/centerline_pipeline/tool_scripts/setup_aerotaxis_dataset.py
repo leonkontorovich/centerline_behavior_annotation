@@ -22,6 +22,30 @@ import re
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 SRC_FOLDER = os.path.join(SCRIPT_DIR, "../population_recordings/SAM2_population_aerotaxis/snakemake_files/snakefiles_aerotaxis")
 
+# Root of THIS clone: tool_scripts -> centerline_pipeline -> pipeline_cluster ->
+# repo root. Stamped into every generated config.yaml as `centerline_repo_path`
+# so the Snakefile puts this clone ahead of any copy installed in the conda env
+# (on the lab cluster that is the shared checkout, which would otherwise supply
+# the centerline/curvature code even though every other file is yours).
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
+
+
+def stamp_repo_path(config_path, repo_root=REPO_ROOT):
+    """Point a copied config.yaml at the clone this script lives in."""
+    if not os.path.isdir(os.path.join(repo_root, "centerline_behavior_annotation")):
+        print(f"Warning: no centerline_behavior_annotation/ package under "
+              f"{repo_root}; leaving centerline_repo_path empty (the run will "
+              f"use whatever the conda env provides).")
+        return
+    with open(config_path) as f:
+        text = f.read()
+    line = f'centerline_repo_path: "{repo_root}"'
+    text, n = re.subn(r'^centerline_repo_path:.*$', line, text, count=1, flags=re.M)
+    if not n:  # older template without the key
+        text = line + "\n" + text
+    with open(config_path, 'w') as f:
+        f.write(text)
+
 def parse_gas_script(script_path, o2_col=3, dur_col=0):
     """
     Parse an Alicat mass-flow-controller script into (baseline, cycle).
@@ -188,6 +212,7 @@ def main():
         config_path = os.path.join(new_folder, "config.yaml")
         if os.path.exists(config_path):
             update_config_file(config_path, baseline_dur, baseline_state, cycle)
+            stamp_repo_path(config_path)
             print(f"  -> Pipeline files copied and config updated successfully.")
 
     print("\nSuccess! The dataset is ready for the bubble filter.")

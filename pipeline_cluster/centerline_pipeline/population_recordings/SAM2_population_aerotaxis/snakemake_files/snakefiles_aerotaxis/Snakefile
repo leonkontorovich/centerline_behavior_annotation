@@ -1,8 +1,75 @@
 from snakemake.io import glob_wildcards, temp, touch
 
 # ---- dynamic per-rule resources from cluster_config.yaml ----
-import json, math, re, sys, yaml
+import json, math, os, re, sys, yaml
 from functools import lru_cache
+
+# --------------------------------------------------------------
+# Pin `import centerline_behavior_annotation` to YOUR clone.
+#
+# The rules below import the analysis package. Python resolves that import from
+# sys.path -- i.e. from whatever is installed in the active conda env. On the
+# lab cluster that is the SHARED checkout
+# (.../zimmer/autoscope/code/centerline_behavior_annotation), so a run could
+# execute your Snakefile and your config while running the LAB's centerline and
+# curvature code. Edits you made in your own clone would do nothing, silently.
+#
+# `centerline_repo_path` (stamped into config.yaml by the copy/setup scripts
+# from the clone they were run out of) goes to the FRONT of sys.path so your
+# checkout wins. The resolved location is always printed, because "which code
+# actually ran?" should never require detective work.
+# --------------------------------------------------------------
+def _pin_package_to_repo():
+    repo = str(config.get("centerline_repo_path", "") or "").strip()
+    if repo:
+        pkg = os.path.join(repo, "centerline_behavior_annotation")
+        if os.path.isdir(pkg):
+            # Drop any pre-existing entry so ours is unambiguously first.
+            sys.path[:] = [p for p in sys.path if os.path.abspath(p or ".") !=
+                           os.path.abspath(repo)]
+            sys.path.insert(0, repo)
+            # sys.path only governs imports that have not happened yet. If
+            # anything already imported the package (a plugin, sitecustomize, a
+            # conda .pth), the shared copy is cached in sys.modules and our path
+            # change would be a no-op. Evict it and its submodules so the next
+            # import genuinely re-resolves against the clone.
+            stale = [m for m in sys.modules
+                     if m == "centerline_behavior_annotation"
+                     or m.startswith("centerline_behavior_annotation.")]
+            for m in stale:
+                del sys.modules[m]
+            if stale:
+                print(f"[repo] evicted {len(stale)} already-imported "
+                      f"centerline_behavior_annotation module(s) so the clone "
+                      f"is used instead", file=sys.stderr)
+        else:
+            print(f"[repo] WARNING config `centerline_repo_path: {repo}` does "
+                  f"not contain a `centerline_behavior_annotation/` package "
+                  f"directory; falling back to the installed copy.",
+                  file=sys.stderr)
+    else:
+        print("[repo] WARNING `centerline_repo_path` is empty in config.yaml, "
+              "so the analysis package will be taken from the conda env -- on "
+              "the lab cluster that is the SHARED checkout, not your clone. "
+              "Re-copy the pipeline with copy_aerotaxis_population_pipeline.sh "
+              "to stamp it automatically.", file=sys.stderr)
+
+    try:
+        import centerline_behavior_annotation as _cba
+        resolved = os.path.dirname(os.path.abspath(_cba.__file__))
+    except Exception as exc:  # noqa: BLE001 - report, let the rule fail later
+        print(f"[repo] ERROR cannot import centerline_behavior_annotation "
+              f"({exc}). Install it into the env or set `centerline_repo_path`.",
+              file=sys.stderr)
+        return
+    print(f"[repo] centerline_behavior_annotation -> {resolved}", file=sys.stderr)
+    if repo and os.path.abspath(os.path.dirname(resolved)) != os.path.abspath(repo):
+        print(f"[repo] WARNING the package resolved OUTSIDE your configured "
+              f"clone ({repo}). An installed copy is shadowing it -- check for "
+              f"a .pth/egg-link in the env's site-packages.", file=sys.stderr)
+
+
+_pin_package_to_repo()
 
 MAX_CROP_SEC = 1800  # 30 minutes baseline
 

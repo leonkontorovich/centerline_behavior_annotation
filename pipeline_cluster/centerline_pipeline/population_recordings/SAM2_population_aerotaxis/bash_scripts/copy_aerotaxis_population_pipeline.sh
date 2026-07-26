@@ -13,6 +13,19 @@
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 src_folder="${script_dir}/../snakemake_files/snakefiles_aerotaxis"
 
+# Root of THIS clone: bash_scripts -> SAM2_population_aerotaxis ->
+# population_recordings -> centerline_pipeline -> pipeline_cluster -> repo root.
+# Stamped into every config.yaml as `centerline_repo_path` so the Snakefile puts
+# this clone ahead of any copy installed in the conda env (on the lab cluster
+# that is the shared checkout, which would otherwise silently supply the
+# centerline/curvature code).
+repo_root="$(cd "${script_dir}/../../../../.." && pwd)"
+if [ ! -d "${repo_root}/centerline_behavior_annotation" ]; then
+    echo "❌ ERROR: expected the package at ${repo_root}/centerline_behavior_annotation" >&2
+    echo "   (derived from this script's location). Has the tree been moved?" >&2
+    exit 1
+fi
+
 # Get current directory
 current_dir="$PWD"
 log_file="${current_dir}/file_copy_log.txt"
@@ -44,6 +57,19 @@ for subfolder in "${current_dir}"/*/ ; do
         cp "${src_folder}/cluster_config.yaml" "$subfolder"
         cp "${src_folder}/config.yaml" "$subfolder"
         cp "${src_folder}/Snakefile" "$subfolder"
+
+        # Point the copied config at this clone (see repo_root above). Uses a
+        # non-/ delimiter so the path's slashes need no escaping.
+        python3 - "$subfolder/config.yaml" "$repo_root" <<'PYSTAMP'
+import re, sys
+cfg_path, repo = sys.argv[1], sys.argv[2]
+text = open(cfg_path).read()
+line = f'centerline_repo_path: "{repo}"'
+new, n = re.subn(r'^centerline_repo_path:.*$', line, text, count=1, flags=re.M)
+if not n:  # older template without the key -- prepend it
+    new = line + "\n" + text
+open(cfg_path, "w").write(new)
+PYSTAMP
         
         # Copy execution scripts
         cp "${src_folder}/RUNME_cluster.sh" "$subfolder"

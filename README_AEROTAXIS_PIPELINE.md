@@ -26,6 +26,7 @@ replaces the final analysis with a temporal one.
 7. [Monitoring, cleanup & single-crop debug](#7-monitoring-cleanup--single-crop-debug)
 8. [Troubleshooting](#8-troubleshooting)
 9. [Configuration reference](#9-configuration-reference)
+10. [Open work / next session](#10-open-work--next-session)
 
 ---
 
@@ -195,6 +196,29 @@ cd centerline_behavior_annotation
 git checkout aerotaxis-temporal-pipeline
 ```
 All commands in this guide assume your clone is located at `/lisc/data/scratch/neurobiology/zimmer/LeonK/centerline_behavior_annotation`. If you clone it elsewhere, simply adjust the paths accordingly.
+
+**Cloning is all you need — no `pip install` required.** The pipeline runs the
+analysis package *from your clone*, and enforces it: the deployment scripts
+stamp your clone's path into every `config.yaml` as `centerline_repo_path`, and
+the Snakefile puts it first on `sys.path`.
+
+This matters more than it looks. The Snakefile's rules do
+`import centerline_behavior_annotation`, and **Python resolves that import from
+the environment, not from the pipeline**. The `autoscope_behaviour_shared` env
+has the *shared lab checkout* installed, so without this pinning a run would
+execute your Snakefile, your config and your scripts while quietly running the
+**lab's** `centerline/` and `curvature/` code — and any fix you made in your own
+clone would do nothing. That is not hypothetical: it is why the
+`annotate_reversals` traceback in the reference dataset points at
+`.../zimmer/autoscope/code/centerline_behavior_annotation`.
+
+Every run prints which copy it resolved, so you never have to guess:
+```
+[repo] centerline_behavior_annotation -> /lisc/.../LeonK/centerline_behavior_annotation/centerline_behavior_annotation
+```
+If that path is not your clone, the run also prints a `WARNING` telling you so.
+Re-run step 3a after moving or re-cloning, so the stamped path stays correct.
+
 ---
 
 ## 4. Step-by-step run protocol
@@ -462,6 +486,7 @@ snakemake --configfile config.yaml --latency-wait 500 \
 | **`annotate_reversals` fails on most or all crops**, with `KeyError: "None of [Index([9.0 ... 38.0])] are in the [columns]"` | The curvature table is narrower than `final_segment` — nearly always because `min_worm_length_mm` is set above your worms, so `create_centerline` blanked almost every frame and the dynamic column crop collapsed the table | **Do not just rerun.** Check the `[swc] ... min_worm_length_px` line in the log against your worms' real length, then run [step 4a](#4-step-by-step-run-protocol) (`calibrate_min_worm_length.py`) and set `min_worm_length_mm` from the measurement. A handful of such failures is normal junk attrition; a *majority* is a threshold bug. Since the guard was added, `create_centerline` output that collapses now raises a message naming this cause directly. |
 | `Reversal_Active` ≈ 0 and `Bend_*` almost entirely NaN, yet crops "succeeded" | Same root cause as above, caught one stage later: the crop had only a handful of valid skeleton frames, enough to pass but not to measure behaviour | Check what fraction of frames actually had a skeleton. Recompute after fixing `min_worm_length_mm`; a healthy crop has a skeleton on the large majority of frames, not <1 %. |
 | `Turn_Active` implausibly high (e.g. ~50 % of frames) | `min/max_worm_area` came from SWC's *detection* window but is applied to *SAM2* masks, and/or the roundness thresholds were tuned at a different worm size | Inspect `turn_annotation_by_roundness.csv`, which stores `mask_area` and `roundness_mask_convex_hull` per frame. If `mask_area` sits mostly outside `[min_worm_area, max_worm_area]`, the area window is wrong for SAM2 masks; if areas are inside the window but roundness hovers near `min_round_threshold` during plain forward crawling, re-tune `min_round_threshold`/`max_round_threshold` against a few hand-checked turns. |
+| A fix you made to `centerline/` or `curvature/` has no effect | The run imported the package from the conda env (the shared lab checkout), not your clone | Check the `[repo] centerline_behavior_annotation -> ...` line at the top of the log. If it is not your clone, re-run step 3a to stamp `centerline_repo_path`, or set it by hand in `config.yaml`. A `WARNING` on that line names the problem. |
 | A recording's `workflow_*.log` says `✅ Pipeline complete!` but crops are missing | Pre-fix runs printed that banner unconditionally, ignoring Snakemake's exit code | Fixed: `RUNME_cluster.sh` now reports `❌ Pipeline FAILED (snakemake exit code N)` and propagates it. For an **old** log, ignore the banner and check `grep -c '^Error in rule' workflow_*.log` instead. |
 
 **Where to look:** per-job logs in each `*_new/log/log_*.out`; Snakemake log in
@@ -475,6 +500,7 @@ Key `config.yaml` parameters for this pipeline (others feed the untouched upstre
 
 | Key | Default | Notes |
 |---|---|---|
+| `centerline_repo_path` | *(stamped)* | Root of the clone whose `centerline_behavior_annotation/` package the run should use. Written automatically by step 3 / 3a from the clone they were run out of; the Snakefile puts it first on `sys.path` and prints the resolved location as a `[repo]` line. Empty ⇒ the run silently uses whatever the conda env has installed (on the cluster: the shared lab checkout), so the Snakefile warns. See [§3.2](#32-clone-your-isolated-repository-critical). |
 | `fps` | `10` | **Fallback only.** Read per recording from SWC `{dataset}/parameters.yaml` (`recording.fps`); config value used only if that file is absent. |
 | `factor_px_to_mm` | `'0.01221'` | **Fallback only.** Read per recording from SWC `parameters.yaml` (`recording.pixel_size_mm`, else `arena_size_cm*10/frame_height_px`). Scales `Forward_Velocity`, and converts `min_worm_length_mm` to pixels. |
 | `min_worm_length_mm` | `0.30` | Junk floor on skeleton length, in **mm**; converted to px per recording via `factor_px_to_mm`. Frames with a shorter skeleton are blanked by `create_centerline`. Keep it well below a real worm (~0.8–1.1 mm) — see [§2.1](#21-critical-nuances-for-a-bullet-proof-analysis). Replaces the old pixel key `min_worm_lenght`, which is still honoured (with a warning) if `min_worm_length_mm` is absent. |
@@ -493,3 +519,85 @@ Cluster resources for the analysis rule are in `cluster_config.yaml` under
 ### Processing note (SAM2, upstream)
 GPU NVIDIA L4 · ~0.403 s/frame (~2.48 fps) · mask 146 × 146 (uint8 {0,255}).
 ```
+
+---
+
+## 10. Open work / next session
+
+Written as a handover: each item says what is known, what is *not*, and what
+would settle it. Ordered roughly by value. Last updated 2026-07-26.
+
+### Blocking the `rde4_behavior/Croppings` re-run
+
+1. **Re-run the dataset with the corrected threshold, then re-calibrate.**
+   The run of 2026-07-24/25 is void: 4,190 of 4,576 crops died in
+   `annotate_reversals` because `min_worm_lenght: 83` px sat above the worms
+   (measured 0.76–1.24 mm). That is fixed (`min_worm_length_mm: 0.30`), but
+   nothing has been re-run yet. Afterwards, re-run [step 4a](#4-step-by-step-run-protocol):
+   the current `k` is estimated only from frames that survived the old filter,
+   so it is biased upward. A clean pass gives an unbiased `k` and confirms 0.30.
+
+2. **Untangle `2026-06-26_12-50-40_rde_A_new/`.** It is not a recording — it is a
+   stray SWC batch root (`batch_run_summary.json`, 2026-07-23) holding 18 *other*
+   recordings' crops, still unrenamed (`*_track_N.tif`), with the real
+   `2026-06-26_12-50-40_rde_A` crops one level deeper. That recording has never
+   been processed, and the duplicate crops waste disk. Decide whether the nested
+   copies are redundant before deleting anything.
+
+3. **Re-copy the pipeline into every dataset ([step 3a](#4-step-by-step-run-protocol)).**
+   Deployed copies predate the current code — the `extract_temporal_features.py`
+   in `Croppings` lacks `Cycle_Index`, `Time_In_Phase_s`, `X_mm`, `Y_mm`,
+   `Animal_Clipped` and `fps`, and no deployed `config.yaml` has
+   `centerline_repo_path`. A stale deployed copy is invisible until it changes a
+   result, so re-copy as a matter of course.
+
+### Open questions that need data
+
+4. **`Turn_Active` fires on ~52 % of frames — decide which cause it is.**
+   Two candidates needing opposite fixes: **(a)** `min/max_worm_area` comes from
+   SWC's *detection* window (150/550 px²) but is applied to *SAM2* masks, so
+   out-of-range frames are forced to `turn = 0` **and `roundness = 0`**, and
+   those zeros then feed the rolling mean; **(b)** for a 70 × 8 px worm
+   `roundness = circularity + 0.913 − CAR` ≈ 0.60, just over
+   `min_round_threshold: 0.55`, so ordinary crawling reads as a turn.
+   `turn_annotation_by_roundness.csv` already stores `mask_area` and
+   `roundness_mask_convex_hull` per frame — plot both distributions after the
+   re-run. Areas mostly outside the window ⇒ (a); areas inside but roundness
+   hovering at 0.55–0.65 during plain forward crawling ⇒ (b). Deliberately left
+   alone until then rather than guessed at.
+
+5. **Verify `factor_px_to_mm` for datasets cropped before SWC persisted it.**
+   `Croppings/parameters.yaml` has neither `pixel_size_mm` nor
+   `frame_height_px`, so px→mm silently used the config fallback (0.01221, which
+   happens to be right for 2.5 cm / 2048 px). Re-cropping with a current SWC
+   build supplies it directly. Until then, check the `[swc] ... FALLBACK` lines.
+
+### Robustness / tooling
+
+6. **Fragment tracking: `Crop_ID` is not an animal.** SWC assigns a brand-new
+   `_track_N` id whenever a track is lost and re-detected, so one worm can
+   become several crops. The replication unit for statistics is the
+   recording/plate, which the analysis already assumes — but crop counts should
+   never be reported as animal counts. Linking fragments (position + time
+   continuity across track ends) would be a real improvement and is not started.
+
+7. **No end-to-end test of the Snakemake DAG.** The 56 unit tests cover the
+   extractor, the analysis, the degenerate-crop guards and repo pinning, but
+   nothing runs the workflow itself. A tiny synthetic dataset (a few 20-frame
+   crops + a fake `parameters.yaml`) run with `RUNME_cluster.sh -c` would have
+   caught the `annotate_reversals` failure in seconds instead of after a
+   two-day cluster run.
+
+8. **`quick_status.sh` cannot distinguish "failed" from "not started".** It
+   infers stage completion from files on disk and reports both as "not
+   finished". Reading `grep -c '^Error in rule' workflow_*.log` per recording
+   would make a failed run obvious at a glance.
+
+9. **`downsample_factor` in `config.yaml` is vestigial here** — it is read by
+   `head_and_tail.py`, but this pipeline uses `head_and_tail_low_res.py`.
+   Harmless, but it invites the assumption that changing it does something.
+
+10. **`t0_offset_s` is still hand-entered.** It is the single most damaging value
+    to get wrong (it shifts every transition-triggered average), and nothing
+    cross-checks it. If SWC ever records the gas-script start time, wire it
+    through the way `fps` and `pixel_size_mm` now are.

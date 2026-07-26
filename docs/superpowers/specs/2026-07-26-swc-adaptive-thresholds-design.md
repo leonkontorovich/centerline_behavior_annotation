@@ -141,6 +141,30 @@ regenerates them; `turn_annotation_by_roundness.csv` already stores `mask_area`
 and `roundness_mask_convex_hull` per frame, so the distributions will separate
 (a) from (b). Deferred deliberately rather than guessed at.
 
+## Running from your own clone (package pinning)
+
+The README told you to clone into personal scratch, and the deployment scripts
+already copied the Snakefile/config/scripts from that clone. But the rules do
+`import centerline_behavior_annotation`, and **Python resolves that from the
+environment**: `autoscope_behaviour_shared` has the shared lab checkout
+installed, so a run executed your Snakefile and your config while running the
+lab's `centerline/` and `curvature/` code. The failing run's traceback points at
+`.../zimmer/autoscope/code/centerline_behavior_annotation` — the fixes in this
+commit would have done nothing.
+
+Fix: `centerline_repo_path`, stamped into every `config.yaml` by
+`copy_aerotaxis_population_pipeline.sh` and `setup_aerotaxis_dataset.py` from the
+clone they run out of, and put first on `sys.path` by the Snakefile. Cloning is
+now sufficient — no `pip install` needed.
+
+`sys.path` alone is not enough: it governs only imports that have not happened
+yet. If anything imported the shared copy first (a `.pth`, `sitecustomize`, a
+plugin), it is cached in `sys.modules` and the path change is a no-op — verified
+failing before the eviction was added. The Snakefile therefore also evicts any
+already-imported `centerline_behavior_annotation*` modules, and always prints
+the resolved location as a `[repo]` line, warning when it falls outside the
+configured clone.
+
 ## Cropper (SWC) alignment audit
 
 Checked against the current SWC fork (`SimpleWormCropper`, HEAD `5af264a`), which

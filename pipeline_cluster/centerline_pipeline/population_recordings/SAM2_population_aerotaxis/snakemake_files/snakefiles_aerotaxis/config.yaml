@@ -1,3 +1,22 @@
+# ------------------------------------------------------------------
+# WHICH COPY OF THE PYTHON PACKAGE THIS RUN USES.
+#
+# The Snakefile's rules `import centerline_behavior_annotation...`. That import
+# is resolved by Python, NOT by the pipeline -- so it lands on whatever copy is
+# installed in the active conda env, which on the lab cluster is the SHARED lab
+# checkout, even when every other file came from your own clone. Your fixes to
+# centerline/ or curvature/ would then be silently ignored.
+#
+# This path is stamped automatically by copy_aerotaxis_population_pipeline.sh /
+# setup_aerotaxis_dataset.py with the root of the clone they were run from, and
+# the Snakefile puts it FIRST on sys.path. Every run prints the resolved package
+# location as a `[repo]` line -- check it if you are ever unsure which code ran.
+#
+# Leave empty to accept whatever the environment provides (the Snakefile then
+# warns, since that is the situation this key exists to prevent).
+# ------------------------------------------------------------------
+centerline_repo_path: ""
+
 # Video processing parameters
 fourcc: 0
 
