@@ -67,6 +67,7 @@ if $RUN_LOCAL; then
     --cores $JOBS \
     --keep-going \
     --rerun-incomplete
+  SNAKE_RC=$?
 else
   # Check wrapper exists
   if [ ! -f "./submit_wrapper.sh" ]; then
@@ -88,9 +89,30 @@ else
     --jobs $JOBS \
     --keep-going \
     --rerun-incomplete
+  SNAKE_RC=$?
 fi
 
+# Report Snakemake's ACTUAL result and propagate it.
+#
+# This block used to unconditionally print "✅ Pipeline complete!" and exit 0.
+# With --keep-going, Snakemake finishes the jobs it can, then exits non-zero
+# saying "Exiting because a job execution failed" -- so a run where 4190 of 4576
+# crops failed still reported success, in every per-recording log and in the
+# controller's summary. A green tick that cannot go red is worse than no tick:
+# it is what let a broken run look finished.
 echo ""
 echo "=========================================="
-echo "✅ Pipeline complete!"
+if [ "${SNAKE_RC:-1}" -eq 0 ]; then
+  echo "✅ Pipeline complete — all rules succeeded."
+else
+  echo "❌ Pipeline FAILED (snakemake exit code ${SNAKE_RC:-1})."
+  echo ""
+  echo "   With --keep-going, independent jobs still ran, so partial output"
+  echo "   exists on disk. DO NOT treat this dataset as finished."
+  echo ""
+  echo "   Which rule failed, and how often:"
+  echo "     grep '^Error in rule' <this log> | sort | uniq -c | sort -rn"
+  echo "   Then read the cluster log named in the traceback for the real cause."
+fi
 echo "=========================================="
+exit "${SNAKE_RC:-1}"

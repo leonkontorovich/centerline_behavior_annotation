@@ -1,7 +1,7 @@
 from snakemake.io import glob_wildcards, temp, touch
 
 # ---- dynamic per-rule resources from cluster_config.yaml ----
-import json, math, re, yaml
+import json, math, re, sys, yaml
 from functools import lru_cache
 
 MAX_CROP_SEC = 1800  # 30 minutes baseline
@@ -23,10 +23,17 @@ def get_cluster_config_value(rule_name, config_key, default=None):
 # --------------------------------------------------------------
 # SWC (SimpleWormCropper) is the source of truth for per-recording settings.
 # The cropper writes parameters.yaml into each recording folder (a sibling of
-# the track dirs, i.e. {dataset}/parameters.yaml). We READ fps and the px->mm
-# calibration from there so the pipeline never overwrites what was configured in
-# SWC for that specific recording. config.yaml values are FALLBACKS only (used
-# when parameters.yaml is missing, e.g. data cropped by an older SWC).
+# the track dirs, i.e. {dataset}/parameters.yaml). We READ fps, the px->mm
+# calibration and the worm-size window from there so the pipeline never
+# overwrites what was configured in SWC for that specific recording. config.yaml
+# values are FALLBACKS only (used when parameters.yaml is missing or omits a
+# key, e.g. data cropped by an older SWC).
+#
+# EVERY resolved value is reported once per recording on stderr as a `[swc]`
+# line stating both the value and where it came from. A silent config fallback
+# is how a rig-specific constant survived into a dataset it did not fit and
+# blanked ~99% of frames -- so "which numbers is this run actually using?" must
+# be answerable by reading the top of the log, never by inspecting the code.
 # --------------------------------------------------------------
 @lru_cache(None)
 def get_swc_recording_params(dataset):
@@ -41,16 +48,70 @@ def get_swc_recording_params(dataset):
         return {}
 
 
+@lru_cache(None)
+def _swc_report(dataset, key, value, source):
+    """
+    Announce a resolved per-recording parameter once (lru_cache dedupes the
+    repeat calls Snakemake makes while building the DAG). `source` is either
+    "parameters.yaml" or "config.yaml fallback" -- the distinction is the whole
+    point, so it is never abbreviated away.
+    """
+    flag = ("  <-- FALLBACK, verify this fits your cropper output"
+            if "fallback" in source else "")
+    print(f"[swc] {dataset}: {key} = {value:g}  (source: {source}){flag}", file=sys.stderr)
+    return value
+
+
+@lru_cache(None)
+def _check_measured_fps(dataset, configured):
+    """
+    Cross-check the configured fps against the fps SWC measured from the
+    recording's own frame timestamps (`recording.fps_measured_from_metadata`,
+    written by SWC's persist_derived_calibration).
+
+    SWC deliberately does NOT override the configured value with the measured
+    one -- and neither do we, for the same reason: the configured fps is what
+    the operator asserted, and silently substituting a measured estimate would
+    change the clock under them. But SWC's warning is emitted at CROP time, in a
+    log the analyst may never open, whereas EVERY gas-locked feature this
+    pipeline produces depends on fps being right. So we re-raise it here, where
+    it is in front of the person running the analysis.
+
+    Tolerance matches SWC's own reconcile_fps_with_metadata (5%).
+    """
+    rec = get_swc_recording_params(dataset)
+    measured = rec.get("fps_measured_from_metadata")
+    if measured is None:
+        return  # older SWC, or the reader had no usable timestamps
+    try:
+        measured = float(measured)
+    except (TypeError, ValueError):
+        return
+    if measured <= 0 or configured <= 0:
+        return
+    if abs(measured - configured) / configured > 0.05:
+        print(f"[swc] {dataset}: WARNING configured fps={configured:g} disagrees "
+              f"with the fps SWC measured from this recording's own timestamps "
+              f"({measured:g}). Using the CONFIGURED value, as SWC does. If the "
+              f"measured value is the true acquisition rate, every Time_Seconds, "
+              f"O2_State and velocity for this recording is wrong by "
+              f"{100 * abs(measured - configured) / configured:.1f}% -- fix `fps` "
+              f"in the SWC template and re-crop.", file=sys.stderr)
+
+
 def swc_fps(dataset):
     """fps from SWC parameters.yaml (recording.fps); fall back to config['fps']."""
     rec = get_swc_recording_params(dataset)
     try:
         fps = float(rec.get("fps"))
         if fps > 0:
-            return fps
+            _check_measured_fps(dataset, fps)
+            return _swc_report(dataset, "fps", fps, "parameters.yaml")
     except (TypeError, ValueError):
         pass
-    return float(config["fps"])
+    fallback = float(config["fps"])
+    _check_measured_fps(dataset, fallback)
+    return _swc_report(dataset, "fps", fallback, "config.yaml fallback")
 
 
 def swc_factor_px_to_mm(dataset):
@@ -63,17 +124,59 @@ def swc_factor_px_to_mm(dataset):
     try:
         pix = float(rec.get("pixel_size_mm"))
         if pix > 0:
-            return pix
+            return _swc_report(dataset, "factor_px_to_mm", pix, "parameters.yaml")
     except (TypeError, ValueError):
         pass
     try:
         arena_cm = float(rec.get("arena_size_cm"))
         frame_px = float(rec.get("frame_height_px"))
         if arena_cm > 0 and frame_px > 0:
-            return arena_cm * 10.0 / frame_px
+            return _swc_report(dataset, "factor_px_to_mm",
+                               arena_cm * 10.0 / frame_px, "parameters.yaml")
     except (TypeError, ValueError):
         pass
-    return float(config["factor_px_to_mm"])
+    return _swc_report(dataset, "factor_px_to_mm",
+                       float(config["factor_px_to_mm"]), "config.yaml fallback")
+
+
+def swc_min_worm_length(dataset):
+    """
+    Minimum skeleton path length (PIXELS) below which create_centerline blanks a
+    frame, derived from the BIOLOGICAL floor `min_worm_length_mm` and this
+    recording's px->mm calibration.
+
+    Why mm and not px: a worm's length is biology and is the same number on
+    every rig; its length in PIXELS depends entirely on magnification. The old
+    `min_worm_lenght: 83` was a pixel value tuned on a rig where worms imaged at
+    ~1.0 mm, and it silently blanked ~99% of frames on a dataset whose worms
+    image at ~60-70 px. Expressing the floor in mm and converting per recording
+    makes the threshold follow whatever the cropper produces.
+
+    This is a JUNK FLOOR, not a staging criterion -- it exists to reject debris
+    and broken mask fragments, so it sits well below any real worm (default
+    0.4 mm vs ~0.8-1.1 mm for an adult). Do not raise it to select for worm size.
+
+    `min_worm_lenght` (the old misspelled PIXEL key) is only consulted when
+    `min_worm_length_mm` is absent, so already-deployed configs keep working --
+    but it warns, because it is exactly the kind of value that does not travel
+    between rigs.
+    """
+    px_to_mm = swc_factor_px_to_mm(dataset)
+    mm = config.get("min_worm_length_mm")
+    if mm is None:
+        legacy = config.get("min_worm_lenght", config.get("min_worm_length"))
+        if legacy is not None:
+            print(f"[swc] {dataset}: WARNING using deprecated PIXEL key "
+                  f"`min_worm_lenght: {legacy}` from config.yaml (= "
+                  f"{float(legacy) * px_to_mm:.3f} mm at this recording's "
+                  f"calibration). This is a magnification-specific constant "
+                  f"that will not fit a different rig -- switch to "
+                  f"`min_worm_length_mm`.", file=sys.stderr)
+            return _swc_report(dataset, "min_worm_length_px", float(legacy),
+                               "config.yaml fallback")
+        mm = 0.4
+    return _swc_report(dataset, "min_worm_length_px", float(mm) / px_to_mm,
+                       "min_worm_length_mm x parameters.yaml")
 
 
 def swc_min_worm_area(dataset):
@@ -84,10 +187,13 @@ def swc_min_worm_area(dataset):
             loaded = yaml.safe_load(f) or {}
         val = loaded.get("region_extraction", {}).get("min_region_size")
         if val is not None:
-            return int(val)
+            return int(_swc_report(dataset, "min_worm_area", int(val),
+                                   "parameters.yaml"))
     except (FileNotFoundError, yaml.YAMLError, ValueError, TypeError):
         pass
-    return int(config.get("min_worm_area", 400))
+    return int(_swc_report(dataset, "min_worm_area",
+                           int(config.get("min_worm_area", 400)),
+                           "config.yaml fallback"))
 
 
 def swc_max_worm_area(dataset):
@@ -98,10 +204,13 @@ def swc_max_worm_area(dataset):
             loaded = yaml.safe_load(f) or {}
         val = loaded.get("region_extraction", {}).get("max_region_size")
         if val is not None:
-            return int(val)
+            return int(_swc_report(dataset, "max_worm_area", int(val),
+                                   "parameters.yaml"))
     except (FileNotFoundError, yaml.YAMLError, ValueError, TypeError):
         pass
-    return int(config.get("max_worm_area", 1000))
+    return int(_swc_report(dataset, "max_worm_area",
+                           int(config.get("max_worm_area", 1000)),
+                           "config.yaml fallback"))
 
 
 
@@ -215,6 +324,54 @@ def create_constraint_function(rule_name):
     def get_constraint(wildcards):
         return get_cluster_config_value(rule_name, "constraint", "")
     return get_constraint
+
+
+# --------------------------------------------------------------
+# Fail fast on a curvature/PCA geometry mismatch.
+#
+# annotate_reversals slices curvature columns [initial_segment, final_segment)
+# and feeds them to a PCA model trained on exactly that many features. The
+# curvature table's width is set by `relative_spacing` (points every N% of body
+# length => ~100/N columns). If final_segment exceeds that width, EVERY crop
+# dies with an opaque pandas KeyError deep in a cluster job -- which is exactly
+# how one dataset produced 4190 identical failures before anyone saw the cause.
+# Checking it here costs nothing and turns that into a startup error.
+# --------------------------------------------------------------
+def _validate_segment_geometry():
+    initial = int(config["initial_segment"])
+    final = int(config["final_segment"])
+    spacing_pct = float(config["relative_spacing"])
+    if spacing_pct <= 0:
+        raise WorkflowError("config `relative_spacing` must be > 0 "
+                            f"(got {spacing_pct}).")
+    # Points are placed every `relative_spacing` % of body length, so the
+    # curvature table has ~100/spacing columns. The dynamic column crop can trim
+    # a few, hence the tolerance -- this catches gross mismatches, not last-column
+    # edge cases.
+    expected_cols = int(100.0 / spacing_pct)
+    if initial < 0 or final <= initial:
+        raise WorkflowError(
+            f"config segment range is empty or negative: initial_segment="
+            f"{initial}, final_segment={final} (need 0 <= initial < final).")
+    if final > expected_cols:
+        raise WorkflowError(
+            f"config mismatch: final_segment={final} exceeds the ~{expected_cols} "
+            f"curvature columns produced by relative_spacing={spacing_pct}% "
+            f"(100/{spacing_pct} = {expected_cols}). annotate_reversals would "
+            f"fail on every crop with a pandas KeyError. Either lower "
+            f"final_segment or decrease relative_spacing.")
+    n_features = final - initial
+    print(f"[config] curvature geometry OK: ~{expected_cols} columns from "
+          f"relative_spacing={spacing_pct}%, PCA uses segments "
+          f"[{initial},{final}) = {n_features} features.", file=sys.stderr)
+
+
+try:  # WorkflowError is the idiomatic Snakemake startup failure
+    from snakemake.exceptions import WorkflowError
+except ImportError:  # pragma: no cover - very old snakemake
+    WorkflowError = RuntimeError
+
+_validate_segment_geometry()
 
 # ----- Static Resource Functions (no scaling, used for tiff2avi and sam2_segment) -----
 def create_static_threads_function(rule_name):
@@ -423,7 +580,9 @@ rule create_centerline:
         head_annotation  = config["nose"],
         tail_annotation  = config["tail"],
         number_of_spline = config["num_splines"],
-        min_worm_length  = config["min_worm_lenght"]
+        # Derived per recording from the mm floor and SWC's px->mm calibration,
+        # NOT a fixed pixel constant -- see swc_min_worm_length().
+        min_worm_length  = lambda wildcards: swc_min_worm_length(wildcards.dataset)
     run:
         from centerline_behavior_annotation.centerline.dev import head_and_tail_low_res
         head_and_tail_low_res.main([

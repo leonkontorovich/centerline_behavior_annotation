@@ -30,9 +30,35 @@ downsample_factor: 0
 batch_size: 200
 
 # Worm detection parameters
+# min/max_worm_area are FALLBACKS -- the real values come from SWC
+# parameters.yaml (region_extraction.min/max_region_size) per recording.
 min_worm_area: 400
 max_worm_area: 1000
-min_worm_lenght: 83  # Note: there's a typo in 'length'
+
+# Minimum worm length as BIOLOGY (mm), converted to pixels per recording using
+# SWC's px->mm calibration. Frames whose skeleton is shorter are blanked by
+# create_centerline.
+#
+# This is a JUNK FLOOR: it rejects debris and broken mask fragments, so it must
+# sit well below any real worm (an adult images at ~0.8-1.1 mm). Do NOT raise it
+# to select for worm size -- that is what the analysis-time aliveness gate is
+# for.
+#
+# It replaces the old `min_worm_lenght: 83`, a PIXEL constant tuned on a rig
+# where worms imaged at ~1.0 mm. On a dataset whose worms imaged at ~60-70 px
+# it silently blanked ~99% of frames and cost a full pipeline run. Pixel
+# thresholds do not travel between rigs; millimetre thresholds do.
+#
+# 0.30 is MEASURED, not guessed: calibrate_min_worm_length.py over five
+# recordings of the rde4_behavior dataset put median worm length at 0.76-1.24 mm
+# and recommended 0.32-0.46 mm per recording. We take 0.30 -- at or below every
+# recording's own recommendation -- because those recommendations are biased
+# upward (see the script's CAVEATS) and because over-culling is the failure mode
+# that destroys a dataset, while stray debris is removed downstream anyway for
+# free. At 0.01221 mm/px that is ~25 px, far above a debris fragment.
+#
+# Re-run step 4a on YOUR data before trusting this on a different rig or stage.
+min_worm_length_mm: 0.30
 
 # Annotation parameters
 nose: head

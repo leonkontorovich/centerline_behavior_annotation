@@ -7,6 +7,12 @@ from scipy.spatial.distance import euclidean
 from tqdm import tqdm
 from scipy.ndimage import gaussian_filter
 
+# Fewest curvature columns worth emitting. calculate_curvature() needs >= 3
+# points per frame to take derivatives at all, and a 3-point body curvature is
+# useless for PCA regardless; anything at or below this means the skeletons
+# collapsed rather than that the worm is short.
+MIN_USABLE_COLUMNS = 3
+
 
 def fit_spline(x_coords, y_coords, smoothing):
     if len(x_coords) < 3:
@@ -477,6 +483,30 @@ def main(arg_list=None):
         # Use the smaller of the two values (optimal or occupancy-based)
         final_columns = min(optimal_points, len(cols_to_keep))
         print(f"\nFinal column count: {final_columns}")
+
+        # Refuse to emit a degenerate curvature table.
+        #
+        # When a crop has almost no valid skeletons (junk crop, or a
+        # min_worm_length threshold set above the actual worms), column
+        # occupancy is tiny and noisy, the rate-of-change detector cuts at the
+        # first column, and this collapses to 1. Curvature needs >= 3 points per
+        # frame, so the output becomes an all-NaN file that LOOKS like success:
+        # the rule goes green, and the failure resurfaces two rules later as an
+        # opaque pandas KeyError inside annotate_reversals. Failing here instead
+        # names the real cause at the real place.
+        if final_columns < MIN_USABLE_COLUMNS:
+            raise ValueError(
+                f"Degenerate skeleton: only {final_columns} column(s) survive the "
+                f"dynamic crop (need >= {MIN_USABLE_COLUMNS} for curvature).\n"
+                f"  optimal_points={optimal_points}, occupancy-based="
+                f"{len(cols_to_keep)}\n"
+                f"This crop has essentially no valid skeletons. Usual causes:\n"
+                f"  1. min_worm_length is set above the actual worm length, so "
+                f"create_centerline blanked nearly every frame (check the "
+                f"'[swc] ... min_worm_length_px' line in the run log against "
+                f"your worms' real length in pixels);\n"
+                f"  2. this really is a junk crop (bubble/debris) -- expected, "
+                f"and skipped gracefully downstream.")
     # Fixed mode: use specified column count
     elif args.max_columns is not None:
         print(f"\nApplying fixed column truncation to {args.max_columns} points...")

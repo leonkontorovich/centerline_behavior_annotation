@@ -73,7 +73,17 @@ def parse_recording_name(recording: str, name_re: "re.Pattern"):
 
     Falls back to (full name, '') when the name does not match, so an
     unexpected naming scheme never silently discards data.
+
+    Stray whitespace is normalised before matching. Hand-typed recording names
+    pick up spaces ("2026-06-17_11-51-38_N2_ B"), and the plate group is
+    [A-Za-z0-9]+, so "_ B" fails to match as a plate. The name then falls back
+    wholesale to Genotype="N2_ B" with an empty Plate -- and since Condition
+    defaults to Genotype, that recording silently becomes its OWN condition
+    group, split from the N2 it belongs to. Nothing errors; the stats are just
+    quietly wrong. Collapsing internal whitespace first makes "N2_ B" parse
+    identically to "N2_B".
     """
+    recording = re.sub(r"\s+", "", recording)
     m = name_re.match(recording)
     if not m:
         return recording, ""

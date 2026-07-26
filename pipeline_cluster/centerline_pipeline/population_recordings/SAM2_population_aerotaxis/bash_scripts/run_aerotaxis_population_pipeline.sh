@@ -108,9 +108,12 @@ echo "=========================================="
 
 cd "\$FOLDER" || exit 1
 
-# Run the workflow with specified max jobs
-bash RUNME_cluster.sh --jobs ${MAX_JOBS_PER_WORKFLOW}
-EXIT_CODE=\$?
+# Run the workflow with specified max jobs.
+# NOTE the '|| EXIT_CODE=\$?' -- this script runs under 'set -e', so a bare call
+# would abort the moment RUNME_cluster.sh returns non-zero, skipping the failure
+# report below and losing the exit code we want to surface.
+EXIT_CODE=0
+bash RUNME_cluster.sh --jobs ${MAX_JOBS_PER_WORKFLOW} || EXIT_CODE=\$?
 
 if [ \$EXIT_CODE -eq 0 ]; then
     echo "✅ Completed: \$FOLDER_NAME"
