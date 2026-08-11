@@ -47,7 +47,11 @@ STARTED=$(find "$SOURCE" -type d -name "output" -exec sh -c '[ "$(find "$1" -typ
 
 # Calculate derived metrics
 NOT_STARTED=$((TOTAL - STARTED))
-FAILED=$((STARTED - COMPLETED))
+RUNNING_OR_FAILED=$((STARTED - COMPLETED))
+
+# Infer explicit failures from workflow logs (one failure per Error in rule line)
+EXPLICIT_FAILS=$(find "$SOURCE" -maxdepth 2 -name "workflow_*.log" -o -name "slurm-*.out" 2>/dev/null | xargs -I {} grep -h '^Error in rule' "{}" 2>/dev/null | wc -l | awk '{print $1}')
+
 
 # Infer temp file steps from permanent downstream files
 # If DLC filtered exists, temp files (tiff2avi, dlc_analyze, sam2) must have succeeded
@@ -70,13 +74,14 @@ echo -e "${B}                 OVERALL STATUS${N}"
 echo -e "${B}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${N}"
 
 COMP_PCT=$(awk "BEGIN {printf \"%.1f\", $COMPLETED * 100 / $TOTAL}")
-FAIL_PCT=$(awk "BEGIN {printf \"%.1f\", $FAILED * 100 / $TOTAL}")
+FAIL_PCT=$(awk "BEGIN {printf \"%.1f\", $RUNNING_OR_FAILED * 100 / $TOTAL}")
 NOT_PCT=$(awk "BEGIN {printf \"%.1f\", $NOT_STARTED * 100 / $TOTAL}")
 
 printf "Total tracks:      %4d\n" "$TOTAL"
 printf "${G}✅ Completed:       %4d${N} (%s%%)\n" "$COMPLETED" "$COMP_PCT"
-printf "${R}❌ Not finished:          %4d${N} (%s%%)\n" "$FAILED" "$FAIL_PCT"
+printf "${R}❌ Not finished:          %4d${N} (%s%%)\n" "$RUNNING_OR_FAILED" "$FAIL_PCT"
 printf "⏸️  Not started:     %4d (%s%%)\n" "$NOT_STARTED" "$NOT_PCT"
+printf "${R}💥 Explicit Fails:  %4d${N} (from logs)\n" "$EXPLICIT_FAILS"
 
 echo -e "\n${B}Note:${N}"
 echo -e "  • Temporary files are deleted after processing (marked as temp() in Snakefile)"
@@ -150,8 +155,11 @@ elif [[ $COMPLETED -eq 0 ]]; then
 else
     echo -e "\n${Y}💡 Status:${N}"
     echo -e "   • ${G}${COMPLETED}${N} tracks completed successfully"
-    if [[ $FAILED -gt 0 ]]; then
-        echo -e "   • ${R}${FAILED}${N} tracks need attention (started but incomplete)"
+    if [[ $RUNNING_OR_FAILED -gt 0 ]]; then
+        echo -e "   • ${R}${RUNNING_OR_FAILED}${N} tracks need attention (started but incomplete)"
+    fi
+    if [[ $EXPLICIT_FAILS -gt 0 ]]; then
+        echo -e "   • ${R}💥 Found ${EXPLICIT_FAILS} explicit failure(s) in logs${N} (grep '^Error in rule')"
     fi
     if [[ $NOT_STARTED -gt 0 ]]; then
         echo -e "   • ${NOT_STARTED} tracks not yet started"

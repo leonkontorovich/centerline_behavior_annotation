@@ -45,7 +45,7 @@ network_string: DLC_resnet50_population_nose_neck_vulva_tail_elpiniki_chanuka_it
 pca_model_path: /lisc/data/scratch/neurobiology/zimmer/autoscope/trained_models/PCA_models/equi_distance_centerline_seg_10_40.pkl
 
 # SAM2 parameters
-downsample_factor: 0
+
 batch_size: 200
 
 # Worm detection parameters
