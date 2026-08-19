@@ -25,6 +25,7 @@ PULSE_STATE=""
 FORMAT="parquet"
 STRICT_QC=""
 GENOTYPE_REGEX=""
+GENOTYPE_MAP=""
 EXTRA=()
 
 while [[ $# -gt 0 ]]; do
@@ -33,6 +34,7 @@ while [[ $# -gt 0 ]]; do
     --format)      FORMAT="$2"; shift 2 ;;
     --strict-qc)   STRICT_QC="--strict-qc"; shift ;;
     --genotype-regex) GENOTYPE_REGEX="$2"; shift 2 ;;
+    --genotype-map)   GENOTYPE_MAP="$2"; shift 2 ;;
     --)            shift; EXTRA=("$@"); break ;;
     -*)            echo "Unknown option: $1" >&2; exit 1 ;;
     *)             DATASET="$1"; shift ;;
@@ -49,6 +51,7 @@ echo "=========================================="
 echo "▶ Step 1/2: combining per-crop temporal_features.csv ..."
 CREATE_ARGS=("$DATASET" --format "$FORMAT")
 [[ -n "$GENOTYPE_REGEX" ]] && CREATE_ARGS+=(--genotype-regex "$GENOTYPE_REGEX")
+[[ -n "$GENOTYPE_MAP" ]] && CREATE_ARGS+=(--genotype-map "$GENOTYPE_MAP")
 python3 "${UTILS}/create_results_dict_server.py" "${CREATE_ARGS[@]}"
 
 echo "▶ Step 2/2: running analysis -> ${DATASET}/analysis/ ..."

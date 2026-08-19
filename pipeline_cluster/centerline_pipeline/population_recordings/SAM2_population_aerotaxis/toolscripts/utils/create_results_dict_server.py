@@ -51,7 +51,19 @@ from pathlib import Path
 import pandas as pd
 from tqdm import tqdm
 
+import json
+
 TARGET = "temporal_features.csv"
+
+# Canonical allele mappings for known short tags
+DEFAULT_GENOTYPE_MAP = {
+    "N2": "N2",
+    "rde": "rde-4(db2038)",
+    "npr": "npr-1(ad609)",
+    "rdenpr": "rde-4(db2039); npr-1(ad609)",
+    "nprrde": "rde-4(db2039); npr-1(ad609)",
+    "mut": "mut-16(pk710)",
+}
 
 # SWC recordings are named "<date>_<time>_<genotype>_<plate>", e.g.
 # "2026-06-20_11-00-53_N2_A". Group 1 = genotype (may contain underscores, e.g.
@@ -68,7 +80,7 @@ def _strip_new(name: str) -> str:
     return name[:-4] if name.endswith("_new") else name
 
 
-def parse_recording_name(recording: str, name_re: "re.Pattern"):
+def parse_recording_name(recording: str, name_re: "re.Pattern", genotype_map: dict = None):
     """Return (genotype, plate) parsed from a recording folder name.
 
     Falls back to (full name, '') when the name does not match, so an
@@ -86,14 +98,47 @@ def parse_recording_name(recording: str, name_re: "re.Pattern"):
     recording = re.sub(r"\s+", "", recording)
     m = name_re.match(recording)
     if not m:
-        return recording, ""
-    gd = m.groupdict()
-    return gd.get("genotype") or recording, gd.get("plate") or ""
+        raw_g, plate = recording, ""
+    else:
+        gd = m.groupdict()
+        raw_g = gd.get("genotype") or recording
+        plate = gd.get("plate") or ""
+
+    if genotype_map and raw_g in genotype_map:
+        genotype = genotype_map[raw_g]
+    else:
+        genotype = raw_g
+    return genotype, plate
 
 
-def collect(source_path: Path, name_re: "re.Pattern") -> pd.DataFrame:
+def _find_csv_files(source_path: Path) -> list[Path]:
+    """Find all temporal_features.csv files efficiently."""
+    csv_files = []
+    try:
+        subdirs = [p for p in source_path.iterdir() if p.is_dir() and not p.name.startswith(".") and p.name != "log"]
+        for p in subdirs:
+            if (p / "output" / TARGET).is_file():
+                csv_files.append(p / "output" / TARGET)
+                continue
+            inner_dirs = [q for q in p.iterdir() if q.is_dir() and not q.name.startswith(".") and q.name not in ("log", "report")]
+            for q in inner_dirs:
+                if (q / "output" / TARGET).is_file():
+                    csv_files.append(q / "output" / TARGET)
+                else:
+                    for r in q.iterdir():
+                        if r.is_dir() and not r.name.startswith(".") and (r / "output" / TARGET).is_file():
+                            csv_files.append(r / "output" / TARGET)
+    except Exception:
+        csv_files = []
+
+    if not csv_files:
+        csv_files = list(source_path.rglob(f"*/output/{TARGET}"))
+    return sorted(csv_files)
+
+
+def collect(source_path: Path, name_re: "re.Pattern", genotype_map: dict = None) -> pd.DataFrame:
     frames = []
-    csv_files = sorted(source_path.rglob(f"*/output/{TARGET}"))
+    csv_files = _find_csv_files(source_path)
     for csv in tqdm(csv_files, desc="Reading"):
         try:
             df = pd.read_csv(csv)
@@ -104,11 +149,12 @@ def collect(source_path: Path, name_re: "re.Pattern") -> pd.DataFrame:
         crop_dir = csv.parents[1]
         recording = _strip_new(crop_dir.parent.name)
         condition_raw = _strip_new(crop_dir.parents[1].name)
-        genotype, plate = parse_recording_name(recording, name_re)
+        genotype, plate = parse_recording_name(recording, name_re, genotype_map=genotype_map)
         # If the parent folder is just the per-recording "_new" wrapper (so it
         # collapses to the recording itself), there is no real condition folder;
         # group by genotype instead. Otherwise keep the genuine condition name.
-        condition = genotype if condition_raw == recording else condition_raw
+        is_wrapper = re.sub(r"\s+", "", condition_raw) == re.sub(r"\s+", "", recording)
+        condition = genotype if is_wrapper else condition_raw
         df.insert(0, "Plate", plate)
         df.insert(0, "Recording", recording)
         df.insert(0, "Genotype", genotype)
@@ -129,6 +175,9 @@ if __name__ == "__main__":
                     help="regex with named group `genotype` (and optional `plate`) "
                          "applied to each recording folder name "
                          "(default matches SWC `<date>_<time>_<genotype>_<plate>`)")
+    ap.add_argument("--genotype-map", default="default",
+                    help="mapping from raw parsed genotype tag to canonical allele label "
+                         "(JSON string, JSON filepath, 'default', or 'none' to disable)")
     args = ap.parse_args()
 
     try:
@@ -136,13 +185,30 @@ if __name__ == "__main__":
     except re.error as e:
         raise SystemExit(f"Invalid --genotype-regex: {e}")
 
+    gmap = None
+    if args.genotype_map and args.genotype_map.lower() != "none":
+        if args.genotype_map.lower() == "default":
+            gmap = DEFAULT_GENOTYPE_MAP
+        elif Path(args.genotype_map).is_file():
+            with open(args.genotype_map) as f:
+                gmap = json.load(f)
+        else:
+            try:
+                gmap = json.loads(args.genotype_map)
+            except json.JSONDecodeError as e:
+                raise SystemExit(f"Invalid --genotype-map JSON: {e}")
+
     src = Path(args.source).resolve()
     out = src / f"aerotaxis_results.{args.format}"
 
     print(f"Source folder: {src}")
-    print(f"Output file:   {out}\n")
+    print(f"Output file:   {out}")
+    if gmap:
+        print(f"Genotype map:  {gmap}\n")
+    else:
+        print("Genotype map:  (disabled)\n")
 
-    tidy = collect(src, name_re)
+    tidy = collect(src, name_re, genotype_map=gmap)
 
     if args.format == "parquet":
         tidy.to_parquet(out, index=False)

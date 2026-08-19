@@ -248,3 +248,30 @@ def test_transition_triggered_grid_uses_true_fps():
     # 5 fps -> 0.2 s spacing, from -1 s to +1 s inclusive = 11 samples
     assert len(rel) == 11
     np.testing.assert_allclose(np.diff(rel), 0.2, atol=1e-9)
+
+
+# ---------------------------------------------------------------- genotype parsing
+def test_parse_recording_name_default_mapping():
+    import re
+    import create_results_dict_server as crds
+    name_re = re.compile(crds.DEFAULT_NAME_RE)
+    gmap = crds.DEFAULT_GENOTYPE_MAP
+
+    g, p = crds.parse_recording_name("2026-06-16_12-44-36_rde_B", name_re, genotype_map=gmap)
+    assert g == "rde-4(db2038)" and p == "B"
+
+    g, p = crds.parse_recording_name("2026-06-16_13-16-50_rdenpr_A", name_re, genotype_map=gmap)
+    assert g == "rde-4(db2039); npr-1(ad609)" and p == "A"
+
+    g, p = crds.parse_recording_name("2026-06-20_13-00-14_nprrde_A", name_re, genotype_map=gmap)
+    assert g == "rde-4(db2039); npr-1(ad609)" and p == "A"
+
+    g, p = crds.parse_recording_name("2026-06-18_12-17-00_npr_B", name_re, genotype_map=gmap)
+    assert g == "npr-1(ad609)" and p == "B"
+
+    g, p = crds.parse_recording_name("2026-06-16_15-01-05_mut_A", name_re, genotype_map=gmap)
+    assert g == "mut-16(pk710)" and p == "A"
+
+    g, p = crds.parse_recording_name("2026-06-17_11-49-35_N2_A1", name_re, genotype_map=gmap)
+    assert g == "N2" and p == "A1"
+
