@@ -52,6 +52,7 @@ import pandas as pd
 from tqdm import tqdm
 
 import json
+import numpy as np
 
 TARGET = "temporal_features.csv"
 
@@ -150,11 +151,17 @@ def collect(source_path: Path, name_re: "re.Pattern", genotype_map: dict = None)
         recording = _strip_new(crop_dir.parent.name)
         condition_raw = _strip_new(crop_dir.parents[1].name)
         genotype, plate = parse_recording_name(recording, name_re, genotype_map=genotype_map)
+        
+        # Derive date once in pipeline from recording name (leading YYYY-MM-DD)
+        date_m = re.match(r"^(\d{4}-\d{2}-\d{2})", re.sub(r"\s+", "", recording))
+        date = date_m.group(1) if date_m else ""
+
         # If the parent folder is just the per-recording "_new" wrapper (so it
         # collapses to the recording itself), there is no real condition folder;
         # group by genotype instead. Otherwise keep the genuine condition name.
         is_wrapper = re.sub(r"\s+", "", condition_raw) == re.sub(r"\s+", "", recording)
         condition = genotype if is_wrapper else condition_raw
+        df.insert(0, "Date", date)
         df.insert(0, "Plate", plate)
         df.insert(0, "Recording", recording)
         df.insert(0, "Genotype", genotype)
@@ -163,7 +170,38 @@ def collect(source_path: Path, name_re: "re.Pattern", genotype_map: dict = None)
 
     if not frames:
         raise SystemExit(f"No {TARGET} files found under {source_path}")
-    return pd.concat(frames, ignore_index=True)
+    tidy = pd.concat(frames, ignore_index=True)
+
+    # Freeze declared estimand windows (§7): 7 % p_start - 30 -> p_start, 21 % p_end - 10 -> p_end
+    # Protocol: 10 pulses, pulse i (0..9): p_start = 240 + i*90, p_end = 270 + i*90
+    pulse_starts = [240 + i * 90 for i in range(10)]
+    pulse_ends = [270 + i * 90 for i in range(10)]
+    in_win_7 = np.zeros(len(tidy), dtype=bool)
+    in_win_21 = np.zeros(len(tidy), dtype=bool)
+    for ps, pe in zip(pulse_starts, pulse_ends):
+        in_win_7 |= (tidy["Time_Seconds"] >= ps - 30.0) & (tidy["Time_Seconds"] < ps)
+        in_win_21 |= (tidy["Time_Seconds"] >= pe - 10.0) & (tidy["Time_Seconds"] < pe)
+    tidy["in_declared_window"] = in_win_7 | in_win_21
+
+    # Biological QC flags from rde4_dossier.md §3.7 / Stats_3.py
+    # Evaluated on declared windows across the 10-pulse protocol
+    b_df = tidy[in_win_7]
+    pk_df = tidy[in_win_21]
+    b_mean = b_df.groupby(["Recording", "Crop_ID"])["Forward_Velocity"].apply(lambda x: np.nanmean(np.abs(x))) * 1000.0
+    pk_mean = pk_df.groupby(["Recording", "Crop_ID"])["Forward_Velocity"].apply(lambda x: np.nanmean(np.abs(x))) * 1000.0
+
+    vb_tracks = set(b_mean[(b_mean >= 0) & (b_mean <= 250)].index)
+    vp_tracks = set(pk_mean[(pk_mean >= 0) & (pk_mean <= 350)].index)
+    common = b_mean.index.intersection(pk_mean.index)
+    delta_mean = pk_mean.loc[common] - b_mean.loc[common]
+    vd_tracks = set(delta_mean[(delta_mean >= -150) & (delta_mean <= 350)].index)
+
+    track_idx = pd.MultiIndex.from_arrays([tidy["Recording"], tidy["Crop_ID"]])
+    tidy["valid_baseline"] = track_idx.isin(vb_tracks)
+    tidy["valid_peak"] = track_idx.isin(vp_tracks)
+    tidy["valid_delta"] = track_idx.isin(vd_tracks)
+
+    return tidy
 
 
 if __name__ == "__main__":
@@ -171,6 +209,8 @@ if __name__ == "__main__":
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("source", nargs="?", default=".", help="dataset folder (default: cwd)")
     ap.add_argument("--format", choices=["parquet", "csv", "pkl"], default="parquet")
+    ap.add_argument("--output", "-o", default=None,
+                    help="custom output file path (default: aerotaxis_results.<format> in source folder)")
     ap.add_argument("--genotype-regex", default=DEFAULT_NAME_RE,
                     help="regex with named group `genotype` (and optional `plate`) "
                          "applied to each recording folder name "
@@ -199,7 +239,10 @@ if __name__ == "__main__":
                 raise SystemExit(f"Invalid --genotype-map JSON: {e}")
 
     src = Path(args.source).resolve()
-    out = src / f"aerotaxis_results.{args.format}"
+    if args.output:
+        out = Path(args.output).resolve()
+    else:
+        out = src / f"aerotaxis_results.{args.format}"
 
     print(f"Source folder: {src}")
     print(f"Output file:   {out}")
