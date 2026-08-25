@@ -432,12 +432,18 @@ def per_state_summary(df, by=("Condition", "O2_State"), fps=DEFAULT_FPS,
     weight) for comparison; not recommended for reporting.
     """
     by = list(by)
-    metric_cols = ["mean_forward_velocity", "reversal_fraction", "turn_fraction"]
+    df = df.assign(
+        _dt=_per_frame_dt(df, fps),
+        _abs_speed=df["Forward_Velocity"].abs(),
+        _fwd_run_speed=df["Forward_Velocity"].where((df.get("Reversal_Active", 0) == 0) & (df.get("Turn_Active", 0) == 0) & (df["Forward_Velocity"] > 0), np.nan)
+    )
 
     if not crop_level:
         g = df.groupby(by, observed=True)
         agg = dict(
             mean_forward_velocity=("Forward_Velocity", "mean"),
+            mean_crawling_speed=("_abs_speed", "mean"),
+            mean_forward_run_speed=("_fwd_run_speed", "mean"),
             reversal_fraction=("Reversal_Active", "mean"),
             turn_fraction=("Turn_Active", "mean"),
             n_frames=("Frame", "size"),
@@ -448,17 +454,20 @@ def per_state_summary(df, by=("Condition", "O2_State"), fps=DEFAULT_FPS,
             agg["reversal_onsets"] = ("Reversal_Onset", "sum")
         out = g.agg(**agg).reset_index()
         out["n_crops"] = g[GROUP_KEYS[-1]].nunique().values
-        obs = df.assign(_dt=_per_frame_dt(df, fps)).groupby(by, observed=True)["_dt"].sum()
+        obs = df.groupby(by, observed=True)["_dt"].sum()
         out = out.merge(obs.rename("obs_seconds").reset_index(), on=by, how="left")
         if "reversal_onsets" in out:
             out["reversal_onsets_per_min"] = out["reversal_onsets"] / (out["obs_seconds"] / 60.0)
         return out
 
+    metric_cols = ["mean_forward_velocity", "mean_crawling_speed", "mean_forward_run_speed", "reversal_fraction", "turn_fraction"]
+
     # crop-level: one row per crop first (the biological replication unit).
     crop_keys = list(dict.fromkeys(by + GROUP_KEYS))
-    d = df.assign(_dt=_per_frame_dt(df, fps))
     agg = dict(
         mean_forward_velocity=("Forward_Velocity", "mean"),
+        mean_crawling_speed=("_abs_speed", "mean"),
+        mean_forward_run_speed=("_fwd_run_speed", "mean"),
         reversal_fraction=("Reversal_Active", "mean"),
         turn_fraction=("Turn_Active", "mean"),
         n_frames=("Frame", "size"),
@@ -469,7 +478,7 @@ def per_state_summary(df, by=("Condition", "O2_State"), fps=DEFAULT_FPS,
         metric_cols.append("mean_bend_frequency_hz")
     if "Reversal_Onset" in df:
         agg["reversal_onsets"] = ("Reversal_Onset", "sum")
-    per_crop = d.groupby(crop_keys, observed=True).agg(**agg).reset_index()
+    per_crop = df.groupby(crop_keys, observed=True).agg(**agg).reset_index()
     if "reversal_onsets" in per_crop:
         per_crop["reversal_onsets_per_min"] = (
             per_crop["reversal_onsets"] / (per_crop["obs_seconds"] / 60.0))
@@ -712,26 +721,93 @@ def compare_conditions_per_state(df, metric="Forward_Velocity",
 
 
 # ----------------------------------------------------------------------
-# Plot helpers (seaborn optional -- imported lazily so import is cheap)
 # ----------------------------------------------------------------------
-def plot_per_state_summary(summary, metric="reversal_fraction", ax=None):
+# Plot helpers & authoritative off-food styling
+# ----------------------------------------------------------------------
+OFF_FOOD_PALETTE = {
+    "N2": "#7FB3D5",
+    "rde-4(db2038)": "#D3928F",
+    "rde-4(db2036)": "#D3928F",
+    "rde-4": "#D3928F",
+    "npr-1(ad609)": "#3A75A4",
+    "rde-4(db2039); npr-1(ad609)": "#D55E00",
+    "rde-4(ne299);npr-1(ad609)": "#D55E00",
+    "rde-4;npr-1": "#D55E00",
+    "mut-16(pk710)": "#408468",
+    "mut-16": "#408468",
+}
+
+CONDITION_ORDER = [
+    "N2",
+    "rde-4(db2038)",
+    "mut-16(pk710)",
+    "npr-1(ad609)",
+    "rde-4(db2039); npr-1(ad609)",
+]
+
+
+def plot_per_state_summary(summary, metric="reversal_fraction", ax=None,
+                           palette=None, hue_order=None):
     import seaborn as sns
     import matplotlib.pyplot as plt
     ax = ax or plt.gca()
-    sns.barplot(data=summary, x="O2_State", y=metric, hue="Condition", ax=ax)
-    ax.set_title(f"{metric} by gas state")
+    pal = palette or OFF_FOOD_PALETTE
+    order = hue_order or [c for c in CONDITION_ORDER if c in summary["Condition"].unique()]
+    if not order:
+        order = sorted(summary["Condition"].unique())
+    sns.barplot(data=summary, x="O2_State", y=metric, hue="Condition",
+                hue_order=order, palette=pal, ax=ax)
+    clean_title = metric.replace("_", " ").title()
+    ax.set_title(clean_title, fontsize=11, fontweight="bold")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
     return ax
 
 
-def plot_transition_triggered(tta, feature="Forward_Velocity", ax=None):
+def plot_transition_triggered(tta, feature="Forward_Velocity", ax=None,
+                              palette=None, hue_order=None):
     import seaborn as sns
     import matplotlib.pyplot as plt
     ax = ax or plt.gca()
-    sns.lineplot(data=tta, x="rel_time_s", y=feature, hue="transition",
-                 errorbar=("ci", 95), ax=ax)
+    pal = palette or OFF_FOOD_PALETTE
+    if "Condition" in tta and tta["Condition"].nunique() > 1:
+        order = hue_order or [c for c in CONDITION_ORDER if c in tta["Condition"].unique()]
+        if not order:
+            order = sorted(tta["Condition"].unique())
+        style_var = "transition" if tta["transition"].nunique() > 1 else None
+        sns.lineplot(data=tta, x="rel_time_s", y=feature, hue="Condition",
+                     style=style_var, hue_order=order, palette=pal,
+                     errorbar=("ci", 95), ax=ax)
+    else:
+        sns.lineplot(data=tta, x="rel_time_s", y=feature, hue="transition",
+                     errorbar=("ci", 95), ax=ax)
     ax.axvline(0, color="k", ls="--", lw=1, alpha=0.6)
-    ax.set_xlabel("time relative to gas shift (s)")
-    ax.set_title(f"{feature} locked to gas shift")
+    ax.set_xlabel("Time relative to gas shift (s)", fontsize=10, fontweight="bold")
+    clean_feat = feature.replace("_", " ").title()
+    ax.set_ylabel(clean_feat, fontsize=10, fontweight="bold")
+    ax.set_title(f"{clean_feat} locked to gas shift", fontsize=11, fontweight="bold")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    return ax
+
+
+def plot_per_cycle_summary(pc, feature="Forward_Velocity", ax=None,
+                           palette=None, hue_order=None):
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    ax = ax or plt.gca()
+    pal = palette or OFF_FOOD_PALETTE
+    order = hue_order or [c for c in CONDITION_ORDER if c in pc["Condition"].unique()]
+    if not order:
+        order = sorted(pc["Condition"].unique())
+    sns.lineplot(data=pc, x="Cycle_Index", y=f"{feature}_mean", hue="Condition",
+                 hue_order=order, palette=pal, marker="o", ax=ax)
+    ax.set_xlabel("Cycle Index (Pulse #)", fontsize=10, fontweight="bold")
+    clean_feat = feature.replace("_", " ").title()
+    ax.set_ylabel(f"Mean {clean_feat}", fontsize=10, fontweight="bold")
+    ax.set_title(f"Habituation across pulses ({clean_feat})", fontsize=11, fontweight="bold")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
     return ax
 
 
@@ -829,6 +905,7 @@ def main():
                   f"median latency {rr.latency_s.median():.2f}s")
 
     # habituation: mean feature per successive cycle (pulse phase if given)
+    pc = None
     if "Cycle_Index" in df and (df["Cycle_Index"] >= 0).any():
         pc = per_cycle_summary(df, feature="Forward_Velocity",
                                state=args.pulse_state, fps=args.fps)
@@ -864,18 +941,33 @@ def main():
         import matplotlib.pyplot as plt
         metrics = [m for m in ["mean_forward_velocity", "reversal_fraction", "turn_fraction",
                                "mean_bend_frequency_hz", "reversal_onsets_per_min"] if m in summary]
-        fig, axes = plt.subplots(1, len(metrics), figsize=(4 * len(metrics), 4))
+        fig, axes = plt.subplots(1, len(metrics), figsize=(4.2 * len(metrics), 4.2))
         for ax, m in zip(np.atleast_1d(axes), metrics):
             plot_per_state_summary(summary, metric=m, ax=ax)
-        fig.tight_layout()
-        fig.savefig(outdir / "per_state_summary.png", dpi=150)
+        # Position legend nicely
+        handles, labels = axes[0].get_legend_handles_labels() if len(axes) else ([], [])
+        for ax in axes:
+            if ax.get_legend():
+                ax.get_legend().remove()
+        if handles:
+            fig.legend(handles, labels, loc="upper center", bbox_to_anchor=(0.5, 1.05),
+                       ncol=min(len(handles), 5), frameon=False, fontsize=10)
+        fig.tight_layout(rect=[0, 0, 1, 0.93])
+        fig.savefig(outdir / "per_state_summary.png", dpi=300, bbox_inches="tight")
 
         for feat, t in ttas.items():
             if len(t):
-                fig2, ax2 = plt.subplots(figsize=(8, 4))
+                fig2, ax2 = plt.subplots(figsize=(7, 4.5))
                 plot_transition_triggered(t, feature=feat, ax=ax2)
                 fig2.tight_layout()
-                fig2.savefig(outdir / f"transition_triggered_{feat.lower()}.png", dpi=150)
+                fig2.savefig(outdir / f"transition_triggered_{feat.lower()}.png", dpi=300, bbox_inches="tight")
+
+        if pc is not None and len(pc):
+            fig3, ax3 = plt.subplots(figsize=(7, 4.5))
+            plot_per_cycle_summary(pc, feature="Forward_Velocity", ax=ax3)
+            fig3.tight_layout()
+            fig3.savefig(outdir / "habituation_forward_velocity.png", dpi=300, bbox_inches="tight")
+
         print(f"Wrote summaries + figures to {outdir}/")
     except Exception as e:  # noqa: BLE001
         print(f"[warn] plotting skipped ({e}); CSV summaries still written to {outdir}/")
